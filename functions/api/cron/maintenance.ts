@@ -147,6 +147,143 @@ async function cleanOldLogs(env: Env): Promise<TaskResult> {
   }
 }
 
+// ============================================================
+// Task 5: 自動分類の再実行（auto_scrapeイベントのカテゴリ更新）
+// ============================================================
+function classifyCategory(title: string): string {
+  const t = title.normalize('NFKC');
+  if (/定期演奏会/.test(t)) return 'teiki';
+  if (/卒業演奏会|卒業/.test(t)) return 'sotsugyou';
+  if (/学位審査|学位/.test(t)) return 'gakui';
+  if (/修了演奏会/.test(t)) return 'sotsugyou';
+  if (/オペラ|opera/i.test(t)) return 'opera';
+  if (/オーケストラ|管弦楽団|orchestra/i.test(t)) return 'orchestra';
+  if (/ウインドオーケストラ|吹奏楽|ウィンド/i.test(t)) return 'wind';
+  if (/リサイタル|recital/i.test(t)) return 'recital';
+  if (/室内楽|チェンバー|chamber/i.test(t)) return 'chamber';
+  if (/アンサンブル|ensemble/i.test(t)) return 'ensemble';
+  if (/弦楽合奏|弦楽/.test(t)) return 'chamber';
+  if (/声楽|vocal/i.test(t)) return 'vocal';
+  if (/ピアノ|piano/i.test(t)) return 'piano';
+  if (/作曲作品演奏会|作曲/.test(t)) return 'ensemble';
+  if (/ドクトラル|博士/.test(t)) return 'recital';
+  return 'daigaku';
+}
+
+async function recategorizeConcerts(env: Env): Promise<TaskResult> {
+  try {
+    const rows = await env.DB.prepare(
+      "SELECT slug, title, category FROM concerts WHERE source = 'auto_scrape' AND is_deleted = 0"
+    ).all<{ slug: string; title: string; category: string }>();
+
+    let updated = 0;
+    for (const row of rows.results || []) {
+      const newCat = classifyCategory(row.title);
+      if (newCat !== row.category) {
+        await env.DB.prepare(
+          "UPDATE concerts SET category = ?, updated_at = datetime('now') WHERE slug = ?"
+        ).bind(newCat, row.slug).run();
+        updated++;
+      }
+    }
+
+    const details = `${rows.results?.length || 0} 件中 ${updated} 件のカテゴリを更新しました`;
+    await env.DB.prepare(
+      "INSERT INTO maintenance_log (task, result, details) VALUES ('recategorize', 'success', ?)"
+    ).bind(details).run();
+    return { task: 'recategorize', success: true, details };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { task: 'recategorize', success: false, details: msg };
+  }
+}
+
+// ============================================================
+// Task 6: スクレイプ済みイベントのチラシ画像取得
+//   source_urlからリストページを再取得し、画像URLを特定してKVに保存
+// ============================================================
+async function fetchMissingImages(env: Env): Promise<TaskResult> {
+  try {
+    // Get auto_scrape events without flyer images (limit per run to stay under subrequest limit)
+    const rows = await env.DB.prepare(
+      `SELECT slug, title, date, source_url FROM concerts 
+       WHERE source = 'auto_scrape' AND is_deleted = 0 
+       AND (flyer_thumbnail_key IS NULL OR flyer_thumbnail_key = '')
+       ORDER BY date DESC LIMIT 8`
+    ).all<{ slug: string; title: string; date: string; source_url: string }>();
+
+    if (!rows.results?.length) {
+      return { task: 'fetch_images', success: true, details: '画像取得が必要なイベントはありません' };
+    }
+
+    let fetched = 0;
+    const BASE_URL = 'https://www.aichi-fam-u.ac.jp/event/music/';
+
+    // Group events by source page to minimize fetches
+    const pageCache = new Map<string, string>();
+
+    for (const row of rows.results) {
+      try {
+        const pageUrl = row.source_url || BASE_URL;
+        let html = pageCache.get(pageUrl);
+        if (!html) {
+          const res = await fetch(pageUrl, {
+            headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'text/html' },
+          });
+          if (!res.ok) continue;
+          html = await res.text();
+          pageCache.set(pageUrl, html);
+        }
+
+        // Find this event's image in the listing page
+        const titleEsc = row.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').slice(0, 30);
+        // Look for event blocks containing this title
+        const blockPattern = new RegExp(
+          `<a\\s+href="[^"]*"\\s+class="eventList_item event">[\\s\\S]*?${titleEsc}[\\s\\S]*?<\\/a>`,
+          'i'
+        );
+        const blockMatch = html.match(blockPattern);
+        if (!blockMatch) continue;
+        const imgMatch = blockMatch[0].match(/<img\s+src="([^"]+)"/);
+        if (!imgMatch) continue;
+        const imageUrl = new URL(imgMatch[1], pageUrl).href;
+
+        // Download the image
+        const imgRes = await fetch(imageUrl, {
+          headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'image/*' },
+        });
+        if (!imgRes.ok) continue;
+
+        const imgBuffer = await imgRes.arrayBuffer();
+        const ext = imageUrl.match(/\.(webp|png|jpg|jpeg|gif)$/i)?.[1]?.toLowerCase() || 'jpg';
+        const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+        const timestamp = Date.now();
+        const imgKey = `flyers/${row.slug}/${timestamp}.${ext}`;
+        const thumbKey = `flyers/${row.slug}/${timestamp}_thumb.${ext}`;
+
+        await env.KV.put(imgKey, imgBuffer, { metadata: { contentType } });
+        await env.KV.put(thumbKey, imgBuffer, { metadata: { contentType } });
+
+        // Update concert record
+        await env.DB.prepare(
+          `UPDATE concerts SET flyer_r2_keys = ?, flyer_thumbnail_key = ?, updated_at = datetime('now') WHERE slug = ?`
+        ).bind(JSON.stringify([imgKey]), thumbKey, row.slug).run();
+
+        fetched++;
+      } catch { /* skip individual failures */ }
+    }
+
+    const details = `${rows.results.length} 件中 ${fetched} 件の画像を取得しました`;
+    await env.DB.prepare(
+      "INSERT INTO maintenance_log (task, result, details) VALUES ('fetch_images', 'success', ?)"
+    ).bind(details).run();
+    return { task: 'fetch_images', success: true, details };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { task: 'fetch_images', success: false, details: msg };
+  }
+}
+
 // Run all maintenance tasks
 async function runMaintenance(env: Env): Promise<TaskResult[]> {
   const results: TaskResult[] = [];
@@ -155,7 +292,8 @@ async function runMaintenance(env: Env): Promise<TaskResult[]> {
   results.push(await purgeDeletedConcerts(env));
   results.push(await cleanRateLimits(env));
   results.push(await cleanOldLogs(env));
-
+      results.push(await recategorizeConcerts(env));
+      results.push(await fetchMissingImages(env));
   return results;
 }
 
@@ -204,6 +342,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           break;
         case 'clean_old_logs':
           results = [await cleanOldLogs(env)];
+          break;
+        case 'recategorize':
+          results = [await recategorizeConcerts(env)];
+          break;
+        case 'fetch_images':
+          results = [await fetchMissingImages(env)];
           break;
         default:
           return jsonResponse({ ok: false, error: `不明なタスク: ${taskName}` }, 400);

@@ -154,14 +154,27 @@ export default function ConcertDetailPage() {
           <h2 className="font-bold text-lg mb-3">チラシ</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {concert.flyer_r2_keys.map((key, i) => (
-              <img
-                key={i}
-                src={`/api/image/${key}`}
-                alt={`${concert.title} チラシ ${i + 1}`}
-                className="rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => setFlyerModal(`/api/image/${key}`)}
-                loading="lazy"
-              />
+              key.endsWith('.pdf') ? (
+                <div key={i} className="rounded-lg border border-stone-200 overflow-hidden">
+                  <a href={`/api/image/${key}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 hover:bg-stone-50 transition-colors">
+                    <span className="text-3xl">📄</span>
+                    <div>
+                      <p className="font-medium text-stone-800">PDF チラシ {i + 1}</p>
+                      <p className="text-xs text-stone-500">クリックで表示</p>
+                    </div>
+                  </a>
+                </div>
+              ) : (
+                <img
+                  key={i}
+                  src={`/api/image/${key}`}
+                  alt={`${concert.title} チラシ ${i + 1}`}
+                  className="rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setFlyerModal(`/api/image/${key}`)}
+                  loading="lazy"
+                />
+              )
             ))}
           </div>
         </div>

@@ -17,6 +17,9 @@ interface ScrapedEvent {
   detailUrl?: string;
   description?: string;
   sourceUrl: string;
+  imageUrl?: string;   // Flyer image URL from listing page
+  category?: string;   // Auto-classified category
+  pricingJson?: string; // Pricing data as JSON string
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -70,6 +73,29 @@ function generateSlug(date: string, title: string): string {
 async function generateFingerprint(date: string, venue: string, title: string): Promise<string> {
   const input = `${date}|${normalize(venue)}|${normalize(title).slice(0, 10)}`;
   return sha256(input);
+}
+
+// ============================================================
+// Auto-classify category from title keywords
+// ============================================================
+function classifyCategory(title: string): string {
+  const t = title.normalize('NFKC');
+  if (/定期演奏会/.test(t)) return 'teiki';
+  if (/卒業演奏会|卒業/.test(t)) return 'sotsugyou';
+  if (/学位審査|学位/.test(t)) return 'gakui';
+  if (/修了演奏会/.test(t)) return 'sotsugyou';
+  if (/オペラ|opera/i.test(t)) return 'opera';
+  if (/オーケストラ|管弦楽団|orchestra/i.test(t)) return 'orchestra';
+  if (/ウインドオーケストラ|吹奏楽|ウィンド/i.test(t)) return 'wind';
+  if (/リサイタル|recital/i.test(t)) return 'recital';
+  if (/室内楽|チェンバー|chamber/i.test(t)) return 'chamber';
+  if (/アンサンブル|ensemble/i.test(t)) return 'ensemble';
+  if (/弦楽合奏|弦楽/.test(t)) return 'chamber';
+  if (/声楽|vocal/i.test(t)) return 'vocal';
+  if (/ピアノ|piano/i.test(t)) return 'piano';
+  if (/作曲作品演奏会|作曲/.test(t)) return 'ensemble';
+  if (/ドクトラル|博士/.test(t)) return 'recital';
+  return 'daigaku';
 }
 
 // ============================================================
@@ -129,6 +155,8 @@ function parseEventList(html: string, baseUrl: string): ScrapedEvent[] {
       detailUrl,
       description: '',
       sourceUrl: baseUrl,
+      imageUrl: imageUrl,
+      category: classifyCategory(title),
     });
   }
 
@@ -200,7 +228,40 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
     extra.description = descParts.join('\n\n').slice(0, 2000);
   }
 
+  // Parse pricing from 入場料 / 料金 / チケット section
+  const pricingSection = sections['入場料'] || sections['料金'] || sections['チケット'] || '';
+  if (pricingSection) {
+    const pricing = parsePricingFromText(pricingSection);
+    if (pricing.length > 0) {
+      extra.pricingJson = JSON.stringify(pricing);
+    }
+  }
+
   return extra;
+}
+
+// Parse pricing text into structured pricing items
+function parsePricingFromText(text: string): Array<{ label: string; amount: number; note?: string }> {
+  const t = text.normalize('NFKC').trim();
+  if (!t || /無料|入場無料|入場料無料|free/i.test(t)) {
+    return [{ label: '入場料', amount: 0 }];
+  }
+  const items: Array<{ label: string; amount: number; note?: string }> = [];
+  // Try to match patterns like "一般 1,000円", "学生 500円", "大人1000円 子供500円"
+  const linePattern = /([\p{L}\p{N}・（）\(\)]+?)\s*[：:]?\s*(\d[\d,]*)\s*円/gu;
+  let m;
+  while ((m = linePattern.exec(t)) !== null) {
+    const label = m[1].trim();
+    const amount = parseInt(m[2].replace(/,/g, ''), 10);
+    items.push({ label, amount });
+  }
+  if (items.length > 0) return items;
+  // Fallback: single price
+  const singleMatch = t.match(/(\d[\d,]*)\s*円/);
+  if (singleMatch) {
+    return [{ label: '入場料', amount: parseInt(singleMatch[1].replace(/,/g, ''), 10) }];
+  }
+  return [{ label: '入場料', amount: 0 }];
 }
 
 // Main scraping logic
@@ -222,8 +283,9 @@ async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: nu
     urls.push(BASE_URL);
   }
 
-  // In bulk mode, skip detail page fetches to stay under subrequest limit
+  // In bulk mode, skip detail page fetches and image downloads to stay under subrequest limit
   const skipDetails = options?.allPages === true;
+  const skipImages = options?.allPages === true;
 
   for (const TARGET_URL of urls) {
   try {
@@ -303,20 +365,54 @@ async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: nu
         const slug = generateSlug(ev.date, ev.title);
         const id = generateId(12);
 
+        // Download and store flyer image if available (skip in bulk mode)
+        let flyerR2Keys: string[] = [];
+        let flyerThumbnailKey = '';
+        if (ev.imageUrl && !skipImages) {
+          try {
+            const imgRes = await fetch(ev.imageUrl, {
+              headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'image/*' },
+            });
+            if (imgRes.ok) {
+              const imgBuffer = await imgRes.arrayBuffer();
+              const ext = ev.imageUrl.match(/\.(webp|png|jpg|jpeg|gif|pdf)$/i)?.[1]?.toLowerCase() || 'jpg';
+              const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+              const timestamp = Date.now();
+              const imgKey = `flyers/${slug}/${timestamp}.${ext}`;
+              const thumbKey = `flyers/${slug}/${timestamp}_thumb.${ext}`;
+              await env.KV.put(imgKey, imgBuffer, { metadata: { contentType } });
+              // Use same image as thumbnail (original is already small from listing page)
+              await env.KV.put(thumbKey, imgBuffer, { metadata: { contentType } });
+              flyerR2Keys = [imgKey];
+              flyerThumbnailKey = thumbKey;
+            }
+          } catch { /* image download failed — continue without image */ }
+        }
+
+        // Determine pricing JSON
+        const pricingJson = ev.pricingJson || JSON.stringify([{ label: '入場料', amount: 0 }]);
+
+        // Use auto-classified category
+        const category = ev.category || 'daigaku';
+
         // Insert as published (auto-scraped events are public)
         await env.DB.prepare(
           `INSERT INTO concerts (
             id, slug, fingerprint, title, date, time_start,
             venue_json, category, description, source, source_url,
+            pricing_json, flyer_r2_keys, flyer_thumbnail_key,
             is_published, edit_password_hash, created_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'auto_scrape', ?, 1, 'auto_generated', 'scraper')`
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'auto_scrape', ?, ?, ?, ?, 1, 'auto_generated', 'scraper')`
         ).bind(
           id, slug, fingerprint,
           ev.title, ev.date, ev.timeStart,
           JSON.stringify({ name: ev.venue }),
-          'daigaku', // Category for university events
+          category,
           ev.description || '',
-          ev.sourceUrl
+          ev.sourceUrl,
+          pricingJson,
+          JSON.stringify(flyerR2Keys),
+          flyerThumbnailKey
         ).run();
 
         added++;

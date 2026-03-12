@@ -159,8 +159,16 @@ async function handleList(request: Request, env: Env): Promise<Response> {
     where += ' AND is_published = 1';
   }
   if (category) {
-    where += ' AND category = ?';
-    params.push(category);
+    if (category.includes(',')) {
+      const cats = category.split(',').map(c => c.trim()).filter(Boolean);
+      if (cats.length > 0) {
+        where += ` AND category IN (${cats.map(() => '?').join(',')})`;
+        params.push(...cats);
+      }
+    } else {
+      where += ' AND category = ?';
+      params.push(category);
+    }
   }
   if (search) {
     where += ' AND (title LIKE ? OR subtitle LIKE ? OR description LIKE ?)';

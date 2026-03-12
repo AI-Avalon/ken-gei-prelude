@@ -38,7 +38,7 @@ export default function ConcertListPage() {
     const res = await fetchConcerts({
       page: pageNum,
       limit: 20,
-      category: selectedCategories.length === 1 ? selectedCategories[0] : undefined,
+      category: selectedCategories.length > 0 ? selectedCategories.join(',') : undefined,
       sort: sortBy,
       search: searchQuery || undefined,
       dateFrom: today,
@@ -62,18 +62,15 @@ export default function ConcertListPage() {
     loadConcerts(next, true);
   };
 
-  // Client-side multi-category filter + fuzzy search
+  // Client-side fuzzy search (categories handled by API now)
   const filtered = useMemo(() => {
     let result = concerts;
-    if (selectedCategories.length > 1) {
-      result = result.filter((c) => selectedCategories.includes(c.category));
-    }
     if (searchQuery.trim()) {
       const fuse = new Fuse(result, fuseOptions);
       result = fuse.search(searchQuery).map((r) => r.item);
     }
     return result;
-  }, [concerts, selectedCategories, searchQuery]);
+  }, [concerts, searchQuery]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">

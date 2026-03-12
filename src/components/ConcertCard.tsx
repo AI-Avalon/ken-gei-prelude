@@ -19,12 +19,28 @@ export default function ConcertCard({ concert, highlight }: Props) {
       {/* Thumbnail */}
       {concert.flyer_thumbnail_key ? (
         <div className="aspect-[4/3] bg-stone-100 overflow-hidden">
-          <img
-            src={`/api/image/${concert.flyer_thumbnail_key}`}
-            alt={concert.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
-          />
+          {concert.flyer_thumbnail_key.endsWith('.pdf') ? (
+            <div className="w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
+              <div className="text-center">
+                <span className="text-primary-400/80 text-3xl">📄</span>
+                <p className="text-stone-400 text-xs mt-1">PDF チラシ</p>
+              </div>
+            </div>
+          ) : (
+            <img
+              src={`/api/image/${concert.flyer_thumbnail_key}`}
+              alt={concert.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
+            />
+          )}
+        </div>
+      ) : concert.source_url ? (
+        <div className="aspect-[4/3] bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
+          <div className="text-center">
+            <span className="text-primary-400/60 text-3xl font-display tracking-widest">♪</span>
+            <p className="text-stone-600 text-xs mt-2">{cat.label}</p>
+          </div>
         </div>
       ) : (
         <div className="aspect-[4/3] bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">

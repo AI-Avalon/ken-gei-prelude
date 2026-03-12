@@ -91,10 +91,10 @@ export default function CalendarAddDropdown({ concert }: Props) {
   ];
 
   return (
-    <div className="relative inline-block" ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="btn-secondary flex items-center gap-2"
+        className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center text-base py-3 px-6"
       >
         📅 カレンダーに追加
         <svg className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`}
@@ -104,7 +104,7 @@ export default function CalendarAddDropdown({ concert }: Props) {
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-2 w-72 bg-white border border-stone-200 rounded-xl shadow-lg py-1 right-0">
+        <div className="absolute z-30 mt-2 w-80 bg-white border border-stone-200 rounded-xl shadow-2xl py-2 left-0 sm:left-auto sm:right-0 animate-scale-in">
           {/* この予定だけ追加 */}
           <div className="px-4 pt-2 pb-1">
             <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">📌 この予定だけ追加</span>
@@ -113,7 +113,7 @@ export default function CalendarAddDropdown({ concert }: Props) {
             <button
               key={`s-${i}`}
               onClick={() => { item.onClick(); setOpen(false); }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-primary-50 flex items-center gap-3 transition-colors"
+              className="w-full text-left px-4 py-2.5 text-sm hover:bg-primary-50 flex items-center gap-3 transition-colors"
             >
               <span className="text-lg">{item.icon}</span>
               <span>{item.label}</span>
@@ -131,7 +131,7 @@ export default function CalendarAddDropdown({ concert }: Props) {
             <button
               key={`a-${i}`}
               onClick={() => { item.onClick(); setOpen(false); }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-accent-50 flex items-center gap-3 transition-colors"
+              className="w-full text-left px-4 py-2.5 text-sm hover:bg-accent-50 flex items-center gap-3 transition-colors"
             >
               <span className="text-lg">{item.icon}</span>
               <span>{item.label}</span>
