@@ -200,16 +200,37 @@ async function recategorizeConcerts(env: Env): Promise<TaskResult> {
 
 // ============================================================
 // Task 6: スクレイプ済みイベントのチラシ画像取得
-//   source_urlからリストページを再取得し、画像URLを特定してKVに保存
+//   リストページを「全ブロック」解析し、タイトルマッチで正しい画像を特定
+//   さらに詳細ページからPDFフライヤーも取得
 // ============================================================
+
+// Parse all event blocks from a listing page into a map
+function parseAllEventBlocks(html: string, baseUrl: string): Map<string, { imageUrl: string; detailUrl: string }> {
+  const map = new Map<string, { imageUrl: string; detailUrl: string }>();
+  const blockPattern = /<a\s+href="(\/event\/\d+\.html)"\s+class="eventList_item event">([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = blockPattern.exec(html)) !== null) {
+    const detailPath = m[1];
+    const block = m[2];
+    const titleMatch = block.match(/<p\s+class="event_title">([^<]*)<\/p>/);
+    const imgMatch = block.match(/<img\s+src="([^"]+)"/);
+    if (titleMatch && imgMatch) {
+      const title = titleMatch[1].trim().replace(/\s+/g, ' ');
+      const imageUrl = new URL(imgMatch[1], baseUrl).href;
+      const detailUrl = new URL(detailPath, baseUrl).href;
+      map.set(title, { imageUrl, detailUrl });
+    }
+  }
+  return map;
+}
+
 async function fetchMissingImages(env: Env): Promise<TaskResult> {
   try {
-    // Get auto_scrape events without flyer images (limit per run to stay under subrequest limit)
     const rows = await env.DB.prepare(
       `SELECT slug, title, date, source_url FROM concerts 
        WHERE source = 'auto_scrape' AND is_deleted = 0 
        AND (flyer_thumbnail_key IS NULL OR flyer_thumbnail_key = '')
-       ORDER BY date DESC LIMIT 8`
+       ORDER BY date DESC LIMIT 6`
     ).all<{ slug: string; title: string; date: string; source_url: string }>();
 
     if (!rows.results?.length) {
@@ -219,57 +240,117 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
     let fetched = 0;
     const BASE_URL = 'https://www.aichi-fam-u.ac.jp/event/music/';
 
-    // Group events by source page to minimize fetches
-    const pageCache = new Map<string, string>();
+    // Fetch listing pages and build title→{imageUrl, detailUrl} map
+    const titleMap = new Map<string, { imageUrl: string; detailUrl: string }>();
+    const pageUrls = new Set<string>();
+    for (const row of rows.results) {
+      const src = row.source_url || BASE_URL;
+      // If source_url is a detail page, we can use it directly
+      if (src.match(/\/event\/\d+\.html$/)) {
+        pageUrls.add(src);
+      } else {
+        pageUrls.add(src);
+      }
+    }
+
+    // If all sources are the base listing URL, also fetch additional pages
+    // to find events that were scraped from paginated results
+    if (pageUrls.size === 1 && pageUrls.has(BASE_URL)) {
+      // Fetch pages 1-16 to find all events (1 subrequest each)
+      // But limit to 3 pages per run to conserve subrequests
+      // Use date-based heuristic: older events are on later pages
+      const oldestDate = rows.results[rows.results.length - 1]?.date || '';
+      const yearMonth = oldestDate.slice(0, 7);
+      // Start from page 1 and add a few more
+      for (let i = 2; i <= 4; i++) {
+        pageUrls.add(`${BASE_URL}index_${i}.html`);
+      }
+    }
+
+    for (const pageUrl of pageUrls) {
+      try {
+        const res = await fetch(pageUrl, {
+          headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'text/html' },
+        });
+        if (!res.ok) continue;
+        const html = await res.text();
+        const blocks = parseAllEventBlocks(html, pageUrl);
+        for (const [title, data] of blocks) {
+          titleMap.set(title, data);
+        }
+      } catch { /* skip page errors */ }
+    }
 
     for (const row of rows.results) {
       try {
-        const pageUrl = row.source_url || BASE_URL;
-        let html = pageCache.get(pageUrl);
-        if (!html) {
-          const res = await fetch(pageUrl, {
+        // Match by exact title or first-30-chars prefix
+        let match = titleMap.get(row.title);
+        if (!match) {
+          const prefix = row.title.slice(0, 30);
+          for (const [title, data] of titleMap) {
+            if (title.startsWith(prefix)) {
+              match = data;
+              break;
+            }
+          }
+        }
+        if (!match) continue;
+
+        // Fetch the detail page to get both the JPG and PDF
+        let pdfUrl: string | undefined;
+        try {
+          const detailRes = await fetch(match.detailUrl, {
             headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'text/html' },
           });
-          if (!res.ok) continue;
-          html = await res.text();
-          pageCache.set(pageUrl, html);
-        }
+          if (detailRes.ok) {
+            const detailHtml = await detailRes.text();
+            const pdfMatch = detailHtml.match(/href="([^"]*\.pdf)"/);
+            if (pdfMatch) {
+              pdfUrl = new URL(pdfMatch[1], match.detailUrl).href;
+            }
+          }
+        } catch { /* detail page fetch failed */ }
 
-        // Find this event's image in the listing page
-        const titleEsc = row.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').slice(0, 30);
-        // Look for event blocks containing this title
-        const blockPattern = new RegExp(
-          `<a\\s+href="[^"]*"\\s+class="eventList_item event">[\\s\\S]*?${titleEsc}[\\s\\S]*?<\\/a>`,
-          'i'
-        );
-        const blockMatch = html.match(blockPattern);
-        if (!blockMatch) continue;
-        const imgMatch = blockMatch[0].match(/<img\s+src="([^"]+)"/);
-        if (!imgMatch) continue;
-        const imageUrl = new URL(imgMatch[1], pageUrl).href;
+        const flyerKeys: string[] = [];
+        const timestamp = Date.now();
 
-        // Download the image
-        const imgRes = await fetch(imageUrl, {
+        // Download the listing page image (JPG thumbnail)
+        const imgRes = await fetch(match.imageUrl, {
           headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'image/*' },
         });
-        if (!imgRes.ok) continue;
+        let thumbKey = '';
+        if (imgRes.ok) {
+          const imgBuffer = await imgRes.arrayBuffer();
+          const ext = match.imageUrl.match(/\.(webp|png|jpg|jpeg|gif)$/i)?.[1]?.toLowerCase() || 'jpg';
+          const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+          const imgKey = `flyers/${row.slug}/${timestamp}.${ext}`;
+          thumbKey = `flyers/${row.slug}/${timestamp}_thumb.${ext}`;
+          await env.KV.put(imgKey, imgBuffer, { metadata: { contentType } });
+          await env.KV.put(thumbKey, imgBuffer, { metadata: { contentType } });
+          flyerKeys.push(imgKey);
+        }
 
-        const imgBuffer = await imgRes.arrayBuffer();
-        const ext = imageUrl.match(/\.(webp|png|jpg|jpeg|gif)$/i)?.[1]?.toLowerCase() || 'jpg';
-        const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
-        const timestamp = Date.now();
-        const imgKey = `flyers/${row.slug}/${timestamp}.${ext}`;
-        const thumbKey = `flyers/${row.slug}/${timestamp}_thumb.${ext}`;
+        // Download PDF flyer if found
+        if (pdfUrl) {
+          try {
+            const pdfRes = await fetch(pdfUrl, {
+              headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'application/pdf' },
+            });
+            if (pdfRes.ok) {
+              const pdfBuffer = await pdfRes.arrayBuffer();
+              const pdfKey = `flyers/${row.slug}/${timestamp}.pdf`;
+              await env.KV.put(pdfKey, pdfBuffer, { metadata: { contentType: 'application/pdf' } });
+              flyerKeys.push(pdfKey);
+            }
+          } catch { /* PDF download failed */ }
+        }
 
-        await env.KV.put(imgKey, imgBuffer, { metadata: { contentType } });
-        await env.KV.put(thumbKey, imgBuffer, { metadata: { contentType } });
-
-        // Update concert record
-        await env.DB.prepare(
-          `UPDATE concerts SET flyer_r2_keys = ?, flyer_thumbnail_key = ?, updated_at = datetime('now') WHERE slug = ?`
-        ).bind(JSON.stringify([imgKey]), thumbKey, row.slug).run();
-
-        fetched++;
+        if (flyerKeys.length > 0) {
+          await env.DB.prepare(
+            `UPDATE concerts SET flyer_r2_keys = ?, flyer_thumbnail_key = ?, updated_at = datetime('now') WHERE slug = ?`
+          ).bind(JSON.stringify(flyerKeys), thumbKey || flyerKeys[0], row.slug).run();
+          fetched++;
+        }
       } catch { /* skip individual failures */ }
     }
 
@@ -281,6 +362,49 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return { task: 'fetch_images', success: false, details: msg };
+  }
+}
+
+// ============================================================
+// Task 7: 誤った画像データをクリアして再取得可能にする
+// ============================================================
+async function clearWrongImages(env: Env): Promise<TaskResult> {
+  try {
+    // Get all auto_scrape events that have flyer images
+    const rows = await env.DB.prepare(
+      `SELECT slug, flyer_r2_keys, flyer_thumbnail_key FROM concerts 
+       WHERE source = 'auto_scrape' AND is_deleted = 0 
+       AND flyer_thumbnail_key IS NOT NULL AND flyer_thumbnail_key != ''`
+    ).all<{ slug: string; flyer_r2_keys: string; flyer_thumbnail_key: string }>();
+
+    let cleared = 0;
+    for (const row of rows.results || []) {
+      // Delete KV entries
+      try {
+        const keys: string[] = JSON.parse(row.flyer_r2_keys || '[]');
+        for (const key of keys) {
+          await env.KV.delete(key);
+        }
+        if (row.flyer_thumbnail_key) {
+          await env.KV.delete(row.flyer_thumbnail_key);
+        }
+      } catch { /* ignore KV delete errors */ }
+
+      // Clear DB fields
+      await env.DB.prepare(
+        `UPDATE concerts SET flyer_r2_keys = '[]', flyer_thumbnail_key = '', updated_at = datetime('now') WHERE slug = ?`
+      ).bind(row.slug).run();
+      cleared++;
+    }
+
+    const details = `${cleared} 件の誤った画像データをクリアしました`;
+    await env.DB.prepare(
+      "INSERT INTO maintenance_log (task, result, details) VALUES ('clear_images', 'success', ?)"
+    ).bind(details).run();
+    return { task: 'clear_images', success: true, details };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { task: 'clear_images', success: false, details: msg };
   }
 }
 
@@ -348,6 +472,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           break;
         case 'fetch_images':
           results = [await fetchMissingImages(env)];
+          break;
+        case 'clear_images':
+          results = [await clearWrongImages(env)];
           break;
         default:
           return jsonResponse({ ok: false, error: `不明なタスク: ${taskName}` }, 400);

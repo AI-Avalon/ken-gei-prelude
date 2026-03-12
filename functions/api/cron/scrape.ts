@@ -237,6 +237,12 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
     }
   }
 
+  // Extract PDF flyer URL
+  const pdfMatch = html.match(/href="([^"]*\.pdf)"/);
+  if (pdfMatch) {
+    (extra as Record<string, unknown>).pdfUrl = pdfMatch[1];
+  }
+
   return extra;
 }
 
@@ -375,18 +381,35 @@ async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: nu
             });
             if (imgRes.ok) {
               const imgBuffer = await imgRes.arrayBuffer();
-              const ext = ev.imageUrl.match(/\.(webp|png|jpg|jpeg|gif|pdf)$/i)?.[1]?.toLowerCase() || 'jpg';
+              const ext = ev.imageUrl.match(/\.(webp|png|jpg|jpeg|gif)$/i)?.[1]?.toLowerCase() || 'jpg';
               const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
               const timestamp = Date.now();
               const imgKey = `flyers/${slug}/${timestamp}.${ext}`;
               const thumbKey = `flyers/${slug}/${timestamp}_thumb.${ext}`;
               await env.KV.put(imgKey, imgBuffer, { metadata: { contentType } });
-              // Use same image as thumbnail (original is already small from listing page)
               await env.KV.put(thumbKey, imgBuffer, { metadata: { contentType } });
               flyerR2Keys = [imgKey];
               flyerThumbnailKey = thumbKey;
             }
-          } catch { /* image download failed — continue without image */ }
+          } catch { /* image download failed */ }
+
+          // Also download PDF flyer if found on detail page
+          const pdfUrl = (ev as Record<string, unknown>).pdfUrl as string | undefined;
+          if (pdfUrl && ev.detailUrl) {
+            try {
+              const fullPdfUrl = new URL(pdfUrl, ev.detailUrl).href;
+              const pdfRes = await fetch(fullPdfUrl, {
+                headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'application/pdf' },
+              });
+              if (pdfRes.ok) {
+                const pdfBuffer = await pdfRes.arrayBuffer();
+                const timestamp = Date.now();
+                const pdfKey = `flyers/${slug}/${timestamp}.pdf`;
+                await env.KV.put(pdfKey, pdfBuffer, { metadata: { contentType: 'application/pdf' } });
+                flyerR2Keys.push(pdfKey);
+              }
+            } catch { /* PDF download failed */ }
+          }
         }
 
         // Determine pricing JSON
@@ -409,7 +432,7 @@ async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: nu
           JSON.stringify({ name: ev.venue }),
           category,
           ev.description || '',
-          ev.sourceUrl,
+          ev.detailUrl || ev.sourceUrl,
           pricingJson,
           JSON.stringify(flyerR2Keys),
           flyerThumbnailKey

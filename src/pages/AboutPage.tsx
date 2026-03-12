@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { UNIVERSITY, SITE_NAME, SITE_NAME_JP, SITE_TAGLINE, CREATOR_NAME, CREATOR_HANDLE, CREATOR_EMAIL } from '../lib/constants';
+import { UNIVERSITY, SITE_NAME, SITE_NAME_JP, SITE_TAGLINE, CREATOR_NAME } from '../lib/constants';
 
 export default function AboutPage() {
   return (
@@ -55,14 +55,10 @@ export default function AboutPage() {
           <h2 className="text-lg font-serif font-bold mb-4 text-stone-900">制作者</h2>
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-display text-lg font-bold flex-shrink-0">
-              {CREATOR_NAME.charAt(0)}
+              ♪
             </div>
             <div>
               <p className="font-medium text-stone-900">{CREATOR_NAME}</p>
-              <a href={`https://github.com/${CREATOR_HANDLE}`} target="_blank" rel="noopener noreferrer"
-                className="text-sm text-stone-500 hover:text-primary-700 transition-colors">
-                @{CREATOR_HANDLE}
-              </a>
               <p className="text-sm text-stone-600 mt-2 leading-relaxed">
                 愛知県立芸術大学の演奏会情報をより多くの人に届けたいという思いから、
                 このサイトを開発しました。
@@ -94,14 +90,9 @@ export default function AboutPage() {
           <p className="text-sm text-stone-700 mb-3">
             このプロジェクトは MIT ライセンスの下でオープンソースとして公開されています。
           </p>
-          <a
-            href="https://github.com/AI-Avalon/ken-gei-prelude"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-secondary inline-flex items-center gap-2"
-          >
-            GitHub リポジトリ →
-          </a>
+          <p className="text-sm text-stone-500">
+            ソースコードは GitHub にて公開中です。
+          </p>
         </section>
 
         {/* Contact */}

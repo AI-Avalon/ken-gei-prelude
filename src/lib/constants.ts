@@ -5,11 +5,9 @@ export const SITE_NAME_JP = 'クレッシェンド';
 export const SITE_URL = 'https://ken-gei-prelude.pages.dev';
 export const SITE_DESCRIPTION = '愛知県立芸術大学 音楽学部 演奏会情報ポータル';
 export const SITE_TAGLINE = '若き音楽家たちの響きを、あなたの手のひらに。';
-// Creator display name — decoded at runtime to avoid plaintext in source
-const _cn = [26757,30000,24184,21490,26391]; // Unicode code points
-export const CREATOR_NAME = String.fromCodePoint(..._cn);
-export const CREATOR_HANDLE = 'AI-Avalon';
-export const CREATOR_EMAIL = atob('dW1lZGFrb3VzaGlyb3VAaWNsb3VkLmNvbQ==');
+export const CREATOR_NAME = 'Crescendo Team';
+export const CREATOR_HANDLE = '';
+export const CREATOR_EMAIL = '';
 
 export const UNIVERSITY = {
   name: '愛知県立芸術大学',

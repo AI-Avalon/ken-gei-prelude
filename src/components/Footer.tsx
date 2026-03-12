@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { SITE_NAME, SITE_URL, SITE_TAGLINE, CREATOR_NAME, CREATOR_HANDLE } from '../lib/constants';
+import { SITE_NAME, SITE_URL, SITE_TAGLINE, CREATOR_NAME } from '../lib/constants';
 
 const webcalUrl = `webcal://${SITE_URL.replace(/^https?:\/\//, '')}/api/feed/ics`;
 
@@ -36,21 +36,11 @@ export default function Footer() {
             <code className="text-xs bg-navy-950 px-2 py-1 rounded block break-all text-stone-400 border border-stone-800">
               {webcalUrl}
             </code>
-            <div className="mt-5 flex items-center gap-4">
-              <a
-                href="https://github.com/AI-Avalon/ken-gei-prelude"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm hover:text-primary-400 transition-colors"
-              >
-                GitHub →
-              </a>
-            </div>
           </div>
         </div>
         <div className="border-t border-stone-800 mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-stone-600">
           <p>© {new Date().getFullYear()} {SITE_NAME} — MIT License</p>
-          <p>Made by {CREATOR_NAME} (<a href={`https://github.com/${CREATOR_HANDLE}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary-400 transition-colors">@{CREATOR_HANDLE}</a>)</p>
+          <p>Made with ♪ by {CREATOR_NAME}</p>
         </div>
       </div>
     </footer>
