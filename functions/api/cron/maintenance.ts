@@ -459,7 +459,7 @@ async function fixPricing(env: Env): Promise<TaskResult> {
       `SELECT slug, title, source_url, pricing_json FROM concerts 
        WHERE source = 'auto_scrape' AND is_deleted = 0 
        AND pricing_json = '[{"label":"入場料","amount":0}]'
-       ORDER BY date DESC LIMIT 6`
+       ORDER BY date DESC LIMIT 20`
     ).all<{ slug: string; title: string; source_url: string; pricing_json: string }>();
 
     if (!rows.results?.length) {
@@ -472,7 +472,7 @@ async function fixPricing(env: Env): Promise<TaskResult> {
     // Build title→detailUrl map from listing pages
     const titleMap = new Map<string, string>();
     const pagesToFetch = [BASE_URL];
-    for (let i = 2; i <= 4; i++) {
+    for (let i = 2; i <= 16; i++) {
       pagesToFetch.push(`${BASE_URL}index_${i}.html`);
     }
 
