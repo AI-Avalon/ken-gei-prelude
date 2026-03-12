@@ -425,6 +425,19 @@ function parsePricingFromText(text: string): Array<{ label: string; amount: numb
         continue;
       }
     }
+    // Try 'price円（label）' format (price before label)
+    const priceFirstPattern = /(\d[\d,]*)\s*円\s*[（(]([^）)]+)[）)]/g;
+    let pf;
+    let priceFirstMatched = false;
+    while ((pf = priceFirstPattern.exec(line)) !== null) {
+      const amount = parseInt(pf[1].replace(/,/g, ''), 10);
+      let label = pf[2].trim();
+      if (amount <= 100000 && label.length >= 1 && label.length <= 30) {
+        items.push({ label, amount });
+        priceFirstMatched = true;
+      }
+    }
+    if (priceFirstMatched) continue;
     // Try inline patterns: 'label price円' or 'labelN,NNN円'
     const inlinePattern = /([^\d\n]{2,}?)\s*(\d[\d,]*)\s*円/g;
     let m;
