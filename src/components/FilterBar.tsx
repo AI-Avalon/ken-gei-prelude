@@ -27,7 +27,7 @@ function SearchInput({ value, onChange }: { value: string; onChange: (q: string)
 
   return (
     <div className="relative flex-1">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400">🔍</span>
       <input
         type="text"
         value={local}
@@ -92,7 +92,7 @@ export default function FilterBar({
           className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
             selected.length === 0
               ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
           }`}
         >
           すべて
@@ -106,7 +106,7 @@ export default function FilterBar({
               className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
                 isSelected
                   ? `${cat.color} ring-2 ring-offset-1 ring-primary-400`
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
               }`}
             >
               {cat.icon} {cat.label}
@@ -116,7 +116,7 @@ export default function FilterBar({
         {cats.length > 8 && (
           <button
             onClick={() => setShowAll(!showAll)}
-            className="px-3 py-1 rounded-full text-sm text-gray-500 hover:text-gray-700"
+            className="px-3 py-1 rounded-full text-sm text-stone-500 hover:text-stone-700"
           >
             {showAll ? '▲ 折りたたむ' : `▼ 他${cats.length - 8}件`}
           </button>
@@ -125,7 +125,7 @@ export default function FilterBar({
 
       {/* Active filter count */}
       {selected.length > 0 && (
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-stone-500">
           <span>{selected.length}件のフィルタ適用中</span>
           <button onClick={() => onChange([])} className="text-primary-600 hover:underline">
             クリア

@@ -1,4 +1,4 @@
-# 🔍 Ken-Gei Prelude 監査レポート
+# 🔍 Crescendo 監査レポート
 
 **対象**: `KenGeiPrelude_完全仕様書_v4.0_FINAL.md` vs 実装コードベース  
 **日付**: 2025年  

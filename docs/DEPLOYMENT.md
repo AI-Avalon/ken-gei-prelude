@@ -1,4 +1,4 @@
-# 🚀 Ken-Gei Prelude デプロイ手順書
+# 🚀 Crescendo デプロイ手順書
 
 > Cloudflare Pages + D1 + KV + Workers による完全無料デプロイ
 

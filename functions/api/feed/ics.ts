@@ -46,9 +46,9 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Ken-Gei Prelude//JP',
+    'PRODID:-//Crescendo//JP',
     'CALSCALE:GREGORIAN',
-    'X-WR-CALNAME:Ken-Gei Prelude 演奏会',
+    'X-WR-CALNAME:Crescendo 演奏会',
     'X-WR-TIMEZONE:Asia/Tokyo',
     ...events,
     'END:VCALENDAR',
@@ -57,7 +57,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   return new Response(ics, {
     headers: {
       'Content-Type': 'text/calendar;charset=utf-8',
-      'Content-Disposition': 'attachment; filename="ken-gei-prelude.ics"',
+      'Content-Disposition': 'attachment; filename="crescendo.ics"',
       'Cache-Control': 'public, max-age=3600',
       'Access-Control-Allow-Origin': '*',
     },

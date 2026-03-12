@@ -25,7 +25,7 @@ const icons: Record<ToastType, string> = {
 const bgColors: Record<ToastType, string> = {
   success: 'bg-green-50 border-green-400 text-green-800',
   error: 'bg-red-50 border-red-400 text-red-800',
-  info: 'bg-blue-50 border-blue-400 text-blue-800',
+    info: 'bg-primary-50 border-primary-400 text-primary-800',
 };
 
 export default function ToastContainer() {

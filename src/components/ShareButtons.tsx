@@ -27,11 +27,11 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
           𝕏 ポスト
         </a>
         <a href={urls.line} target="_blank" rel="noopener noreferrer"
-          className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors">
+          className="bg-[#06C755] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#05b34d] transition-colors">
           LINE
         </a>
         <a href={urls.facebook} target="_blank" rel="noopener noreferrer"
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+          className="bg-[#1877F2] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#166fe5] transition-colors">
           Facebook
         </a>
         <button onClick={() => setShowQR(!showQR)}
@@ -59,7 +59,7 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
           <div className="bg-white rounded-xl p-8 text-center" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold mb-4">{concert.title}</h3>
             <QRCodeSVG value={urls.url} size={256} />
-            <p className="text-sm text-gray-500 mt-4 max-w-xs break-all">{urls.url}</p>
+            <p className="text-sm text-stone-500 mt-4 max-w-xs break-all">{urls.url}</p>
             <button onClick={() => setShowQR(false)} className="btn-secondary mt-4">閉じる</button>
           </div>
         </div>

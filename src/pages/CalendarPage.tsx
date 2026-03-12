@@ -34,9 +34,9 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">カレンダー</h1>
-          <p className="text-gray-500 text-sm mt-1">演奏会のスケジュールを月ごとに確認</p>
+          <p className="text-stone-500 text-sm mt-1">演奏会のスケジュールを月ごとに確認</p>
         </div>
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-stone-500">
           <a
             href={`webcal://${SITE_URL.replace(/^https?:\/\//, '')}/api/feed/ics`}
             className="text-primary-600 hover:underline"
@@ -47,7 +47,7 @@ export default function CalendarPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400">読み込み中...</div>
+        <div className="text-center py-16 text-stone-400">読み込み中...</div>
       ) : (
         <Calendar
           year={year}
@@ -72,7 +72,7 @@ export default function CalendarPage() {
             {selectedDate.replace(/-/g, '/')} の演奏会
           </h2>
           {selectedConcerts.length === 0 ? (
-            <p className="text-gray-400 text-sm">この日の演奏会はありません</p>
+            <p className="text-stone-400 text-sm">この日の演奏会はありません</p>
           ) : (
             <div className="space-y-3">
               {selectedConcerts.map((c) => (
@@ -84,7 +84,7 @@ export default function CalendarPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">{c.title}</p>
-                      <p className="text-sm text-gray-500">{c.time_start}〜 {c.venue?.name}</p>
+                      <p className="text-sm text-stone-500">{c.time_start}〜 {c.venue?.name}</p>
                     </div>
                     <span className="text-primary-600">→</span>
                   </div>

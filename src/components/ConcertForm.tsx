@@ -172,7 +172,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
             type="button"
             onClick={() => setMode('quick')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              mode === 'quick' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600'
+              mode === 'quick' ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600'
             }`}
           >
             ⚡ かんたん登録
@@ -181,7 +181,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
             type="button"
             onClick={() => setMode('full')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              mode === 'full' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600'
+              mode === 'full' ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600'
             }`}
           >
             🔧 詳細登録
@@ -242,7 +242,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
             placeholder="例: 愛知県芸術劇場コンサートホール"
           />
           {showVenueSuggestions && (
-            <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+            <ul className="absolute z-10 w-full bg-white border border-stone-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
               {venueSuggestions.map((v) => (
                 <li
                   key={v.id}
@@ -294,7 +294,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
                 className={`px-3 py-1 rounded-full text-sm transition-colors ${
                   departments.includes(key)
                     ? 'bg-primary-100 text-primary-700 border-2 border-primary-300'
-                    : 'bg-gray-100 text-gray-600 border-2 border-transparent'
+                    : 'bg-stone-100 text-stone-600 border-2 border-transparent'
                 }`}
               >
                 {dept.icon} {dept.label}
@@ -312,7 +312,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
             <label className="label">料金（テキスト入力）</label>
             <input className="input" value={pricingText} onChange={(e) => setPricingText(e.target.value)}
               placeholder="例: 無料、1000円" />
-            <p className="text-xs text-gray-500 mt-1">「無料」「1000円」のように入力してください</p>
+            <p className="text-xs text-stone-500 mt-1">「無料」「1000円」のように入力してください</p>
           </div>
         ) : (
           <PricingEditor

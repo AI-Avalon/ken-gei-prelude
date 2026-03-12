@@ -1,4 +1,4 @@
-// Ken-Gei Prelude — Fingerprint Generation
+// Crescendo — Fingerprint Generation
 
 import { normalize, sha256 } from './utils';
 

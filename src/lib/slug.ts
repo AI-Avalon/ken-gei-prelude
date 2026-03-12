@@ -1,4 +1,4 @@
-// Ken-Gei Prelude — Slug Generation
+// Crescendo — Slug Generation
 
 import { nanoid } from 'nanoid';
 

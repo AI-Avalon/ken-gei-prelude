@@ -1,4 +1,4 @@
-// Ken-Gei Prelude — Cron Worker
+// Crescendo — Cron Worker
 // Standalone Worker for Cloudflare Cron Triggers
 // Deploy separately: npx wrangler deploy workers/cron.ts --name ken-gei-prelude-cron -c workers/wrangler.toml
 //

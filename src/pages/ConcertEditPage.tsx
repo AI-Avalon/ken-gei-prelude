@@ -72,11 +72,11 @@ export default function ConcertEditPage() {
     }
   };
 
-  if (loading) return <div className="text-center py-20 text-gray-400">読み込み中...</div>;
+  if (loading) return <div className="text-center py-20 text-stone-400">読み込み中...</div>;
   if (!concert) {
     return (
       <div className="text-center py-20">
-        <p className="text-xl text-gray-500 mb-4">演奏会が見つかりません</p>
+        <p className="text-xl text-stone-500 mb-4">演奏会が見つかりません</p>
         <Link to="/concerts" className="btn-primary">一覧に戻る</Link>
       </div>
     );
@@ -84,17 +84,17 @@ export default function ConcertEditPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <nav className="text-sm text-gray-500 mb-6">
+      <nav className="text-sm text-stone-500 mb-6">
         <Link to="/" className="hover:text-primary-600">ホーム</Link>
         <span className="mx-2">&gt;</span>
         <Link to={`/concerts/${slug}`} className="hover:text-primary-600">{concert.title}</Link>
         <span className="mx-2">&gt;</span>
-        <span className="text-gray-700">編集</span>
+        <span className="text-stone-700">編集</span>
       </nav>
 
       <PasswordGate concertSlug={slug!} onVerified={(pw) => setPassword(pw)}>
         <h1 className="text-3xl font-bold mb-2">演奏会を編集</h1>
-        <p className="text-gray-500 mb-8">{concert.title}</p>
+        <p className="text-stone-500 mb-8">{concert.title}</p>
 
         <ConcertForm
           onSubmit={handleUpdate}
@@ -114,7 +114,7 @@ export default function ConcertEditPage() {
         {/* Delete section */}
         <div className="mt-12 pt-8 border-t border-red-200">
           <h2 className="text-lg font-bold text-red-600 mb-2">危険な操作</h2>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-stone-500 mb-4">
             この演奏会を削除すると、30日間はゴミ箱に保管されますが、その後完全に削除されます。
           </p>
           {confirmDelete ? (

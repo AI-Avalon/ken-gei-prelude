@@ -44,7 +44,7 @@ export default function ContactPage() {
       <div className="max-w-xl mx-auto px-4 py-20 text-center">
         <div className="text-5xl mb-4">✅</div>
         <h1 className="text-2xl font-bold mb-2">送信完了</h1>
-        <p className="text-gray-500">
+        <p className="text-stone-500">
           お問い合わせを受け付けました。内容を確認のうえ、対応いたします。
         </p>
       </div>
@@ -54,7 +54,7 @@ export default function ContactPage() {
   return (
     <div className="max-w-xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-2">お問い合わせ</h1>
-      <p className="text-gray-500 mb-8">
+      <p className="text-stone-500 mb-8">
         掲載依頼、情報修正、バグ報告などお気軽にどうぞ。
       </p>
 
@@ -108,7 +108,7 @@ export default function ContactPage() {
             maxLength={2000}
             placeholder="お問い合わせ内容を入力してください"
           />
-          <p className="text-xs text-gray-400 mt-1 text-right">{message.length}/2000</p>
+          <p className="text-xs text-stone-400 mt-1 text-right">{message.length}/2000</p>
         </div>
 
         <button type="submit" disabled={submitting} className="btn-primary w-full">

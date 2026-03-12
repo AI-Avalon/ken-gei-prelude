@@ -44,7 +44,7 @@ export default function AdminPage() {
       <div className="max-w-md mx-auto py-20 px-4">
         <div className="card p-8 text-center">
           <h1 className="text-2xl font-bold mb-2">🔒 管理ダッシュボード</h1>
-          <p className="text-gray-500 mb-6 text-sm">管理者パスワードを入力してください</p>
+          <p className="text-stone-500 mb-6 text-sm">管理者パスワードを入力してください</p>
           <form onSubmit={handleLogin} className="space-y-4">
             <input
               type="password"
@@ -68,7 +68,7 @@ export default function AdminPage() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">管理ダッシュボード</h1>
-        <button onClick={logout} className="text-sm text-gray-500 hover:text-red-600">
+        <button onClick={logout} className="text-sm text-stone-500 hover:text-red-600">
           ログアウト
         </button>
       </div>
@@ -90,7 +90,7 @@ export default function AdminPage() {
             className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
               tab === key
                 ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-stone-500 hover:text-stone-700'
             }`}
           >
             {label}
@@ -132,7 +132,7 @@ function OverviewTab({ token }: { token: string }) {
     });
   }, [token]);
 
-  if (!stats) return <div className="text-center py-8 text-gray-400">読み込み中...</div>;
+  if (!stats) return <div className="text-center py-8 text-stone-400">読み込み中...</div>;
 
   return (
     <div className="space-y-6">
@@ -156,10 +156,10 @@ function OverviewTab({ token }: { token: string }) {
         </div>
       )}
       {stats.recentInquiries > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 flex items-center gap-3">
           <span className="text-2xl">📩</span>
           <div>
-            <p className="font-medium text-blue-800">未読のお問い合わせが{stats.recentInquiries}件あります</p>
+            <p className="font-medium text-primary-800">未読のお問い合わせが{stats.recentInquiries}件あります</p>
           </div>
         </div>
       )}
@@ -170,11 +170,11 @@ function OverviewTab({ token }: { token: string }) {
         <div className="space-y-3">
           {stats.topConcerts.map((c, i) => (
             <div key={c.slug} className="flex items-center gap-3">
-              <span className="text-lg font-bold text-gray-300 w-6">{i + 1}</span>
+              <span className="text-lg font-bold text-stone-300 w-6">{i + 1}</span>
               <Link to={`/concerts/${c.slug}`} className="flex-1 text-sm hover:text-primary-600 truncate">
                 {c.title}
               </Link>
-              <span className="text-sm text-gray-500">👁 {c.views.toLocaleString()}</span>
+              <span className="text-sm text-stone-500">👁 {c.views.toLocaleString()}</span>
             </div>
           ))}
         </div>
@@ -190,13 +190,13 @@ function OverviewTab({ token }: { token: string }) {
             return (
               <div key={key} className="flex items-center gap-3">
                 <span className="w-28 text-sm">{cat.icon} {cat.label}</span>
-                <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                <div className="flex-1 bg-stone-100 rounded-full h-4 overflow-hidden">
                   <div
                     className="h-full bg-primary-400 rounded-full"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="text-sm text-gray-500 w-12 text-right">{count}件</span>
+                <span className="text-sm text-stone-500 w-12 text-right">{count}件</span>
               </div>
             );
           })}
@@ -210,10 +210,10 @@ function OverviewTab({ token }: { token: string }) {
           {stats.dailyViews.slice(-28).map((d) => {
             const maxViews = Math.max(...stats.dailyViews.map((v) => v.count), 1);
             const intensity = Math.round((d.count / maxViews) * 4);
-            const bg = ['bg-gray-100', 'bg-primary-100', 'bg-primary-200', 'bg-primary-300', 'bg-primary-400'][intensity];
+            const bg = ['bg-stone-100', 'bg-primary-100', 'bg-primary-200', 'bg-primary-300', 'bg-primary-400'][intensity];
             return (
               <div key={d.date} className={`${bg} rounded p-1 text-center`} title={`${d.date}: ${d.count}回`}>
-                <div className="text-gray-400">{d.date.slice(5)}</div>
+                <div className="text-stone-400">{d.date.slice(5)}</div>
                 <div className="font-medium">{d.count}</div>
               </div>
             );
@@ -228,8 +228,8 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
   return (
     <div className="card p-4 text-center">
       <div className="text-2xl mb-1">{icon}</div>
-      <div className={`text-2xl font-bold ${color || 'text-gray-800'}`}>{value.toLocaleString()}</div>
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className={`text-2xl font-bold ${color || 'text-stone-800'}`}>{value.toLocaleString()}</div>
+      <div className="text-xs text-stone-500">{label}</div>
     </div>
   );
 }
@@ -281,7 +281,7 @@ function ConcertsTab({ token }: { token: string }) {
     return true;
   });
 
-  if (loading) return <div className="text-center py-8 text-gray-400">読み込み中...</div>;
+  if (loading) return <div className="text-center py-8 text-stone-400">読み込み中...</div>;
 
   return (
     <div>
@@ -291,7 +291,7 @@ function ConcertsTab({ token }: { token: string }) {
             key={f}
             onClick={() => setFilter(f)}
             className={`px-3 py-1 rounded-full text-sm ${
-              filter === f ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              filter === f ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
             }`}
           >
             {{ all: 'すべて', published: '公開中', unpublished: '非公開', deleted: 'ゴミ箱' }[f]}
@@ -310,7 +310,7 @@ function ConcertsTab({ token }: { token: string }) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-gray-500">
+            <tr className="border-b text-left text-stone-500">
               <th className="py-2 pr-2">タイトル</th>
               <th className="py-2 pr-2">日付</th>
               <th className="py-2 pr-2">会場</th>
@@ -333,12 +333,12 @@ function ConcertsTab({ token }: { token: string }) {
                       <span className="ml-1 text-xs bg-yellow-100 text-yellow-700 px-1 rounded">自動取得</span>
                     )}
                   </td>
-                  <td className="py-2 pr-2 text-gray-500 whitespace-nowrap">{formatDateShort(c.date)}</td>
-                  <td className="py-2 pr-2 text-gray-500 truncate max-w-[120px]">{c.venue?.name}</td>
+                  <td className="py-2 pr-2 text-stone-500 whitespace-nowrap">{formatDateShort(c.date)}</td>
+                  <td className="py-2 pr-2 text-stone-500 truncate max-w-[120px]">{c.venue?.name}</td>
                   <td className="py-2 pr-2">
                     <span className={`badge ${cat.color} text-xs`}>{cat.icon}{cat.label}</span>
                   </td>
-                  <td className="py-2 pr-2 text-gray-500">{c.views}</td>
+                  <td className="py-2 pr-2 text-stone-500">{c.views}</td>
                   <td className="py-2 pr-2">
                     {c.is_deleted ? (
                       <span className="text-red-500 text-xs">🗑 削除済</span>
@@ -354,7 +354,7 @@ function ConcertsTab({ token }: { token: string }) {
                         <button onClick={() => togglePublish(c)} className="text-xs text-primary-600 hover:underline">
                           {c.is_published ? '非公開に' : '公開する'}
                         </button>
-                        <Link to={`/concerts/${c.slug}/edit`} className="text-xs text-gray-500 hover:underline">
+                        <Link to={`/concerts/${c.slug}/edit`} className="text-xs text-stone-500 hover:underline">
                           編集
                         </Link>
                         <button onClick={() => handleDelete(c)} className="text-xs text-red-500 hover:underline">
@@ -411,7 +411,7 @@ function InquiriesTab({ token }: { token: string }) {
 
   const filtered = inquiries.filter((i) => statusFilter === 'all' || i.status === statusFilter);
 
-  if (loading) return <div className="text-center py-8 text-gray-400">読み込み中...</div>;
+  if (loading) return <div className="text-center py-8 text-stone-400">読み込み中...</div>;
 
   return (
     <div>
@@ -424,7 +424,7 @@ function InquiriesTab({ token }: { token: string }) {
               key={f}
               onClick={() => setStatusFilter(f)}
               className={`px-3 py-1 rounded-full text-sm ${
-                statusFilter === f ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600'
+                statusFilter === f ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600'
               }`}
             >
               {icons[f]} {labels[f]}
@@ -439,7 +439,7 @@ function InquiriesTab({ token }: { token: string }) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-gray-500">
+            <tr className="border-b text-left text-stone-500">
               <th className="py-2 pr-2">#</th>
               <th className="py-2 pr-2">状態</th>
               <th className="py-2 pr-2">名前</th>
@@ -451,13 +451,13 @@ function InquiriesTab({ token }: { token: string }) {
           <tbody className="divide-y">
             {filtered.map((inq) => (
               <tr key={inq.id}>
-                <td className="py-2 pr-2 text-gray-400">{inq.id}</td>
+                <td className="py-2 pr-2 text-stone-400">{inq.id}</td>
                 <td className="py-2 pr-2">
                   {{ unread: '🔴', read: '🟢', replied: '✅' }[inq.status]}
                 </td>
                 <td className="py-2 pr-2 font-medium">{inq.name || '(暗号化)'}</td>
                 <td className="py-2 pr-2">{inq.subject}</td>
-                <td className="py-2 pr-2 text-gray-500 whitespace-nowrap">
+                <td className="py-2 pr-2 text-stone-500 whitespace-nowrap">
                   {inq.created_at?.slice(0, 10)}
                 </td>
                 <td className="py-2 flex gap-2">
@@ -470,7 +470,7 @@ function InquiriesTab({ token }: { token: string }) {
                   {inq.status === 'unread' && (
                     <button
                       onClick={() => changeStatus(inq.id, 'read')}
-                      className="text-xs text-gray-500 hover:underline"
+                      className="text-xs text-stone-500 hover:underline"
                     >
                       既読に
                     </button>
@@ -496,38 +496,38 @@ function InquiriesTab({ token }: { token: string }) {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-500">名前</span>
+                <span className="text-stone-500">名前</span>
                 <p className="font-medium">{selected.name || '(暗号化)'}</p>
               </div>
               <div>
-                <span className="text-gray-500">メール</span>
+                <span className="text-stone-500">メール</span>
                 <p className="font-medium">{selected.email || '(暗号化)'}</p>
               </div>
               <div>
-                <span className="text-gray-500">件名</span>
+                <span className="text-stone-500">件名</span>
                 <p className="font-medium">{selected.subject}</p>
               </div>
               <div>
-                <span className="text-gray-500">日時</span>
+                <span className="text-stone-500">日時</span>
                 <p>{selected.created_at}</p>
               </div>
             </div>
             {selected.concert_id && (
               <div className="text-sm">
-                <span className="text-gray-500">関連演奏会: </span>
+                <span className="text-stone-500">関連演奏会: </span>
                 <Link to={`/concerts/${selected.concert_id}`} className="text-primary-600 hover:underline">
                   {selected.concert_id}
                 </Link>
               </div>
             )}
             <div>
-              <span className="text-sm text-gray-500">メッセージ</span>
-              <div className="mt-1 p-3 bg-gray-50 rounded-lg text-sm whitespace-pre-wrap">
+              <span className="text-sm text-stone-500">メッセージ</span>
+              <div className="mt-1 p-3 bg-stone-50 rounded-lg text-sm whitespace-pre-wrap">
                 {selected.message}
               </div>
             </div>
             <div>
-              <label className="text-sm text-gray-500">管理者メモ</label>
+              <label className="text-sm text-stone-500">管理者メモ</label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
@@ -563,7 +563,7 @@ function FlyersTab({ token }: { token: string }) {
     });
   }, [token]);
 
-  if (loading) return <div className="text-center py-8 text-gray-400">読み込み中...</div>;
+  if (loading) return <div className="text-center py-8 text-stone-400">読み込み中...</div>;
 
   const withFlyers = concerts.filter((c) => c.flyer_r2_keys && c.flyer_r2_keys.length > 0);
   const withoutFlyers = concerts.filter((c) => !c.flyer_r2_keys || c.flyer_r2_keys.length === 0);
@@ -585,7 +585,7 @@ function FlyersTab({ token }: { token: string }) {
               <Link to={`/concerts/${c.slug}`} className="hover:text-primary-600 truncate flex-1">
                 {c.title}
               </Link>
-              <span className="text-gray-400 ml-2 whitespace-nowrap">{formatDateShort(c.date)}</span>
+              <span className="text-stone-400 ml-2 whitespace-nowrap">{formatDateShort(c.date)}</span>
             </div>
           ))}
         </div>
@@ -596,7 +596,7 @@ function FlyersTab({ token }: { token: string }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
           {withFlyers.map((c) => (
             <Link key={c.id} to={`/concerts/${c.slug}`} className="group">
-              <div className="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
+              <div className="aspect-[3/4] bg-stone-100 rounded-lg overflow-hidden">
                 {c.flyer_thumbnail_key ? (
                   <img
                     src={`/api/image/${c.flyer_thumbnail_key}`}
@@ -605,10 +605,10 @@ function FlyersTab({ token }: { token: string }) {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300">📄</div>
+                  <div className="w-full h-full flex items-center justify-center text-stone-300">📄</div>
                 )}
               </div>
-              <p className="text-xs mt-1 truncate text-gray-600">{c.title}</p>
+              <p className="text-xs mt-1 truncate text-stone-600">{c.title}</p>
             </Link>
           ))}
         </div>
@@ -635,7 +635,7 @@ function AnalyticsTab({ token }: { token: string }) {
     });
   }, [token]);
 
-  if (!stats) return <div className="text-center py-8 text-gray-400">読み込み中...</div>;
+  if (!stats) return <div className="text-center py-8 text-stone-400">読み込み中...</div>;
 
   const maxDaily = Math.max(...stats.dailyViews.map((d) => d.count), 1);
 
@@ -644,11 +644,11 @@ function AnalyticsTab({ token }: { token: string }) {
       <div className="grid grid-cols-2 gap-4">
         <div className="card p-6 text-center">
           <div className="text-3xl font-bold text-primary-600">{stats.totalViews.toLocaleString()}</div>
-          <div className="text-sm text-gray-500">総閲覧数</div>
+          <div className="text-sm text-stone-500">総閲覧数</div>
         </div>
         <div className="card p-6 text-center">
           <div className="text-3xl font-bold text-green-600">{stats.monthViews.toLocaleString()}</div>
-          <div className="text-sm text-gray-500">今月の閲覧数</div>
+          <div className="text-sm text-stone-500">今月の閲覧数</div>
         </div>
       </div>
 
@@ -666,7 +666,7 @@ function AnalyticsTab({ token }: { token: string }) {
             </div>
           ))}
         </div>
-        <div className="flex justify-between text-xs text-gray-400 mt-1">
+        <div className="flex justify-between text-xs text-stone-400 mt-1">
           <span>{stats.dailyViews[Math.max(stats.dailyViews.length - 30, 0)]?.date.slice(5)}</span>
           <span>{stats.dailyViews[stats.dailyViews.length - 1]?.date.slice(5)}</span>
         </div>
@@ -678,18 +678,18 @@ function AnalyticsTab({ token }: { token: string }) {
         <div className="space-y-3">
           {stats.topConcerts.map((c, i) => (
             <div key={c.slug} className="flex items-center gap-3">
-              <span className="text-xl font-bold text-gray-300 w-8 text-right">{i + 1}</span>
+              <span className="text-xl font-bold text-stone-300 w-8 text-right">{i + 1}</span>
               <Link to={`/concerts/${c.slug}`} className="flex-1 text-sm hover:text-primary-600 truncate">
                 {c.title}
               </Link>
               <div className="flex items-center gap-2">
-                <div className="w-24 bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div className="w-24 bg-stone-100 rounded-full h-2 overflow-hidden">
                   <div
                     className="h-full bg-primary-400 rounded-full"
                     style={{ width: `${(c.views / Math.max(stats.topConcerts[0]?.views, 1)) * 100}%` }}
                   />
                 </div>
-                <span className="text-sm text-gray-500 w-16 text-right">{c.views.toLocaleString()}</span>
+                <span className="text-sm text-stone-500 w-16 text-right">{c.views.toLocaleString()}</span>
               </div>
             </div>
           ))}
@@ -706,7 +706,7 @@ function AnalyticsTab({ token }: { token: string }) {
               <div key={key} className="card p-3 text-center">
                 <div className="text-xl">{cat.icon}</div>
                 <div className="text-lg font-bold">{count}</div>
-                <div className="text-xs text-gray-500">{cat.label}</div>
+                <div className="text-xs text-stone-500">{cat.label}</div>
               </div>
             );
           })}
@@ -780,7 +780,7 @@ function SettingsTab({ token }: { token: string }) {
               className="input w-full"
               readOnly
             />
-            <p className="text-xs text-gray-400 mt-1">スクレイピング対象URL（コード変更が必要）</p>
+            <p className="text-xs text-stone-400 mt-1">スクレイピング対象URL（コード変更が必要）</p>
           </div>
         </div>
       </div>
@@ -788,10 +788,10 @@ function SettingsTab({ token }: { token: string }) {
       <div className="card p-6">
         <h2 className="font-bold text-lg mb-4">🔧 メンテナンス操作</h2>
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
             <div>
               <p className="font-medium text-sm">🌐 大学サイトスクレイピング</p>
-              <p className="text-xs text-gray-500">愛知県芸公式サイトから演奏会情報を取得（通常は毎朝6:00に自動実行）</p>
+              <p className="text-xs text-stone-500">愛知県芸公式サイトから演奏会情報を取得（通常は毎朝6:00に自動実行）</p>
             </div>
             <button
               onClick={handleScrape}
@@ -802,13 +802,13 @@ function SettingsTab({ token }: { token: string }) {
             </button>
           </div>
           {scrapeResult && (
-            <pre className="text-xs bg-gray-100 rounded p-3 whitespace-pre-wrap">{scrapeResult}</pre>
+            <pre className="text-xs bg-stone-100 rounded p-3 whitespace-pre-wrap">{scrapeResult}</pre>
           )}
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
             <div>
               <p className="font-medium text-sm">🧹 自動メンテナンス</p>
-              <p className="text-xs text-gray-500">古いログ削除・物理削除・レート制限クリア（通常は毎月1日に自動実行）</p>
+              <p className="text-xs text-stone-500">古いログ削除・物理削除・レート制限クリア（通常は毎月1日に自動実行）</p>
             </div>
             <button
               onClick={handleMaintenance}
@@ -819,13 +819,13 @@ function SettingsTab({ token }: { token: string }) {
             </button>
           </div>
           {maintenanceResult && (
-            <pre className="text-xs bg-gray-100 rounded p-3 whitespace-pre-wrap">{maintenanceResult}</pre>
+            <pre className="text-xs bg-stone-100 rounded p-3 whitespace-pre-wrap">{maintenanceResult}</pre>
           )}
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
             <div>
               <p className="font-medium text-sm">データバックアップ</p>
-              <p className="text-xs text-gray-500">D1データをJSON形式でエクスポート</p>
+              <p className="text-xs text-stone-500">D1データをJSON形式でエクスポート</p>
             </div>
             <button className="btn-secondary text-sm" disabled>
               エクスポート（準備中）
@@ -836,7 +836,7 @@ function SettingsTab({ token }: { token: string }) {
 
       <div className="card p-6">
         <h2 className="font-bold text-lg mb-4">ℹ️ システム情報</h2>
-        <div className="text-sm space-y-1 text-gray-600">
+        <div className="text-sm space-y-1 text-stone-600">
           <p>バージョン: 1.0.0</p>
           <p>フレームワーク: React 18 + Vite 5</p>
           <p>ホスティング: Cloudflare Pages</p>
@@ -863,18 +863,18 @@ function LogsTab({ token }: { token: string }) {
     });
   }, [token]);
 
-  if (loading) return <div className="text-center py-8 text-gray-400">読み込み中...</div>;
+  if (loading) return <div className="text-center py-8 text-stone-400">読み込み中...</div>;
 
   return (
     <div>
       <h2 className="font-bold text-lg mb-4">メンテナンスログ</h2>
       {logs.length === 0 ? (
-        <p className="text-gray-400 text-sm">ログはまだありません</p>
+        <p className="text-stone-400 text-sm">ログはまだありません</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-gray-500">
+              <tr className="border-b text-left text-stone-500">
                 <th className="py-2 pr-2">#</th>
                 <th className="py-2 pr-2">タスク</th>
                 <th className="py-2 pr-2">結果</th>
@@ -885,7 +885,7 @@ function LogsTab({ token }: { token: string }) {
             <tbody className="divide-y">
               {logs.map((log) => (
                 <tr key={log.id}>
-                  <td className="py-2 pr-2 text-gray-400">{log.id}</td>
+                  <td className="py-2 pr-2 text-stone-400">{log.id}</td>
                   <td className="py-2 pr-2 font-medium">{log.task}</td>
                   <td className="py-2 pr-2">
                     <span className={`text-xs px-2 py-0.5 rounded ${
@@ -896,8 +896,8 @@ function LogsTab({ token }: { token: string }) {
                       {log.result === 'success' ? '✅ 成功' : '❌ エラー'}
                     </span>
                   </td>
-                  <td className="py-2 pr-2 text-gray-500 truncate max-w-[300px]">{log.details}</td>
-                  <td className="py-2 text-gray-500 whitespace-nowrap">{log.executed_at}</td>
+                  <td className="py-2 pr-2 text-stone-500 truncate max-w-[300px]">{log.details}</td>
+                  <td className="py-2 text-stone-500 whitespace-nowrap">{log.executed_at}</td>
                 </tr>
               ))}
             </tbody>
@@ -913,8 +913,8 @@ function StatCard2({ label, value, icon, color }: { label: string; value: number
   return (
     <div className="card p-4 text-center">
       <div className="text-2xl mb-1">{icon}</div>
-      <div className={`text-2xl font-bold ${color || 'text-gray-800'}`}>{value.toLocaleString()}</div>
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className={`text-2xl font-bold ${color || 'text-stone-800'}`}>{value.toLocaleString()}</div>
+      <div className="text-xs text-stone-500">{label}</div>
     </div>
   );
 }

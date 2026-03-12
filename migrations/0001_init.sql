@@ -1,4 +1,4 @@
--- Ken-Gei Prelude: Initial Schema
+-- Crescendo: Initial Schema
 -- 0001_init.sql
 
 -- 演奏会テーブル

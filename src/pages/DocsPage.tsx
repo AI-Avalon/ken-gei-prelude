@@ -3,14 +3,16 @@ import { Link } from 'react-router-dom';
 export default function DocsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-2">ドキュメント・使い方</h1>
-      <p className="text-gray-500 mb-10">Ken-Gei Prelude の使い方ガイド</p>
+      <div className="text-center mb-10">
+        <h1 className="text-3xl font-serif font-bold text-stone-900">Documentation</h1>
+        <p className="text-stone-500 mt-1">Crescendo の使い方ガイド</p>
+      </div>
 
       <div className="prose prose-primary max-w-none space-y-10">
         {/* 1 */}
-        <Section id="about" title="1. Ken-Gei Prelude とは">
+        <Section id="about" title="1. Crescendo とは">
           <p>
-            Ken-Gei Prelude（県芸プレリュード）は、愛知県立芸術大学 音楽学部の演奏会情報ポータルサイトです。
+            Crescendo（クレッシェンド）は、愛知県立芸術大学 音楽学部の演奏会情報ポータルサイトです。
             学生・教職員の演奏会を「掲載・閲覧・検索・共有」できます。
           </p>
           <p>
@@ -78,7 +80,7 @@ export default function DocsPage() {
           <p>
             以下のURLをカレンダーアプリに購読登録すると、新しい演奏会が自動的にカレンダーに追加されます。
           </p>
-          <code className="block bg-gray-100 p-3 rounded text-sm break-all">
+          <code className="block bg-stone-100 p-3 rounded text-sm break-all">
             webcal://ken-gei-prelude.pages.dev/api/feed/ics
           </code>
         </Section>
@@ -148,7 +150,7 @@ export default function DocsPage() {
           <FAQ q="無料ですか？" a="はい、完全無料でご利用いただけます。" />
           <FAQ q="誰でも登録できますか？" a="はい、アカウント登録不要で誰でも演奏会を登録できます。" />
           <FAQ q="登録を削除したいのですが" a="演奏会詳細ページの「編集」リンクから、登録時のパスワードで削除できます。" />
-          <FAQ q="チケットは買えますか？" a="Ken-Gei Preludeではチケット販売は行っていません。チケット情報がある場合は、演奏会詳細ページにリンクが掲載されます。" />
+          <FAQ q="チケットは買えますか？" a="Crescendoではチケット販売は行っていません。チケット情報がある場合は、演奏会詳細ページにリンクが掲載されます。" />
           <FAQ q="パスワードを忘れてしまいました" a="パスワードの再発行はできません。修正が必要な場合はお問い合わせフォームからご連絡ください。" />
         </Section>
       </div>
@@ -160,16 +162,16 @@ function Section({ id, title, children }: { id: string; title: string; children:
   return (
     <section id={id} className="scroll-mt-20">
       <h2 className="text-xl font-bold mb-4 pb-2 border-b">{title}</h2>
-      <div className="space-y-3 text-gray-700 text-sm leading-relaxed">{children}</div>
+      <div className="space-y-3 text-stone-700 text-sm leading-relaxed">{children}</div>
     </section>
   );
 }
 
 function FAQ({ q, a }: { q: string; a: string }) {
   return (
-    <div className="bg-gray-50 rounded-lg p-4">
-      <p className="font-medium text-gray-800">Q: {q}</p>
-      <p className="text-gray-600 mt-1">A: {a}</p>
+    <div className="bg-stone-50 rounded p-4 border border-stone-100">
+      <p className="font-medium text-stone-800">Q: {q}</p>
+      <p className="text-stone-600 mt-1">A: {a}</p>
     </div>
   );
 }

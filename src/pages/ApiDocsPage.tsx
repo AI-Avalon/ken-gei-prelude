@@ -2,10 +2,10 @@ export default function ApiDocsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-2">API仕様</h1>
-      <p className="text-gray-500 mb-10">開発者向けREST API ドキュメント</p>
+      <p className="text-stone-500 mb-10">開発者向けREST API ドキュメント</p>
 
       <div className="space-y-8">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 text-sm text-primary-800">
           <p className="font-medium">ベースURL</p>
           <code className="text-xs">https://ken-gei-prelude.pages.dev/api</code>
         </div>
@@ -143,16 +143,16 @@ END:VCALENDAR`}
 
         <div className="card p-6">
           <h3 className="font-bold text-lg mb-3">認証</h3>
-          <div className="text-sm text-gray-700 space-y-2">
-            <p>編集・削除操作にはリクエストボディに <code className="bg-gray-100 px-1 rounded">edit_password</code> を含めます。</p>
-            <p>管理者APIは <code className="bg-gray-100 px-1 rounded">POST /api/admin/auth</code> で取得したトークンを
-              <code className="bg-gray-100 px-1 rounded">X-Admin-Token</code> ヘッダーに設定します。</p>
+          <div className="text-sm text-stone-700 space-y-2">
+            <p>編集・削除操作にはリクエストボディに <code className="bg-stone-100 px-1 rounded">edit_password</code> を含めます。</p>
+            <p>管理者APIは <code className="bg-stone-100 px-1 rounded">POST /api/admin/auth</code> で取得したトークンを
+              <code className="bg-stone-100 px-1 rounded">X-Admin-Token</code> ヘッダーに設定します。</p>
           </div>
         </div>
 
         <div className="card p-6">
           <h3 className="font-bold text-lg mb-3">レート制限</h3>
-          <div className="text-sm text-gray-700 space-y-2">
+          <div className="text-sm text-stone-700 space-y-2">
             <p>演奏会の登録: 1時間あたり10件/IP</p>
             <p>お問い合わせの送信: 1時間あたり5件/IP</p>
             <p>パスワード認証: 5回失敗で15分ロック</p>
@@ -161,7 +161,7 @@ END:VCALENDAR`}
 
         <div className="card p-6">
           <h3 className="font-bold text-lg mb-3">エラーレスポンス</h3>
-          <pre className="text-sm bg-gray-50 p-3 rounded overflow-x-auto">{`{
+          <pre className="text-sm bg-stone-50 p-3 rounded overflow-x-auto">{`{
   "ok": false,
   "error": "エラーメッセージ"
 }`}</pre>
@@ -183,7 +183,7 @@ function Endpoint({
 }) {
   const methodColor: Record<string, string> = {
     GET: 'bg-green-100 text-green-800',
-    POST: 'bg-blue-100 text-blue-800',
+    POST: 'bg-primary-100 text-primary-800',
     PUT: 'bg-amber-100 text-amber-800',
     DELETE: 'bg-red-100 text-red-800',
   };
@@ -191,22 +191,22 @@ function Endpoint({
   return (
     <div className="card p-6">
       <div className="flex items-center gap-3 mb-2">
-        <span className={`px-2 py-0.5 rounded text-xs font-bold ${methodColor[method] || 'bg-gray-100'}`}>
+        <span className={`px-2 py-0.5 rounded text-xs font-bold ${methodColor[method] || 'bg-stone-100'}`}>
           {method}
         </span>
         <code className="text-sm font-medium">{path}</code>
       </div>
-      <p className="text-sm text-gray-600 mb-4">{description}</p>
+      <p className="text-sm text-stone-600 mb-4">{description}</p>
 
       {params && (
         <div className="mb-4">
-          <p className="text-xs font-medium text-gray-500 mb-1">Query Parameters</p>
-          <div className="bg-gray-50 rounded p-3 text-xs space-y-1">
+          <p className="text-xs font-medium text-stone-500 mb-1">Query Parameters</p>
+          <div className="bg-stone-50 rounded p-3 text-xs space-y-1">
             {params.map((p) => (
               <div key={p.name} className="flex gap-2">
                 <code className="text-primary-600">{p.name}</code>
-                <span className="text-gray-400">({p.type})</span>
-                <span className="text-gray-600">{p.desc}</span>
+                <span className="text-stone-400">({p.type})</span>
+                <span className="text-stone-600">{p.desc}</span>
               </div>
             ))}
           </div>
@@ -215,15 +215,15 @@ function Endpoint({
 
       {body && (
         <div className="mb-4">
-          <p className="text-xs font-medium text-gray-500 mb-1">Request Body</p>
-          <pre className="bg-gray-50 rounded p-3 text-xs overflow-x-auto">{body}</pre>
+          <p className="text-xs font-medium text-stone-500 mb-1">Request Body</p>
+          <pre className="bg-stone-50 rounded p-3 text-xs overflow-x-auto">{body}</pre>
         </div>
       )}
 
       {response && (
         <div>
-          <p className="text-xs font-medium text-gray-500 mb-1">Response</p>
-          <pre className="bg-gray-50 rounded p-3 text-xs overflow-x-auto">{response}</pre>
+          <p className="text-xs font-medium text-stone-500 mb-1">Response</p>
+          <pre className="bg-stone-50 rounded p-3 text-xs overflow-x-auto">{response}</pre>
         </div>
       )}
     </div>

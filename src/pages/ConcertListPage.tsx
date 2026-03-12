@@ -77,8 +77,8 @@ export default function ConcertListPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-2">演奏会一覧</h1>
-      <p className="text-gray-500 mb-6">今後開催される演奏会</p>
+      <h1 className="text-3xl font-serif font-bold mb-2">演奏会一覧</h1>
+      <p className="text-stone-500 mb-6">今後開催される演奏会</p>
 
       <FilterBar
         categories={CATEGORIES}
@@ -92,9 +92,9 @@ export default function ConcertListPage() {
 
       <div className="mt-6">
         {loading && concerts.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">読み込み中...</div>
+          <div className="text-center py-16 text-stone-400">読み込み中...</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-stone-400">
             <p className="text-lg mb-2">該当する演奏会がありません</p>
             <p className="text-sm">フィルターを変更してみてください</p>
           </div>

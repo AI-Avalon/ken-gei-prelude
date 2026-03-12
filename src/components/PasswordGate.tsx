@@ -39,7 +39,7 @@ export default function PasswordGate({ concertSlug, onVerified, children }: Prop
     <div className="max-w-md mx-auto py-20">
       <div className="card p-8 text-center">
         <h2 className="text-xl font-bold mb-2">🔒 認証が必要です</h2>
-        <p className="text-gray-500 mb-6 text-sm">
+        <p className="text-stone-500 mb-6 text-sm">
           この操作には、演奏会登録時に設定したパスワードが必要です。
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">

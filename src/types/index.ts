@@ -1,4 +1,4 @@
-// Ken-Gei Prelude — TypeScript Type Definitions
+// Crescendo — TypeScript Type Definitions
 
 export interface Venue {
   name: string;

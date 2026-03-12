@@ -1,35 +1,37 @@
 import { Link } from 'react-router-dom';
-import { UNIVERSITY, SITE_NAME, SITE_NAME_JP } from '../lib/constants';
+import { UNIVERSITY, SITE_NAME, SITE_NAME_JP, SITE_TAGLINE, CREATOR_NAME, CREATOR_HANDLE, CREATOR_EMAIL } from '../lib/constants';
 
 export default function AboutPage() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-2">このサイトについて</h1>
-      <p className="text-gray-500 mb-10">{SITE_NAME}（{SITE_NAME_JP}）</p>
+    <div className="max-w-3xl mx-auto px-4 py-10">
+      <div className="text-center mb-10">
+        <h1 className="text-3xl font-serif font-bold text-stone-900">About</h1>
+        <p className="text-stone-500 mt-1">このサイトについて</p>
+      </div>
 
       <div className="space-y-8">
         {/* Concept */}
         <section className="card p-6">
-          <h2 className="text-xl font-bold mb-4">🎵 コンセプト</h2>
-          <blockquote className="border-l-4 border-primary-400 pl-4 italic text-gray-600 text-lg mb-4">
-            若き才能の「前奏曲」を、手のひらの中に
+          <h2 className="text-lg font-serif font-bold mb-4 text-stone-900">コンセプト</h2>
+          <blockquote className="border-l-2 border-primary-400 pl-4 italic text-stone-600 text-lg mb-4 font-serif">
+            {SITE_TAGLINE}
           </blockquote>
-          <p className="text-gray-700 text-sm leading-relaxed">
-            Ken-Gei Prelude は、愛知県立芸術大学 音楽学部の演奏会情報を
+          <p className="text-stone-700 text-sm leading-relaxed">
+            {SITE_NAME}（{SITE_NAME_JP}）は、愛知県立芸術大学 音楽学部の演奏会情報を
             集約・共有するためのポータルサイトです。
             学生や教職員が主催・出演する演奏会の情報を、
             誰でも簡単に登録・閲覧・共有できます。
           </p>
-          <p className="text-gray-700 text-sm leading-relaxed mt-2">
-            チケットの販売や座席の予約は行いません。
-            演奏会の宣伝と情報共有に特化したサービスです。
+          <p className="text-stone-700 text-sm leading-relaxed mt-2">
+            「Crescendo」(クレッシェンド) ── だんだん強くなる音楽記号のように、
+            若き音楽家たちの成長と活躍を応援します。
           </p>
         </section>
 
         {/* University */}
         <section className="card p-6">
-          <h2 className="text-xl font-bold mb-4">🏛️ 愛知県立芸術大学</h2>
-          <div className="space-y-2 text-sm text-gray-700">
+          <h2 className="text-lg font-serif font-bold mb-4 text-stone-900">愛知県立芸術大学</h2>
+          <div className="space-y-2 text-sm text-stone-700">
             <p><strong>名称:</strong> {UNIVERSITY.name}（{UNIVERSITY.nameEn}）</p>
             <p><strong>住所:</strong> 〒{UNIVERSITY.postal} {UNIVERSITY.address}</p>
             <p><strong>電話:</strong> {UNIVERSITY.tel}</p>
@@ -41,39 +43,56 @@ export default function AboutPage() {
             </ul>
             <p className="mt-3">
               <a href={UNIVERSITY.website} target="_blank" rel="noopener noreferrer"
-                className="text-primary-600 hover:underline">
+                className="text-primary-700 hover:text-primary-600 transition-colors">
                 公式サイト →
               </a>
             </p>
           </div>
         </section>
 
+        {/* Creator */}
+        <section className="card p-6">
+          <h2 className="text-lg font-serif font-bold mb-4 text-stone-900">制作者</h2>
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-display text-lg font-bold flex-shrink-0">
+              {CREATOR_NAME.charAt(0)}
+            </div>
+            <div>
+              <p className="font-medium text-stone-900">{CREATOR_NAME}</p>
+              <a href={`https://github.com/${CREATOR_HANDLE}`} target="_blank" rel="noopener noreferrer"
+                className="text-sm text-stone-500 hover:text-primary-700 transition-colors">
+                @{CREATOR_HANDLE}
+              </a>
+              <p className="text-sm text-stone-600 mt-2 leading-relaxed">
+                愛知県立芸術大学の演奏会情報をより多くの人に届けたいという思いから、
+                このサイトを開発しました。
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* Tech Stack */}
         <section className="card p-6">
-          <h2 className="text-xl font-bold mb-4">🛠️ 技術スタック</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Ken-Gei Prelude はオープンソースソフトウェアとして公開されています。
-          </p>
+          <h2 className="text-lg font-serif font-bold mb-4 text-stone-900">技術スタック</h2>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <TechItem label="フロントエンド" value="React 18 + TypeScript" />
             <TechItem label="ビルドツール" value="Vite 5" />
             <TechItem label="スタイリング" value="Tailwind CSS 3" />
             <TechItem label="ルーティング" value="React Router v6" />
             <TechItem label="ホスティング" value="Cloudflare Pages" />
-            <TechItem label="API" value="Pages Functions (Workers)" />
-            <TechItem label="データベース" value="Cloudflare D1 (SQLite)" />
-            <TechItem label="ファイルストレージ" value="Cloudflare KV" />
-            <TechItem label="地図" value="Leaflet + OpenStreetMap" />
-            <TechItem label="検索" value="fuse.js (曖昧検索)" />
+            <TechItem label="API" value="Pages Functions" />
+            <TechItem label="データベース" value="Cloudflare D1" />
+            <TechItem label="ストレージ" value="Cloudflare KV" />
+            <TechItem label="地図" value="Leaflet + OSM" />
+            <TechItem label="検索" value="Fuse.js" />
           </div>
         </section>
 
         {/* Open Source */}
         <section className="card p-6">
-          <h2 className="text-xl font-bold mb-4">📂 オープンソース</h2>
-          <p className="text-sm text-gray-700 mb-3">
-            このプロジェクトは MIT ライセンスの下で公開されています。
-            ソースコードは GitHub で自由に閲覧・利用できます。
+          <h2 className="text-lg font-serif font-bold mb-4 text-stone-900">オープンソース</h2>
+          <p className="text-sm text-stone-700 mb-3">
+            このプロジェクトは MIT ライセンスの下でオープンソースとして公開されています。
           </p>
           <a
             href="https://github.com/AI-Avalon/ken-gei-prelude"
@@ -81,15 +100,15 @@ export default function AboutPage() {
             rel="noopener noreferrer"
             className="btn-secondary inline-flex items-center gap-2"
           >
-            🐙 GitHub リポジトリ
+            GitHub リポジトリ →
           </a>
         </section>
 
         {/* Contact */}
         <section className="card p-6 text-center">
-          <h2 className="text-xl font-bold mb-4">📩 お問い合わせ</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            掲載依頼、バグ報告、ご意見・ご質問などはお問い合わせフォームからお送りください。
+          <h2 className="text-lg font-serif font-bold mb-4 text-stone-900">お問い合わせ</h2>
+          <p className="text-sm text-stone-600 mb-4">
+            掲載依頼、バグ報告、ご意見・ご質問はお問い合わせフォームからお送りください。
           </p>
           <Link to="/contact" className="btn-primary">
             お問い合わせフォーム
@@ -102,9 +121,9 @@ export default function AboutPage() {
 
 function TechItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-gray-50 rounded-lg p-3">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="font-medium text-gray-800">{value}</div>
+    <div className="bg-stone-50 rounded p-3 border border-stone-100">
+      <div className="text-xs text-stone-500">{label}</div>
+      <div className="font-medium text-stone-800">{value}</div>
     </div>
   );
 }

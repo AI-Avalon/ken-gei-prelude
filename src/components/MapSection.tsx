@@ -37,7 +37,7 @@ export default function MapSection({ venue }: Props) {
 
   if (!venue.lat || !venue.lng) {
     return (
-      <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-500">
+      <div className="bg-stone-50 rounded-lg p-6 text-center text-stone-500">
         地図情報がありません
       </div>
     );
@@ -47,7 +47,7 @@ export default function MapSection({ venue }: Props) {
     <div className="space-y-4">
       <div ref={mapRef} className="h-64 rounded-lg overflow-hidden border" />
       {!mapLoaded && (
-        <div className="text-center text-sm text-gray-500">
+        <div className="text-center text-sm text-stone-500">
           <a href={`https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lng}`}
             target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">
             Google Mapsで開く →

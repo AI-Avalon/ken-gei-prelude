@@ -75,92 +75,61 @@ async function generateFingerprint(date: string, venue: string, title: string): 
 // ============================================================
 // HTML Parser for 愛知県立芸術大学 event page
 // Target: https://www.aichi-fam-u.ac.jp/event/music/
+// Actual structure (verified 2026-03):
+//   <a href="/event/002226.html" class="eventList_item event">
+//     <div class="event_imgArea"><img src="..." /></div>
+//     <p class="event_date">2026年6月21日（日）</p>
+//     <p class="event_title">...</p>
+//     <p class="event_info">会場名やサブ情報</p>
+//   </a>
 // ============================================================
 
 function parseEventList(html: string, baseUrl: string): ScrapedEvent[] {
   const events: ScrapedEvent[] = [];
 
-  // The university event page typically lists events as links with dates
-  // Pattern: Look for event entries with dates and titles
+  // Match <a href="/event/NNNN.html" class="eventList_item event">...</a>
+  const entryPattern = /<a\s+href="(\/event\/\d+\.html)"\s+class="eventList_item event">([\s\S]*?)<\/a>/gi;
 
-  // Strategy 1: Look for <a> tags with event paths and associated date text
-  // The site uses WordPress-like structure with event posts
+  let match;
+  while ((match = entryPattern.exec(html)) !== null) {
+    const eventPath = match[1];
+    const block = match[2];
 
-  // Match event entries: links with /event/ or /music/ paths that contain event details
-  const entryPattern = /<a[^>]+href=["']([^"']*\/event\/[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
-  const datePattern = /(\d{4})[年./](\d{1,2})[月./](\d{1,2})[日]?/;
-  const timePattern = /(\d{1,2})[：:](\d{2})\s*(?:開演|start)/i;
+    const detailUrl = new URL(eventPath, baseUrl).href;
 
-  // Try to extract event blocks — look for common WordPress/CMS patterns
-  // Pattern: article or list item containing event info
-  const blockPatterns = [
-    // Pattern 1: <article> blocks
-    /<article[^>]*>([\s\S]*?)<\/article>/gi,
-    // Pattern 2: <li> with event class
-    /<li[^>]*class="[^"]*event[^"]*"[^>]*>([\s\S]*?)<\/li>/gi,
-    // Pattern 3: <div> with event-related classes
-    /<div[^>]*class="[^"]*(?:event|post|entry)[^"]*"[^>]*>([\s\S]*?)<\/div>\s*(?=<div[^>]*class="[^"]*(?:event|post|entry)|$)/gi,
-    // Pattern 4: General link-based extraction (fallback)
-    /<a[^>]+href=["']([^"']+)['""][^>]*>([^<]+)<\/a>/gi,
-  ];
+    // <p class="event_date">2026年6月21日（日）</p>
+    const dateMatch = block.match(/<p\s+class="event_date">([^<]*)<\/p>/);
+    if (!dateMatch) continue;
+    const dateRaw = dateMatch[1].trim();
+    const dateParsed = dateRaw.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    if (!dateParsed) continue;
+    const date = `${dateParsed[1]}-${dateParsed[2].padStart(2, '0')}-${dateParsed[3].padStart(2, '0')}`;
 
-  for (const pattern of blockPatterns) {
-    let match;
-    while ((match = pattern.exec(html)) !== null) {
-      const block = match[0];
+    // <p class="event_title">...</p>
+    const titleMatch = block.match(/<p\s+class="event_title">([^<]*)<\/p>/);
+    const title = titleMatch ? titleMatch[1].trim().replace(/\s+/g, ' ') : '';
+    if (!title) continue;
 
-      // Extract link
-      const linkMatch = block.match(/<a[^>]+href=["']([^"']+)["']/);
-      const detailUrl = linkMatch ? new URL(linkMatch[1], baseUrl).href : undefined;
+    // <p class="event_info">会場名やサブ情報</p>
+    const infoMatch = block.match(/<p\s+class="event_info">([^<]*)<\/p>/);
+    const venue = infoMatch ? infoMatch[1].trim() : '愛知県立芸術大学';
 
-      // Extract title — use link text or heading text
-      const titleMatch = block.match(
-        /<(?:h[1-6]|a)[^>]*>([^<]+)<\/(?:h[1-6]|a)>/
-      );
-      const title = titleMatch
-        ? titleMatch[1].trim().replace(/\s+/g, ' ')
-        : '';
+    // <img src="/event/item/..." />
+    const imgMatch = block.match(/<img\s+src="([^"]+)"/);
+    const imageUrl = imgMatch ? new URL(imgMatch[1], baseUrl).href : undefined;
 
-      // Extract date
-      const dateMatch = block.match(datePattern);
-      if (!dateMatch || !title) continue;
+    // Dedup
+    if (events.some((e) => e.date === date && e.title === title)) continue;
 
-      const year = dateMatch[1];
-      const month = dateMatch[2].padStart(2, '0');
-      const day = dateMatch[3].padStart(2, '0');
-      const date = `${year}-${month}-${day}`;
-
-      // Extract time
-      const timeMatch = block.match(timePattern);
-      const timeStart = timeMatch
-        ? `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`
-        : '14:00'; // Default
-
-      // Extract venue — look for common venue keywords
-      const venuePattern = /(?:会場|場所)[：:\s]*([^\n<]+)/;
-      const venueMatch = block.match(venuePattern);
-      const venue = venueMatch
-        ? venueMatch[1].trim()
-        : '愛知県立芸術大学';
-
-      // Avoid duplicates within this scrape
-      const isDup = events.some(
-        (e) => e.date === date && e.title === title
-      );
-      if (isDup) continue;
-
-      events.push({
-        title,
-        date,
-        timeStart,
-        venue,
-        detailUrl,
-        sourceUrl: baseUrl,
-      });
-    }
-
-    // If we found events, stop trying other patterns
-    if (events.length > 0) break;
+    events.push({
+      title,
+      date,
+      timeStart: '14:00', // default, detail page will override
+      venue,
+      detailUrl,
+      description: '',
+      sourceUrl: baseUrl,
+    });
   }
 
   return events;
@@ -169,13 +138,17 @@ function parseEventList(html: string, baseUrl: string): ScrapedEvent[] {
 async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
   const extra: Partial<ScrapedEvent> = {};
 
-  // Extract description from article body or main content
-  const contentMatch = html.match(
-    /<div[^>]*class="[^"]*(?:entry-content|post-content|article-body)[^"]*"[^>]*>([\s\S]*?)<\/div>/i
-  );
-  if (contentMatch) {
-    // Strip HTML tags, keep text
-    extra.description = contentMatch[1]
+  // Real structure: <div class="detail"><h2>日時</h2><p>...</p><h2>場所</h2><p>...</p>...</div>
+  const detailMatch = html.match(/<div class="detail">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/);
+  const detailHtml = detailMatch ? detailMatch[1] : html;
+
+  // Extract sections by <h2> headings
+  const sections: Record<string, string> = {};
+  const sectionPattern = /<h2>([^<]+)<\/h2>([\s\S]*?)(?=<h2>|<\/div>\s*<\/div>|$)/gi;
+  let sMatch;
+  while ((sMatch = sectionPattern.exec(detailHtml)) !== null) {
+    const heading = sMatch[1].trim();
+    const body = sMatch[2]
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<[^>]+>/g, '')
       .replace(/&nbsp;/g, ' ')
@@ -183,20 +156,48 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/\n{3,}/g, '\n\n')
-      .trim()
-      .slice(0, 2000);
+      .trim();
+    sections[heading] = body;
   }
 
-  // Try to extract more precise venue info
-  const venueMatch = html.match(/(?:会場|場所)[：:\s]*([^\n<]+)/);
-  if (venueMatch) {
-    extra.venue = venueMatch[1].trim();
+  // Parse time from 日時 section: "2026年6月21日（日）15:00開演（14:30開場）"
+  const timeSection = sections['日時'] || '';
+  const startMatch = timeSection.match(/(\d{1,2})[：:](\d{2})\s*開演/);
+  if (startMatch) {
+    extra.timeStart = `${startMatch[1].padStart(2, '0')}:${startMatch[2]}`;
   }
 
-  // Try to extract more precise time
-  const timeMatch = html.match(/(\d{1,2})[：:](\d{2})\s*(?:開演|start)/i);
-  if (timeMatch) {
-    extra.timeStart = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+  // Parse venue from 場所 section
+  if (sections['場所']) {
+    extra.venue = sections['場所'].split(/[（(]/)[0].trim();
+  }
+
+  // Build description from 概要 section + other details
+  const descParts: string[] = [];
+  if (sections['概要']) descParts.push(sections['概要']);
+
+  // Extract performers from <h4>出演</h4> sub-sections
+  const performerMatch = detailHtml.match(/<h4>出演<\/h4>([\s\S]*?)(?=<h[2-4]>|$)/);
+  if (performerMatch) {
+    const performers = performerMatch[1]
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .trim();
+    if (performers) descParts.push('【出演】\n' + performers);
+  }
+
+  // Extract program
+  const programMatch = detailHtml.match(/<h4>プログラム<\/h4>([\s\S]*?)(?=<h[2-4]>|$)/);
+  if (programMatch) {
+    const program = programMatch[1]
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .trim();
+    if (program) descParts.push('【プログラム】\n' + program);
+  }
+
+  if (descParts.length > 0) {
+    extra.description = descParts.join('\n\n').slice(0, 2000);
   }
 
   return extra;
@@ -213,7 +214,7 @@ async function runScrape(env: Env): Promise<{ found: number; added: number; erro
     // 1. Fetch university event page
     const res = await fetch(TARGET_URL, {
       headers: {
-        'User-Agent': 'Ken-Gei-Prelude-Bot/1.0 (concert aggregator)',
+        'User-Agent': 'Crescendo-Bot/1.0 (concert aggregator)',
         'Accept': 'text/html',
       },
     });
@@ -257,7 +258,7 @@ async function runScrape(env: Env): Promise<{ found: number; added: number; erro
           try {
             const detailRes = await fetch(ev.detailUrl, {
               headers: {
-                'User-Agent': 'Ken-Gei-Prelude-Bot/1.0',
+                'User-Agent': 'Crescendo-Bot/1.0',
                 'Accept': 'text/html',
               },
             });

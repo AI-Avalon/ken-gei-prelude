@@ -1,4 +1,4 @@
-// Ken-Gei Prelude — Utility Functions
+// Crescendo — Utility Functions
 
 import { DAY_OF_WEEK, SITE_URL } from './constants';
 import type { Concert, PricingItem } from '../types';
@@ -114,7 +114,7 @@ export function generateICS(concert: Concert): string {
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Ken-Gei Prelude//JP',
+    'PRODID:-//Crescendo//JP',
     'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT',
     `DTSTART;TZID=Asia/Tokyo:${startDate}T${startTime}`,

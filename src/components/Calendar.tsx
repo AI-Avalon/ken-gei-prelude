@@ -53,8 +53,8 @@ export default function Calendar({ year, month, concerts, onDateClick, onMonthCh
   return (
     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b">
-        <button onClick={prevMonth} className="p-2 hover:bg-gray-200 rounded-lg">◀</button>
+      <div className="flex items-center justify-between px-4 py-3 bg-stone-50 border-b">
+        <button onClick={prevMonth} className="p-2 hover:bg-stone-200 rounded-lg">◀</button>
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-bold">
             {year}年{month + 1}月
@@ -65,7 +65,7 @@ export default function Calendar({ year, month, concerts, onDateClick, onMonthCh
             </button>
           )}
         </div>
-        <button onClick={nextMonth} className="p-2 hover:bg-gray-200 rounded-lg">▶</button>
+        <button onClick={nextMonth} className="p-2 hover:bg-stone-200 rounded-lg">▶</button>
       </div>
 
       {/* Day names */}
@@ -74,7 +74,7 @@ export default function Calendar({ year, month, concerts, onDateClick, onMonthCh
           <div
             key={name}
             className={`text-center text-xs font-medium py-2 ${
-              i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-500'
+              i === 0 ? 'text-red-500' : i === 6 ? 'text-primary-500' : 'text-stone-500'
             }`}
           >
             {name}
@@ -93,7 +93,7 @@ export default function Calendar({ year, month, concerts, onDateClick, onMonthCh
             <div
               key={i}
               className={`min-h-[4rem] sm:min-h-[5rem] border-t border-r p-1 ${
-                cell.date === null ? 'bg-gray-50' : hasConcerts ? 'cursor-pointer hover:bg-primary-50' : ''
+                cell.date === null ? 'bg-stone-50' : hasConcerts ? 'cursor-pointer hover:bg-primary-50' : ''
               } ${dayOfWeek === 0 ? 'border-l' : ''}`}
               onClick={() => {
                 if (cell.date && onDateClick) {
@@ -110,8 +110,8 @@ export default function Calendar({ year, month, concerts, onDateClick, onMonthCh
                         : dayOfWeek === 0
                         ? 'text-red-500'
                         : dayOfWeek === 6
-                        ? 'text-blue-500'
-                        : 'text-gray-700'
+                        ? 'text-primary-500'
+                        : 'text-stone-700'
                     }`}
                   >
                     {cell.date}
@@ -127,7 +127,7 @@ export default function Calendar({ year, month, concerts, onDateClick, onMonthCh
                       </div>
                     ))}
                     {cell.concerts.length > 2 && (
-                      <div className="text-[10px] text-gray-500 px-1">
+                      <div className="text-[10px] text-stone-500 px-1">
                         +{cell.concerts.length - 2}件
                       </div>
                     )}

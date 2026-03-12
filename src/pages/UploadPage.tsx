@@ -46,7 +46,7 @@ export default function UploadPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-2">演奏会を登録する</h1>
-      <p className="text-gray-500 mb-8">
+      <p className="text-stone-500 mb-8">
         誰でも登録できます。編集用パスワードを設定すると、後から内容を変更できます。
       </p>
 

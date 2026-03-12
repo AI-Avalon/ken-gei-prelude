@@ -124,7 +124,7 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
         onClick={() => fileRef.current?.click()}
-        className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer
+        className="border-2 border-dashed border-stone-300 rounded-lg p-8 text-center cursor-pointer
                    hover:border-primary-400 hover:bg-primary-50 transition-colors"
       >
         <input
@@ -138,8 +138,8 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
           <p className="text-primary-600">アップロード中...</p>
         ) : (
           <>
-            <p className="text-gray-500">📎 クリックまたはドラッグ&ドロップ</p>
-            <p className="text-xs text-gray-400 mt-1">JPEG, PNG, WebP, GIF (5MB以下) / PDF (10MB以下)</p>
+            <p className="text-stone-500">📎 クリックまたはドラッグ&ドロップ</p>
+            <p className="text-xs text-stone-400 mt-1">JPEG, PNG, WebP, GIF (5MB以下) / PDF (10MB以下)</p>
           </>
         )}
       </div>

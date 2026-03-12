@@ -16,13 +16,17 @@ export default function NavBar() {
   const location = useLocation();
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-navy-900 border-b border-primary-800/30 sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center gap-2">
-              <span className="text-2xl">🎵</span>
-              <span className="font-serif font-bold text-lg text-primary-700">{SITE_NAME}</span>
+            <Link to="/" className="flex items-center gap-3 group">
+              <span className="text-primary-400 text-xl tracking-widest font-display font-semibold group-hover:text-primary-300 transition-colors">
+                {SITE_NAME}
+              </span>
+              <span className="hidden sm:inline text-[10px] text-stone-500 tracking-[0.15em] uppercase border-l border-stone-700 pl-3">
+                Aichi Univ. of the Arts
+              </span>
             </Link>
           </div>
 
@@ -32,10 +36,10 @@ export default function NavBar() {
               <Link
                 key={link.path}
                 to={link.path}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 py-2 rounded text-sm font-medium transition-all ${
                   location.pathname === link.path
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-primary-300 bg-primary-900/40'
+                    : 'text-stone-400 hover:text-primary-300 hover:bg-white/5'
                 }`}
               >
                 {link.label}
@@ -47,14 +51,14 @@ export default function NavBar() {
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              className="p-2 rounded text-stone-400 hover:text-primary-300 hover:bg-white/5"
               aria-label="メニュー"
             >
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {isOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
                 ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
                 )}
               </svg>
             </button>
@@ -63,16 +67,16 @@ export default function NavBar() {
 
         {/* Mobile menu */}
         {isOpen && (
-          <div className="md:hidden pb-3 space-y-1">
+          <div className="md:hidden pb-4 space-y-1 border-t border-stone-800 pt-2">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
                 onClick={() => setIsOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                className={`block px-3 py-2 rounded text-base font-medium ${
                   location.pathname === link.path
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-primary-300 bg-primary-900/40'
+                    : 'text-stone-400 hover:text-primary-300 hover:bg-white/5'
                 }`}
               >
                 {link.label}

@@ -1,4 +1,4 @@
-// Ken-Gei Prelude — Performer Editor
+// Crescendo — Performer Editor
 // Spec: Chapter 7.3 Field 20 — 出演者の動的追加/削除UI
 
 import type { Performer } from '../types';

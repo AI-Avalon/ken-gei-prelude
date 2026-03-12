@@ -1,4 +1,4 @@
-// Ken-Gei Prelude — Pricing Editor
+// Crescendo — Pricing Editor
 // Spec: Chapter 7.3 Field 16 — 料金区分の動的追加/削除UI
 
 import type { PricingItem } from '../types';

@@ -20,9 +20,9 @@ import { Link } from 'react-router-dom';
 function NotFoundPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-24 text-center">
-      <p className="text-6xl mb-4">🎵</p>
-      <h1 className="text-3xl font-bold mb-4">404 — ページが見つかりません</h1>
-      <p className="text-gray-500 mb-8">お探しのページは存在しないか、移動された可能性があります。</p>
+      <p className="text-5xl font-display text-primary-300 mb-4">♪</p>
+      <h1 className="text-3xl font-serif font-bold mb-4 text-stone-900">404 — ページが見つかりません</h1>
+      <p className="text-stone-500 mb-8">お探しのページは存在しないか、移動された可能性があります。</p>
       <div className="flex gap-4 justify-center">
         <Link to="/" className="btn-primary">トップページへ</Link>
         <Link to="/concerts" className="btn-secondary">演奏会一覧へ</Link>

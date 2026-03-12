@@ -36,11 +36,11 @@ export default function ConcertDetailPage() {
     });
   }, [slug]);
 
-  if (loading) return <div className="text-center py-20 text-gray-400">読み込み中...</div>;
+  if (loading) return <div className="text-center py-20 text-stone-400">読み込み中...</div>;
   if (error || !concert) {
     return (
       <div className="text-center py-20">
-        <p className="text-xl text-gray-500 mb-4">{error || '演奏会が見つかりません'}</p>
+        <p className="text-xl text-stone-500 mb-4">{error || '演奏会が見つかりません'}</p>
         <Link to="/concerts" className="btn-primary">演奏会一覧に戻る</Link>
       </div>
     );
@@ -52,19 +52,19 @@ export default function ConcertDetailPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Breadcrumb */}
-      <nav className="text-sm text-gray-500 mb-6">
+      <nav className="text-sm text-stone-500 mb-6">
         <Link to="/" className="hover:text-primary-600">ホーム</Link>
         <span className="mx-2">&gt;</span>
         <Link to="/concerts" className="hover:text-primary-600">演奏会一覧</Link>
         <span className="mx-2">&gt;</span>
-        <span className="text-gray-700">{concert.title}</span>
+        <span className="text-stone-700">{concert.title}</span>
       </nav>
 
       {/* Category badge & status */}
       <div className="flex items-center gap-3 mb-4">
         <span className={`badge ${cat.color}`}>{cat.icon} {cat.label}</span>
         <span className={`text-sm font-medium ${
-          daysText === '本日！' ? 'text-red-600' : daysText === '終了' ? 'text-gray-400' : 'text-primary-600'
+          daysText === '本日！' ? 'text-red-600' : daysText === '終了' ? 'text-stone-400' : 'text-primary-600'
         }`}>
           {daysText}
         </span>
@@ -72,36 +72,36 @@ export default function ConcertDetailPage() {
 
       {/* Title */}
       <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">{concert.title}</h1>
-      {concert.subtitle && <p className="text-xl text-gray-600 mb-6">{concert.subtitle}</p>}
+      {concert.subtitle && <p className="text-xl text-stone-600 mb-6">{concert.subtitle}</p>}
 
       {/* Basic info table */}
       <div className="card p-6 mb-6">
         <table className="w-full">
           <tbody className="divide-y">
             <tr>
-              <td className="py-3 pr-4 text-gray-500 font-medium w-24">日時</td>
+              <td className="py-3 pr-4 text-stone-500 font-medium w-24">日時</td>
               <td className="py-3">
                 {formatDateLong(concert.date)} {formatTime(concert)}
               </td>
             </tr>
             <tr>
-              <td className="py-3 pr-4 text-gray-500 font-medium">会場</td>
+              <td className="py-3 pr-4 text-stone-500 font-medium">会場</td>
               <td className="py-3">
                 <span className="font-medium">{concert.venue?.name}</span>
                 {concert.venue?.address && (
-                  <span className="block text-sm text-gray-500">{concert.venue.address}</span>
+                  <span className="block text-sm text-stone-500">{concert.venue.address}</span>
                 )}
               </td>
             </tr>
             {concert.seating && (
               <tr>
-                <td className="py-3 pr-4 text-gray-500 font-medium">座席</td>
+                <td className="py-3 pr-4 text-stone-500 font-medium">座席</td>
                 <td className="py-3">{concert.seating}</td>
               </tr>
             )}
             {concert.departments?.length > 0 && (
               <tr>
-                <td className="py-3 pr-4 text-gray-500 font-medium">専攻</td>
+                <td className="py-3 pr-4 text-stone-500 font-medium">専攻</td>
                 <td className="py-3 flex flex-wrap gap-2">
                   {concert.departments.map((d) => {
                     const dept = DEPARTMENTS[d];
@@ -123,10 +123,10 @@ export default function ConcertDetailPage() {
           <div className="space-y-2">
             {concert.pricing.map((p, i) => (
               <div key={i} className="flex items-center justify-between">
-                <span className="text-gray-700">{p.label}</span>
+                <span className="text-stone-700">{p.label}</span>
                 <span className="font-medium">
                   {p.amount === 0 ? '無料' : `¥${p.amount.toLocaleString()}`}
-                  {p.note && <span className="text-sm text-gray-500 ml-2">{p.note}</span>}
+                  {p.note && <span className="text-sm text-stone-500 ml-2">{p.note}</span>}
                 </span>
               </div>
             ))}
@@ -143,7 +143,7 @@ export default function ConcertDetailPage() {
             </a>
           )}
           {concert.ticket_note && (
-            <p className="text-sm text-gray-500 mt-2">{concert.ticket_note}</p>
+            <p className="text-sm text-stone-500 mt-2">{concert.ticket_note}</p>
           )}
         </div>
       )}
@@ -190,8 +190,8 @@ export default function ConcertDetailPage() {
           <div className="space-y-2">
             {concert.program.map((p, i) => (
               <div key={i} className="flex gap-4 text-sm">
-                <span className="text-gray-500 min-w-[120px]">{p.composer}</span>
-                <span className="text-gray-800">{p.piece}</span>
+                <span className="text-stone-500 min-w-[120px]">{p.composer}</span>
+                <span className="text-stone-800">{p.piece}</span>
               </div>
             ))}
           </div>
@@ -205,9 +205,9 @@ export default function ConcertDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {concert.performers.map((p, i) => (
               <div key={i} className="flex items-center gap-2 text-sm">
-                <span className="font-medium text-gray-800">{p.name}</span>
-                {p.instrument && <span className="text-gray-500">({p.instrument})</span>}
-                {p.year && <span className="text-xs text-gray-400">{p.year}</span>}
+                <span className="font-medium text-stone-800">{p.name}</span>
+                {p.instrument && <span className="text-stone-500">({p.instrument})</span>}
+                {p.year && <span className="text-xs text-stone-400">{p.year}</span>}
               </div>
             ))}
           </div>
@@ -218,7 +218,7 @@ export default function ConcertDetailPage() {
       {concert.supervisors?.length > 0 && (
         <div className="card p-6 mb-6">
           <h2 className="font-bold text-lg mb-3">指導者</h2>
-          <ul className="space-y-1 text-sm text-gray-700">
+          <ul className="space-y-1 text-sm text-stone-700">
             {concert.supervisors.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
@@ -230,7 +230,7 @@ export default function ConcertDetailPage() {
       {concert.guest_artists?.length > 0 && (
         <div className="card p-6 mb-6">
           <h2 className="font-bold text-lg mb-3">ゲスト</h2>
-          <ul className="space-y-1 text-sm text-gray-700">
+          <ul className="space-y-1 text-sm text-stone-700">
             {concert.guest_artists.map((g, i) => (
               <li key={i}>{g}</li>
             ))}
@@ -242,7 +242,7 @@ export default function ConcertDetailPage() {
       {concert.description && (
         <div className="card p-6 mb-6">
           <h2 className="font-bold text-lg mb-3">詳細</h2>
-          <p className="text-gray-700 whitespace-pre-wrap">{concert.description}</p>
+          <p className="text-stone-700 whitespace-pre-wrap">{concert.description}</p>
         </div>
       )}
 
@@ -268,14 +268,14 @@ export default function ConcertDetailPage() {
         <div className="card p-6 mb-6">
           <h2 className="font-bold text-lg mb-3">地図・アクセス</h2>
           {concert.venue.access && concert.venue.access.length > 0 && (
-            <ul className="text-sm text-gray-600 mb-4 space-y-1">
+            <ul className="text-sm text-stone-600 mb-4 space-y-1">
               {concert.venue.access.map((a, i) => (
                 <li key={i}>🚃 {a}</li>
               ))}
             </ul>
           )}
           {concert.venue.parking && (
-            <p className="text-sm text-gray-600 mb-4">🅿 駐車場: {concert.venue.parking}</p>
+            <p className="text-sm text-stone-600 mb-4">🅿 駐車場: {concert.venue.parking}</p>
           )}
           <MapSection venue={concert.venue} />
         </div>
@@ -306,7 +306,7 @@ export default function ConcertDetailPage() {
       )}
 
       {/* Footer info */}
-      <div className="flex items-center justify-between text-sm text-gray-400 pt-4 border-t">
+      <div className="flex items-center justify-between text-sm text-stone-400 pt-4 border-t">
         <span>👁 {concert.views.toLocaleString()} 回閲覧</span>
         <Link to={`/concerts/${concert.slug}/edit`} className="text-primary-600 hover:underline">
           ✏️ この演奏会を編集

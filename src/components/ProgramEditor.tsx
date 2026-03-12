@@ -1,4 +1,4 @@
-// Ken-Gei Prelude — Program Editor
+// Crescendo — Program Editor
 // Spec: Chapter 7.3 Field 19 — プログラムの動的追加/削除UI
 
 import type { ProgramItem } from '../types';

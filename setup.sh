@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "🎵 Ken-Gei Prelude — 全自動セットアップ"
+echo "🎵 Crescendo — 全自動セットアップ"
 echo "========================================="
 echo ""
 
@@ -141,4 +141,4 @@ echo "  2. GitHub Secrets に CLOUDFLARE_API_TOKEN と CLOUDFLARE_ACCOUNT_ID を
 echo "  3. 以降は main ブランチへの push で自動デプロイ"
 echo "  4. Cronワーカーが毎日21:00(JST)にスクレイピング、毎月1日にメンテナンス実行"
 echo ""
-echo "🎵 Ken-Gei Prelude を楽しんでください！"
+echo "🎵 Crescendo を楽しんでください！"

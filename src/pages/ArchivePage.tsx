@@ -58,7 +58,7 @@ export default function ArchivePage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-2">アーカイブ</h1>
-      <p className="text-gray-500 mb-6">過去を含むすべての演奏会を検索・閲覧</p>
+      <p className="text-stone-500 mb-6">過去を含むすべての演奏会を検索・閲覧</p>
 
       <FilterBar
         categories={CATEGORIES}
@@ -72,14 +72,14 @@ export default function ArchivePage() {
 
       <div className="mt-6">
         {loading && concerts.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">読み込み中...</div>
+          <div className="text-center py-16 text-stone-400">読み込み中...</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-stone-400">
             <p className="text-lg mb-2">該当する演奏会がありません</p>
           </div>
         ) : (
           <>
-            <p className="text-sm text-gray-500 mb-4">{filtered.length}件表示中</p>
+            <p className="text-sm text-stone-500 mb-4">{filtered.length}件表示中</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filtered.map((c) => (
                 <ConcertCard key={c.id} concert={c} />

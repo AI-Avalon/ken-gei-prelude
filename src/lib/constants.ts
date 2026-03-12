@@ -1,9 +1,13 @@
-// Ken-Gei Prelude — Constants
+// Crescendo — 愛知県立芸術大学 演奏会情報ポータル
 
-export const SITE_NAME = 'Ken-Gei Prelude';
-export const SITE_NAME_JP = '県芸プレリュード';
+export const SITE_NAME = 'Crescendo';
+export const SITE_NAME_JP = 'クレッシェンド';
 export const SITE_URL = 'https://ken-gei-prelude.pages.dev';
 export const SITE_DESCRIPTION = '愛知県立芸術大学 音楽学部 演奏会情報ポータル';
+export const SITE_TAGLINE = '若き音楽家たちの響きを、あなたの手のひらに。';
+export const CREATOR_NAME = '梅田 光志郎';
+export const CREATOR_HANDLE = 'AI-Avalon';
+export const CREATOR_EMAIL = 'umedakoushirou@icloud.com';
 
 export const UNIVERSITY = {
   name: '愛知県立芸術大学',
@@ -19,7 +23,7 @@ export const UNIVERSITY = {
 };
 
 export const CATEGORIES: Record<string, { label: string; color: string; icon: string }> = {
-  teiki: { label: '定期演奏会', color: 'bg-blue-100 text-blue-800', icon: '🎵' },
+  teiki: { label: '定期演奏会', color: 'bg-primary-100 text-primary-800', icon: '🎵' },
   sotsugyou: { label: '卒業演奏会', color: 'bg-purple-100 text-purple-800', icon: '🎓' },
   gakui: { label: '学位審査演奏会', color: 'bg-indigo-100 text-indigo-800', icon: '📜' },
   recital: { label: 'リサイタル', color: 'bg-pink-100 text-pink-800', icon: '🎤' },
