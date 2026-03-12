@@ -264,7 +264,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
       )}
 
       {/* Required fields */}
-      <div className="bg-white rounded-xl border p-6 space-y-4">
+      <div className="bg-white rounded-xl border p-4 sm:p-6 space-y-4 overflow-hidden">
         <h3 className="font-bold text-lg">基本情報</h3>
 
         <div>
@@ -396,7 +396,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
       </div>
 
       {/* Pricing */}
-      <div className="bg-white rounded-xl border p-6 space-y-4">
+      <div className="bg-white rounded-xl border p-4 sm:p-6 space-y-4 overflow-hidden">
         <h3 className="font-bold text-lg">料金</h3>
         {mode === 'quick' ? (
           <div>
@@ -443,17 +443,17 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
       {/* Program & Performers (full mode only) */}
       {mode === 'full' && (
         <>
-          <div className="bg-white rounded-xl border p-6 space-y-4">
+          <div className="bg-white rounded-xl border p-4 sm:p-6 space-y-4 overflow-hidden">
             <h3 className="font-bold text-lg">プログラム</h3>
             <ProgramEditor program={program} onChange={setProgram} />
           </div>
 
-          <div className="bg-white rounded-xl border p-6 space-y-4">
+          <div className="bg-white rounded-xl border p-4 sm:p-6 space-y-4 overflow-hidden">
             <h3 className="font-bold text-lg">出演者</h3>
             <PerformerEditor performers={performers} onChange={setPerformers} />
           </div>
 
-          <div className="bg-white rounded-xl border p-6 space-y-4">
+          <div className="bg-white rounded-xl border p-4 sm:p-6 space-y-4 overflow-hidden">
             <h3 className="font-bold text-lg">指導者</h3>
             {supervisors.map((name, i) => (
               <div key={i} className="flex gap-2">
@@ -472,7 +472,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
               className="text-sm text-primary-600 hover:text-primary-700">+ 指導者を追加</button>
           </div>
 
-          <div className="bg-white rounded-xl border p-6 space-y-4">
+          <div className="bg-white rounded-xl border p-4 sm:p-6 space-y-4 overflow-hidden">
             <h3 className="font-bold text-lg">ゲストアーティスト</h3>
             {guestArtists.map((name, i) => (
               <div key={i} className="flex gap-2">
@@ -491,7 +491,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
               className="text-sm text-primary-600 hover:text-primary-700">+ ゲストアーティストを追加</button>
           </div>
 
-          <div className="bg-white rounded-xl border p-6 space-y-4">
+          <div className="bg-white rounded-xl border p-4 sm:p-6 space-y-4 overflow-hidden">
             <h3 className="font-bold text-lg">その他の情報</h3>
             <div>
               <label className="label">説明文</label>
@@ -526,7 +526,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
 
       {/* Flyer upload (only when slug available and not hidden by parent) */}
       {!hideFlyer && (
-        <div className="bg-white rounded-xl border p-6 space-y-4">
+        <div className="bg-white rounded-xl border p-4 sm:p-6 space-y-4 overflow-hidden">
           <h3 className="font-bold text-lg">チラシ画像</h3>
           <FlyerUploader
             concertSlug={concertSlug}
@@ -541,7 +541,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
 
       {/* Edit password */}
       {!isEdit && (
-        <div className="bg-amber-50 rounded-xl border border-amber-200 p-6 space-y-4">
+        <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 sm:p-6 space-y-4">
           <h3 className="font-bold text-lg">🔑 編集用パスワード *</h3>
           <input
             type="password"

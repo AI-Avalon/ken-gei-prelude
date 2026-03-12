@@ -89,7 +89,18 @@ export default function ConcertListPage() {
 
       <div className="mt-6">
         {loading && concerts.length === 0 ? (
-          <div className="text-center py-16 text-stone-400">読み込み中...</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
+                <div className="skeleton h-40 w-full" />
+                <div className="p-4 space-y-3">
+                  <div className="skeleton h-4 w-3/4" />
+                  <div className="skeleton h-3 w-1/2" />
+                  <div className="skeleton h-3 w-2/3" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-stone-400">
             <p className="text-lg mb-2">該当する演奏会がありません</p>

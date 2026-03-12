@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { shareUrls } from '../lib/utils';
 import type { Concert } from '../types';
@@ -13,6 +13,9 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const openQR = useCallback(() => setShowQR(true), []);
+  const closeQR = useCallback(() => setShowQR(false), []);
 
   return (
     <div className="space-y-4">
@@ -34,19 +37,19 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
           className="bg-[#1877F2] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#166fe5] transition-colors text-center">
           Facebook
         </a>
-        <button onClick={() => setShowQR(!showQR)}
+        <button onClick={openQR}
           className="btn-secondary text-sm">QR</button>
       </div>
 
       {/* QR Modal */}
       {showQR && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowQR(false)}>
-          <div className="bg-white rounded-xl p-8 text-center" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in"
+          onClick={closeQR}>
+          <div className="bg-white rounded-xl p-8 text-center animate-scale-in" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold mb-4">{concert.title}</h3>
             <QRCodeSVG value={urls.url} size={256} />
             <p className="text-sm text-stone-500 mt-4 max-w-xs break-all">{urls.url}</p>
-            <button onClick={() => setShowQR(false)} className="btn-secondary mt-4">閉じる</button>
+            <button onClick={closeQR} className="btn-secondary mt-4">閉じる</button>
           </div>
         </div>
       )}

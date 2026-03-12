@@ -95,6 +95,7 @@ export default function CalendarAddDropdown({ concert }: Props) {
       <button
         onClick={() => setOpen(!open)}
         className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center text-base py-3 px-6"
+        aria-expanded={open}
       >
         📅 カレンダーに追加
         <svg className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`}

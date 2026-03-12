@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { SITE_NAME } from '../lib/constants';
 
@@ -14,6 +14,19 @@ const NAV_LINKS = [
 export default function NavBar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuHeight, setMenuHeight] = useState(0);
+
+  useEffect(() => {
+    if (menuRef.current) {
+      setMenuHeight(isOpen ? menuRef.current.scrollHeight : 0);
+    }
+  }, [isOpen]);
+
+  // Close menu on route change
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location.pathname]);
 
   return (
     <nav className="bg-navy-900/95 border-b border-primary-800/20 sticky top-0 z-50 backdrop-blur-xl backdrop-saturate-150">
@@ -66,8 +79,12 @@ export default function NavBar() {
         </div>
 
         {/* Mobile menu */}
-        {isOpen && (
-          <div className="md:hidden pb-4 space-y-1 border-t border-stone-800 pt-2">
+        <div
+          ref={menuRef}
+          className="md:hidden overflow-hidden transition-all duration-300 ease-in-out"
+          style={{ maxHeight: `${menuHeight}px` }}
+        >
+          <div className="pb-4 space-y-1 border-t border-stone-800 pt-2">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.path}
@@ -83,7 +100,7 @@ export default function NavBar() {
               </Link>
             ))}
           </div>
-        )}
+        </div>
       </div>
     </nav>
   );

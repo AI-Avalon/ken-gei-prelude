@@ -8,17 +8,26 @@ import type { Concert } from '../types';
 
 export default function HomePage() {
   const [todayConcerts, setTodayConcerts] = useState<Concert[]>([]);
+  const [thisWeek, setThisWeek] = useState<Concert[]>([]);
   const [upcoming, setUpcoming] = useState<Concert[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const d = new Date();
     const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const weekLater = new Date(d);
+    weekLater.setDate(weekLater.getDate() + 7);
+    const weekEnd = `${weekLater.getFullYear()}-${String(weekLater.getMonth() + 1).padStart(2, '0')}-${String(weekLater.getDate()).padStart(2, '0')}`;
     Promise.all([
       fetchConcerts({ dateFrom: today, dateTo: today, limit: 10 }),
+      fetchConcerts({ dateFrom: today, dateTo: weekEnd, sort: 'date_asc', limit: 20 }),
       fetchConcerts({ dateFrom: today, sort: 'date_asc', limit: 12 }),
-    ]).then(([todayRes, upcomingRes]) => {
+    ]).then(([todayRes, weekRes, upcomingRes]) => {
       if (todayRes.ok && todayRes.data) setTodayConcerts(todayRes.data);
+      if (weekRes.ok && weekRes.data) {
+        // 今日以外の今週のイベント
+        setThisWeek(weekRes.data.filter((c) => c.date !== today));
+      }
       if (upcomingRes.ok && upcomingRes.data) {
         setUpcoming(upcomingRes.data.filter((c) => c.date !== today));
       }
@@ -74,6 +83,21 @@ export default function HomePage() {
         </section>
       )}
 
+      {/* This Week */}
+      {thisWeek.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-serif font-bold text-stone-900">This Week</h2>
+            <p className="text-sm text-stone-500 mt-1">— 今週の演奏会 —</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {thisWeek.slice(0, 8).map((c) => (
+              <ConcertCard key={c.id} concert={c} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Upcoming concerts */}
       <section className="max-w-6xl mx-auto px-4 py-16 md:py-20">
         <div className="flex items-center justify-between mb-10">
@@ -87,9 +111,17 @@ export default function HomePage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-stone-400">
-            <div className="inline-block w-6 h-6 border-2 border-primary-300 border-t-transparent rounded-full animate-spin mb-3" />
-            <p>読み込み中...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
+                <div className="skeleton h-40 w-full" />
+                <div className="p-4 space-y-3">
+                  <div className="skeleton h-4 w-3/4" />
+                  <div className="skeleton h-3 w-1/2" />
+                  <div className="skeleton h-3 w-2/3" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : upcoming.length === 0 ? (
           <div className="text-center py-16 text-stone-400">

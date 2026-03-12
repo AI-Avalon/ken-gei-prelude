@@ -36,7 +36,25 @@ export default function ConcertDetailPage() {
     });
   }, [slug]);
 
-  if (loading) return <div className="text-center py-20 text-stone-400">読み込み中...</div>;
+  if (loading) return (
+    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+      <div className="skeleton h-4 w-48" />
+      <div className="skeleton h-8 w-3/4" />
+      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-6 space-y-4">
+        <div className="skeleton h-4 w-full" />
+        <div className="skeleton h-4 w-2/3" />
+        <div className="skeleton h-4 w-1/2" />
+      </div>
+      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-6 space-y-3">
+        <div className="skeleton h-5 w-24" />
+        <div className="skeleton h-4 w-48" />
+        <div className="skeleton h-4 w-36" />
+      </div>
+      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-6">
+        <div className="skeleton h-64 w-full" />
+      </div>
+    </div>
+  );
   if (error || !concert) {
     return (
       <div className="text-center py-20">
@@ -172,13 +190,14 @@ export default function ConcertDetailPage() {
             {concert.flyer_r2_keys.map((key, i) => (
               key.endsWith('.pdf') ? (
                 <div key={i} className="rounded-lg border border-stone-200 overflow-hidden">
+                  <iframe
+                    src={`/api/image/${key}`}
+                    title={`${concert.title} チラシ ${i + 1}`}
+                    className="w-full h-[500px] border-0"
+                  />
                   <a href={`/api/image/${key}`} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-4 hover:bg-stone-50 transition-colors">
-                    <span className="text-3xl">📄</span>
-                    <div>
-                      <p className="font-medium text-stone-800">PDF チラシ {i + 1}</p>
-                      <p className="text-xs text-stone-500">クリックで表示</p>
-                    </div>
+                    className="flex items-center gap-2 p-3 hover:bg-stone-50 transition-colors text-sm text-primary-600 border-t border-stone-200">
+                    📄 PDF を別タブで開く
                   </a>
                 </div>
               ) : (
@@ -199,12 +218,12 @@ export default function ConcertDetailPage() {
       {/* Flyer modal */}
       {flyerModal && (
         <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setFlyerModal(null)}
         >
-          <img src={flyerModal} alt="チラシ拡大" className="max-h-[90vh] max-w-full rounded-lg" />
+          <img src={flyerModal} alt="チラシ拡大" className="max-h-[90vh] max-w-full rounded-lg animate-scale-in" />
           <button
-            className="absolute top-4 right-4 text-white text-3xl hover:opacity-70"
+            className="absolute top-4 right-4 text-white text-3xl hover:opacity-70 transition-opacity"
             onClick={() => setFlyerModal(null)}
           >
             ×
@@ -311,7 +330,7 @@ export default function ConcertDetailPage() {
       )}
 
       {/* Calendar Add */}
-      <div className="card p-6 mb-6">
+      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-6 mb-6">
         <h2 className="font-bold text-lg mb-3">カレンダーに追加</h2>
         <CalendarAddDropdown concert={concert} />
       </div>
