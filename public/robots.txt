@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ken-gei-prelude.pages.dev/sitemap.xml
