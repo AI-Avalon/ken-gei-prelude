@@ -35,6 +35,9 @@
 
 ## 🚀 セットアップ
 
+> 📖 **詳細なデプロイ手順は [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) を参照してください**
+> （Cloudflareアカウント作成 → APIトークン → GitHub Secrets → D1/R2/KV → Cron まで完全網羅）
+
 ### 全自動セットアップ
 
 ```bash

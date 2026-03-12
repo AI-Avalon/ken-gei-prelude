@@ -3,6 +3,7 @@ name: Deploy to Cloudflare Pages
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -21,6 +22,30 @@ jobs:
       - run: npm ci
 
       - run: npm run build
+
+      - name: Check Cloudflare secrets
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN が未設定です。"
+            echo ""
+            echo "🔧 設定手順:"
+            echo "  1. https://dash.cloudflare.com/profile/api-tokens にアクセス"
+            echo "  2. 「トークンを作成」→「Cloudflare Pages」テンプレート"
+            echo "  3. GitHubリポジトリ → Settings → Secrets → Actions → New repository secret"
+            echo "     Name: CLOUDFLARE_API_TOKEN  Value: 作成したトークン"
+            echo ""
+            exit 1
+          fi
+          if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "::error::CLOUDFLARE_ACCOUNT_ID が未設定です。"
+            echo ""
+            echo "🔧 設定手順:"
+            echo "  1. https://dash.cloudflare.com → 右サイドバー「アカウントID」をコピー"
+            echo "  2. GitHubリポジトリ → Settings → Secrets → Actions → New repository secret"
+            echo "     Name: CLOUDFLARE_ACCOUNT_ID  Value: コピーしたID"
+            echo ""
+            exit 1
+          fi
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy dist --project-name=ken-gei-prelude
