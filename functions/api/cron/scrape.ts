@@ -270,13 +270,31 @@ function parsePricingFromText(text: string): Array<{ label: string; amount: numb
     return [{ label: '入場料', amount: 0 }];
   }
   const items: Array<{ label: string; amount: number; note?: string }> = [];
-  // Match patterns like "一般 1,000円", "学生 500円", "大人1000円 子供500円"
-  const linePattern = /([\p{L}\p{N}・（）()]+?)\s*[：:]?\s*(\d[\d,]*)\s*円/gu;
-  let m;
-  while ((m = linePattern.exec(t)) !== null) {
-    const label = m[1].trim().replace(/^[（(]/, '');
-    const amount = parseInt(m[2].replace(/,/g, ''), 10);
-    items.push({ label, amount });
+  // Process line by line to avoid cross-segment matching
+  const lines = t.split(/[\n\r]+/);
+  for (const line of lines) {
+    // Try 'label：price円' format (with colon separator)
+    const colonMatch = line.match(/^(.+?)\s*[:：]\s*(\d[\d,]*)\s*円/);
+    if (colonMatch) {
+      let label = colonMatch[1].trim();
+      if (/^[（(].*[）)]$/.test(label)) label = label.slice(1, -1);
+      const amount = parseInt(colonMatch[2].replace(/,/g, ''), 10);
+      if (amount <= 100000 && label.length >= 1 && label.length <= 30 && !/^\d+月|^\d+時|^※|^【/.test(label)) {
+        items.push({ label, amount });
+        continue;
+      }
+    }
+    // Try inline patterns: 'label price円' or 'labelN,NNN円'
+    const inlinePattern = /([^\d\n]{2,}?)\s*(\d[\d,]*)\s*円/g;
+    let m;
+    while ((m = inlinePattern.exec(line)) !== null) {
+      let label = m[1].trim().replace(/^[（(]/, '').replace(/[）)：:]$/, '').trim();
+      if (/^\d+月|^\d+時|^※|^【/.test(label)) continue;
+      if (label.length < 1 || label.length > 30) continue;
+      const amount = parseInt(m[2].replace(/,/g, ''), 10);
+      if (amount > 100000) continue;
+      items.push({ label, amount });
+    }
   }
   if (items.length > 0) return items;
   // Fallback: single naked price
