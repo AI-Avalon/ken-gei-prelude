@@ -3,8 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchConcert, updateConcert, deleteConcert, uploadFlyer } from '../lib/api';
 import ConcertForm from '../components/ConcertForm';
 import FlyerUploader from '../components/FlyerUploader';
+import type { FlyerFile } from '../components/FlyerUploader';
 import PasswordGate from '../components/PasswordGate';
 import { toast } from '../components/Toast';
+import { useIsMobile } from '../hooks/useDevice';
 import type { Concert } from '../types';
 
 export default function ConcertEditPage() {
@@ -14,8 +16,9 @@ export default function ConcertEditPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [flyerFile, setFlyerFile] = useState<{ file: Blob; thumbnail: Blob } | null>(null);
+  const [flyerFiles, setFlyerFiles] = useState<FlyerFile[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!slug) return;
@@ -36,10 +39,11 @@ export default function ConcertEditPage() {
         return;
       }
 
-      if (flyerFile) {
+      // Upload all flyer files
+      for (const flyer of flyerFiles) {
         const fd = new FormData();
-        fd.append('file', flyerFile.file, 'flyer.webp');
-        fd.append('thumbnail', flyerFile.thumbnail, 'thumb.webp');
+        fd.append('file', flyer.blob, 'flyer.webp');
+        fd.append('thumbnail', flyer.thumbnail, 'thumb.webp');
         fd.append('concert_slug', slug);
         await uploadFlyer(fd);
       }
@@ -83,18 +87,20 @@ export default function ConcertEditPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <nav className="text-sm text-stone-500 mb-6">
-        <Link to="/" className="hover:text-primary-600">ホーム</Link>
-        <span className="mx-2">&gt;</span>
-        <Link to={`/concerts/${slug}`} className="hover:text-primary-600">{concert.title}</Link>
-        <span className="mx-2">&gt;</span>
-        <span className="text-stone-700">編集</span>
-      </nav>
+    <div className={`${isMobile ? 'px-4 py-4' : 'max-w-3xl mx-auto px-4 py-8'}`}>
+      {!isMobile && (
+        <nav className="text-sm text-stone-500 mb-6">
+          <Link to="/" className="hover:text-primary-600">ホーム</Link>
+          <span className="mx-2">&gt;</span>
+          <Link to={`/concerts/${slug}`} className="hover:text-primary-600">{concert.title}</Link>
+          <span className="mx-2">&gt;</span>
+          <span className="text-stone-700">編集</span>
+        </nav>
+      )}
 
       <PasswordGate concertSlug={slug!} onVerified={(pw) => setPassword(pw)}>
-        <h1 className="text-3xl font-bold mb-2">演奏会を編集</h1>
-        <p className="text-stone-500 mb-8">{concert.title}</p>
+        <h1 className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold mb-2`}>演奏会を編集</h1>
+        <p className="text-stone-500 mb-6 text-sm">{concert.title}</p>
 
         <ConcertForm
           onSubmit={handleUpdate}
@@ -104,10 +110,11 @@ export default function ConcertEditPage() {
           hideFlyer
         />
 
-        <div className="mt-8">
-          <h2 className="text-lg font-bold mb-4">チラシ画像を変更</h2>
+        <div className="mt-8 bg-white rounded-xl border p-4 sm:p-6 space-y-4">
+          <h2 className="text-lg font-bold">チラシ画像を変更</h2>
           <FlyerUploader
-            onFileReady={(file, thumbnail) => setFlyerFile({ file, thumbnail })}
+            onFilesReady={(files) => setFlyerFiles(files)}
+            existingKeys={concert.flyer_r2_keys}
           />
         </div>
 

@@ -1,23 +1,47 @@
 import { useState, useRef, useCallback } from 'react';
 import { uploadFlyer } from '../lib/api';
 
+export interface FlyerFile {
+  blob: Blob;
+  thumbnail: Blob;
+  previewUrl: string;
+}
+
 interface Props {
   concertSlug?: string;
   existingKeys?: string[];
   onUpload?: (key: string, thumbnailKey: string) => void;
-  onFileReady?: (file: Blob, thumbnail: Blob) => void;
+  /** Called with ALL accumulated files whenever a new file is processed (for pre-upload staging) */
+  onFilesReady?: (files: FlyerFile[]) => void;
 }
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_PDF_SIZE = 10 * 1024 * 1024;
 
-export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload, onFileReady }: Props) {
-  const [previews, setPreviews] = useState<string[]>([]);
+export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload, onFilesReady }: Props) {
+  const [files, setFiles] = useState<FlyerFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [pdfProgress, setPdfProgress] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const addFile = useCallback((f: FlyerFile) => {
+    setFiles((prev) => {
+      const next = [...prev, f];
+      onFilesReady?.(next);
+      return next;
+    });
+  }, [onFilesReady]);
+
+  const removeFile = useCallback((index: number) => {
+    setFiles((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      URL.revokeObjectURL(prev[index].previewUrl);
+      onFilesReady?.(next);
+      return next;
+    });
+  }, [onFilesReady]);
 
   const processFile = useCallback(async (file: File) => {
     setError('');
@@ -40,14 +64,20 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
       setUploading(true);
 
       if (file.type === 'application/pdf') {
-        // PDF → WebP conversion using pdf.js
         await processPdf(file);
       } else {
-        // Image processing
         const img = await loadImage(file);
         const blob = await imageToWebP(img, 2000, 0.85);
-        const thumbnailBlob = await imageToWebP(img, 400, 0.7);
-        await uploadBlob(blob, thumbnailBlob);
+        const thumbnail = await imageToWebP(img, 400, 0.7);
+        const previewUrl = URL.createObjectURL(blob);
+
+        if (onFilesReady) {
+          // Staging mode — store locally
+          addFile({ blob, thumbnail, previewUrl });
+        } else {
+          // Direct upload mode
+          await uploadToServer(blob, thumbnail);
+        }
       }
     } catch {
       setError('ファイルの変換に失敗しました。別のファイルをお試しください');
@@ -55,23 +85,22 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
       setUploading(false);
       setPdfProgress('');
     }
-  }, [concertSlug, onUpload, onFileReady]);
+  }, [concertSlug, onUpload, onFilesReady, addFile]);
 
   const processPdf = async (file: File) => {
     setPdfProgress('PDFを読み込み中...');
 
-    // Dynamic import of pdf.js
     const pdfjsLib = await import('pdfjs-dist');
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const totalPages = Math.min(pdf.numPages, 4); // Max 4 pages
+    const totalPages = Math.min(pdf.numPages, 4);
 
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
       setPdfProgress(`ページ ${pageNum}/${totalPages} を変換中...`);
       const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 2.0 }); // High resolution
+      const viewport = page.getViewport({ scale: 2.0 });
 
       const canvas = document.createElement('canvas');
       canvas.width = viewport.width;
@@ -81,7 +110,6 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
 
       await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
 
-      // Create a temporary image from canvas for WebP conversion
       const tempImg = new Image();
       await new Promise<void>((resolve, reject) => {
         tempImg.onload = () => resolve();
@@ -90,37 +118,23 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
       });
 
       const blob = await imageToWebP(tempImg, 2000, 0.85);
-      const thumbnailBlob = pageNum === 1 ? await imageToWebP(tempImg, 400, 0.7) : null;
-
-      // Preview
+      const thumbnail = await imageToWebP(tempImg, 400, 0.7);
       const previewUrl = URL.createObjectURL(blob);
-      setPreviews((prev) => [...prev, previewUrl]);
 
-      // Upload each page — first page also gets thumbnail
-      if (thumbnailBlob) {
-        await uploadBlob(blob, thumbnailBlob);
+      if (onFilesReady) {
+        addFile({ blob, thumbnail, previewUrl });
       } else {
-        await uploadBlob(blob, null);
+        await uploadToServer(blob, thumbnail);
       }
     }
 
     setPdfProgress(`${totalPages}ページの変換完了！`);
   };
 
-  const uploadBlob = async (blob: Blob, thumbnailBlob: Blob | null) => {
-    if (onFileReady && thumbnailBlob) {
-      onFileReady(blob, thumbnailBlob);
-      return;
-    }
-
+  const uploadToServer = async (blob: Blob, thumbnail: Blob) => {
     const formData = new FormData();
     formData.append('file', blob, 'flyer.webp');
-    if (thumbnailBlob) {
-      formData.append('thumbnail', thumbnailBlob, 'thumb.webp');
-    } else {
-      // Generate a small thumbnail from the main blob for non-first pages
-      formData.append('thumbnail', blob, 'thumb.webp');
-    }
+    formData.append('thumbnail', thumbnail, 'thumb.webp');
     if (concertSlug) formData.append('concert_slug', concertSlug);
 
     const res = await uploadFlyer(formData);
@@ -142,9 +156,11 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
     if (file) processFile(file);
   };
 
+  const allPreviews = files.map((f) => f.previewUrl);
+
   return (
     <div>
-      {/* Existing images */}
+      {/* Existing server images */}
       {existingKeys.length > 0 && (
         <div className="flex gap-2 mb-4 flex-wrap">
           {existingKeys.map((key) => (
@@ -154,12 +170,26 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
         </div>
       )}
 
-      {/* Previews */}
-      {previews.length > 0 && (
+      {/* Local previews with remove button */}
+      {allPreviews.length > 0 && (
         <div className="flex gap-2 mb-4 flex-wrap">
-          {previews.map((url, i) => (
-            <img key={i} src={url} alt="プレビュー"
-              className="w-24 h-32 object-cover rounded border" />
+          {allPreviews.map((url, i) => (
+            <div key={i} className="relative group">
+              <img src={url} alt={`プレビュー ${i + 1}`}
+                className="w-24 h-32 object-cover rounded border" />
+              <button
+                type="button"
+                onClick={() => removeFile(i)}
+                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ×
+              </button>
+              {i === 0 && (
+                <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center py-0.5">
+                  サムネイル
+                </span>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -180,13 +210,14 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
           className="hidden"
         />
         {uploading ? (
-          <>
-            <p className="text-primary-600">{pdfProgress || 'アップロード中...'}</p>
-          </>
+          <p className="text-primary-600">{pdfProgress || '変換中...'}</p>
         ) : (
           <>
             <p className="text-stone-500">📎 クリックまたはドラッグ&ドロップ</p>
-            <p className="text-xs text-stone-400 mt-1">JPEG, PNG, WebP, GIF (5MB以下) / PDF (10MB以下)</p>
+            <p className="text-xs text-stone-400 mt-1">JPEG, PNG, WebP, GIF (5MB以下) / PDF (10MB以下, 最大4ページ)</p>
+            {allPreviews.length > 0 && (
+              <p className="text-xs text-primary-500 mt-1">追加の画像をアップロードできます</p>
+            )}
           </>
         )}
       </div>

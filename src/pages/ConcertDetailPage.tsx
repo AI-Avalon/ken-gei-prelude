@@ -182,39 +182,114 @@ export default function ConcertDetailPage() {
       )}
 
       {/* Flyer images */}
-      {concert.flyer_r2_keys?.length > 0 && (
-        <div className="card p-6 mb-6">
-          <h2 className="font-bold text-lg mb-3">チラシ</h2>
-          <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
-            {concert.flyer_r2_keys.filter(key => !key.endsWith('.pdf')).map((key, i) => (
-              <img
-                key={i}
-                src={`/api/image/${key}`}
-                alt={`${concert.title} チラシ ${i + 1}`}
-                className="rounded-lg cursor-pointer hover:opacity-90 transition-opacity w-full"
-                onClick={() => setFlyerModal(`/api/image/${key}`)}
-                loading="lazy"
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {concert.flyer_r2_keys?.length > 0 && (() => {
+        const flyerKeys = concert.flyer_r2_keys.filter(key => !key.endsWith('.pdf'));
+        if (flyerKeys.length === 0) return null;
 
-      {/* Flyer modal */}
-      {flyerModal && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => setFlyerModal(null)}
-        >
-          <img src={flyerModal} alt="チラシ拡大" className="max-h-[90vh] max-w-full rounded-lg animate-scale-in" />
-          <button
-            className="absolute top-4 right-4 text-white text-3xl hover:opacity-70 transition-opacity"
+        return (
+          <div className={`card ${isMobile ? 'p-4' : 'p-6'} mb-6`}>
+            <h2 className="font-bold text-lg mb-3">
+              チラシ
+              {flyerKeys.length > 1 && (
+                <span className="text-sm font-normal text-stone-500 ml-2">({flyerKeys.length}ページ)</span>
+              )}
+            </h2>
+
+            {isMobile ? (
+              /* Mobile: Vertical stack, full-width, tap to zoom */
+              <div className="space-y-3">
+                {flyerKeys.map((key, i) => (
+                  <div key={i} className="relative">
+                    <img
+                      src={`/api/image/${key}`}
+                      alt={`${concert.title} チラシ ${i + 1}`}
+                      className="rounded-lg w-full active:opacity-90 transition-opacity"
+                      onClick={() => setFlyerModal(`/api/image/${key}`)}
+                      loading={i === 0 ? 'eager' : 'lazy'}
+                    />
+                    {flyerKeys.length > 1 && (
+                      <span className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">
+                        {i + 1}/{flyerKeys.length}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Desktop: Grid layout */
+              <div className={`grid gap-4 ${flyerKeys.length === 1 ? 'grid-cols-1 max-w-lg' : 'grid-cols-2'}`}>
+                {flyerKeys.map((key, i) => (
+                  <img
+                    key={i}
+                    src={`/api/image/${key}`}
+                    alt={`${concert.title} チラシ ${i + 1}`}
+                    className="rounded-lg cursor-pointer hover:opacity-90 hover:shadow-lg transition-all w-full"
+                    onClick={() => setFlyerModal(`/api/image/${key}`)}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Flyer modal — fullscreen viewer with navigation */}
+      {flyerModal && (() => {
+        const flyerKeys = concert.flyer_r2_keys.filter(key => !key.endsWith('.pdf'));
+        const currentIndex = flyerKeys.findIndex(k => `/api/image/${k}` === flyerModal);
+        const hasPrev = currentIndex > 0;
+        const hasNext = currentIndex < flyerKeys.length - 1;
+
+        return (
+          <div
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center animate-fade-in"
             onClick={() => setFlyerModal(null)}
           >
-            ×
-          </button>
-        </div>
-      )}
+            {/* Navigation — prev */}
+            {hasPrev && (
+              <button
+                className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-4xl z-10 p-2"
+                onClick={(e) => { e.stopPropagation(); setFlyerModal(`/api/image/${flyerKeys[currentIndex - 1]}`); }}
+              >
+                ‹
+              </button>
+            )}
+
+            <img
+              src={flyerModal}
+              alt="チラシ拡大"
+              className={`${isMobile ? 'max-h-[85vh] max-w-[95vw]' : 'max-h-[90vh] max-w-[80vw]'} rounded-lg animate-scale-in`}
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            {/* Navigation — next */}
+            {hasNext && (
+              <button
+                className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-4xl z-10 p-2"
+                onClick={(e) => { e.stopPropagation(); setFlyerModal(`/api/image/${flyerKeys[currentIndex + 1]}`); }}
+              >
+                ›
+              </button>
+            )}
+
+            {/* Page indicator */}
+            {flyerKeys.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm px-3 py-1 rounded-full">
+                {currentIndex + 1} / {flyerKeys.length}
+              </div>
+            )}
+
+            {/* Close button */}
+            <button
+              className="absolute top-4 right-4 text-white text-3xl hover:opacity-70 transition-opacity"
+              onClick={() => setFlyerModal(null)}
+            >
+              ×
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Program */}
       {concert.program?.length > 0 && (
@@ -298,7 +373,7 @@ export default function ConcertDetailPage() {
 
       {/* Map */}
       {concert.venue && (
-        <div className="card p-6 mb-6">
+        <div className={`card ${isMobile ? 'p-4' : 'p-6'} mb-6`}>
           <h2 className="font-bold text-lg mb-3">地図・アクセス</h2>
           {concert.venue.access && concert.venue.access.length > 0 && (
             <ul className="text-sm text-stone-600 mb-4 space-y-1">
@@ -315,13 +390,13 @@ export default function ConcertDetailPage() {
       )}
 
       {/* Calendar Add */}
-      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-6 mb-6">
+      <div className={`bg-white rounded-xl shadow-sm border border-stone-100 ${isMobile ? 'p-4' : 'p-6'} mb-6`}>
         <h2 className="font-bold text-lg mb-3">カレンダーに追加</h2>
         <CalendarAddDropdown concert={concert} />
       </div>
 
       {/* Share */}
-      <div className="card p-6 mb-6">
+      <div className={`card ${isMobile ? 'p-4' : 'p-6'} mb-6`}>
         <h2 className="font-bold text-lg mb-3">共有</h2>
         <ShareButtons concert={concert} />
       </div>
@@ -330,7 +405,7 @@ export default function ConcertDetailPage() {
       {related.length > 0 && (
         <div className="mb-6">
           <h2 className="font-bold text-lg mb-4">関連する演奏会</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-3'}`}>
             {related.map((c) => (
               <ConcertCard key={c.id} concert={c} />
             ))}

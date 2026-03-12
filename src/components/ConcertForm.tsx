@@ -104,21 +104,10 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
   const [gmapUrl, setGmapUrl] = useState('');
   const [gmapStatus, setGmapStatus] = useState<'idle' | 'parsing' | 'ok' | 'error'>('idle');
 
-  const parseGoogleMapsUrl = useCallback((url: string) => {
-    setGmapUrl(url);
-    setDirty(true);
-    if (!url.trim()) { setGmapStatus('idle'); return; }
-
+  // Extract venue data from a full Google Maps URL
+  const extractFromGoogleMapsUrl = useCallback((fullUrl: string): boolean => {
     try {
-      setGmapStatus('parsing');
-      const u = new URL(url.trim());
-
-      // Validate it's a Google Maps domain
-      if (!u.hostname.includes('google.com') && !u.hostname.includes('google.co.jp') && !u.hostname.includes('goo.gl') && !u.hostname.includes('maps.app.goo.gl')) {
-        setGmapStatus('error');
-        return;
-      }
-
+      const u = new URL(fullUrl);
       let lat = 0, lng = 0, placeName = '';
 
       // Pattern 1: /maps/place/PlaceName/@lat,lng,zoom
@@ -131,7 +120,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
         }
       }
 
-      // Pattern 2: /@lat,lng in path (without place)
+      // Pattern 2: /@lat,lng in path
       if (!lat) {
         const atMatch = u.pathname.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
         if (atMatch) {
@@ -162,17 +151,71 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
         }
       }
 
-      // Apply extracted data
+      // Pattern 5: data= parameter contains !3d{lat}!4d{lng}
+      const data = u.searchParams.get('data') || u.pathname;
+      if (!lat) {
+        const dataMatch = data.match(/!3d(-?\d+\.?\d+)!4d(-?\d+\.?\d+)/);
+        if (dataMatch) {
+          lat = parseFloat(dataMatch[1]);
+          lng = parseFloat(dataMatch[2]);
+        }
+      }
+
+      // Apply
       if (placeName && !venueName) setVenueName(placeName);
       if (lat && lng) {
         setVenueLat(lat);
         setVenueLng(lng);
       }
-      setGmapStatus((lat || placeName) ? 'ok' : 'error');
+
+      return !!(lat || placeName);
+    } catch {
+      return false;
+    }
+  }, [venueName]);
+
+  const parseGoogleMapsUrl = useCallback(async (url: string) => {
+    setGmapUrl(url);
+    setDirty(true);
+    if (!url.trim()) { setGmapStatus('idle'); return; }
+
+    try {
+      setGmapStatus('parsing');
+      const u = new URL(url.trim());
+
+      // Check if it's a valid Google domain
+      const isGoogleMaps = u.hostname.includes('google.com') || u.hostname.includes('google.co.jp');
+      const isShortUrl = u.hostname === 'maps.app.goo.gl' || u.hostname === 'goo.gl' || u.hostname === 'g.co';
+
+      if (!isGoogleMaps && !isShortUrl) {
+        setGmapStatus('error');
+        return;
+      }
+
+      if (isShortUrl) {
+        // Short URL — resolve via server-side API
+        const res = await fetch('/api/resolve-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: url.trim() }),
+        });
+        const json = await res.json() as { ok: boolean; data?: { resolvedUrl: string }; error?: string };
+        if (json.ok && json.data?.resolvedUrl) {
+          const resolved = json.data.resolvedUrl;
+          const success = extractFromGoogleMapsUrl(resolved);
+          setGmapStatus(success ? 'ok' : 'error');
+        } else {
+          setGmapStatus('error');
+        }
+      } else {
+        // Full Google Maps URL — parse directly
+        const success = extractFromGoogleMapsUrl(url.trim());
+        setGmapStatus(success ? 'ok' : 'error');
+      }
     } catch {
       setGmapStatus('error');
     }
-  }, [venueName]);
+  }, [venueName, extractFromGoogleMapsUrl]);
 
   const toggleDept = (dept: string) => {
     setDirty(true);
@@ -316,13 +359,14 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
               className="input flex-1"
               value={gmapUrl}
               onChange={(e) => parseGoogleMapsUrl(e.target.value)}
-              placeholder="Google MapsのURLを貼り付けると会場情報を自動入力"
+              placeholder="Google Maps URLまたは短縮URL（maps.app.goo.gl）を貼り付け"
               type="url"
             />
+            {gmapStatus === 'parsing' && <span className="self-center text-stone-400 text-sm animate-pulse">解析中...</span>}
             {gmapStatus === 'ok' && <span className="self-center text-green-600 text-sm font-medium">✓ 取得済</span>}
             {gmapStatus === 'error' && <span className="self-center text-red-500 text-xs">URL解析不可</span>}
           </div>
-          <p className="text-xs text-stone-500 mt-1">Google Mapsで会場を検索 → 「共有」→ URLをコピーして貼り付け</p>
+          <p className="text-xs text-stone-500 mt-1">Google Mapsで会場を検索 → 「共有」→ URLをコピーして貼り付け（短縮URLも対応）</p>
         </div>
 
         {/* Venue with suggestions */}
@@ -586,6 +630,89 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
           <p className="text-sm text-amber-700">
             💡 あとからこの演奏会を編集・削除する際に必要です。忘れないようにメモしてください。
           </p>
+        </div>
+      )}
+
+      {/* Preview */}
+      {!isEdit && title && date && (
+        <div className="bg-white rounded-xl border p-4 sm:p-6 space-y-4 overflow-hidden">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-lg">📋 プレビュー</h3>
+            <span className="text-xs text-stone-400">登録後の表示イメージ</span>
+          </div>
+
+          <div className="border rounded-xl p-4 bg-stone-50 space-y-3">
+            {/* Category badge */}
+            {category && (
+              <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${CATEGORIES[category]?.color || 'bg-stone-100 text-stone-600'}`}>
+                {CATEGORIES[category]?.icon} {CATEGORIES[category]?.label}
+              </span>
+            )}
+
+            {/* Title */}
+            <h4 className="text-xl font-serif font-bold text-stone-900">{title}</h4>
+            {subtitle && <p className="text-stone-600">{subtitle}</p>}
+
+            {/* Date & Time */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-stone-600">
+              <span>📅 {date}</span>
+              {timeStart && <span>🕐 {timeStart}開演</span>}
+              {timeOpen && <span>({timeOpen}開場)</span>}
+            </div>
+
+            {/* Venue */}
+            {venueName && (
+              <div className="text-sm text-stone-600">
+                📍 {venueName}
+                {venueAddress && <span className="block text-xs text-stone-400 mt-0.5">{venueAddress}</span>}
+              </div>
+            )}
+
+            {/* Pricing */}
+            {mode === 'full' && pricing.length > 0 && (
+              <div className="text-sm">
+                {pricing.map((p, i) => (
+                  <span key={i} className="mr-3">
+                    {p.label}: {p.amount === 0 ? '無料' : `¥${p.amount.toLocaleString()}`}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Program preview */}
+            {program.length > 0 && (
+              <div className="text-sm border-t pt-2 mt-2 space-y-1">
+                <p className="font-medium text-stone-700">プログラム</p>
+                {program.slice(0, 3).map((p, i) => (
+                  <p key={i} className="text-stone-600">{p.composer} — {p.piece}</p>
+                ))}
+                {program.length > 3 && (
+                  <p className="text-xs text-stone-400">他{program.length - 3}曲</p>
+                )}
+              </div>
+            )}
+
+            {/* Performers preview */}
+            {performers.length > 0 && (
+              <div className="text-sm border-t pt-2 mt-2">
+                <p className="font-medium text-stone-700 mb-1">出演</p>
+                <div className="flex flex-wrap gap-2">
+                  {performers.slice(0, 5).map((p, i) => (
+                    <span key={i} className="text-stone-600">
+                      {p.name}{p.instrument ? `(${p.instrument})` : ''}
+                    </span>
+                  ))}
+                  {performers.length > 5 && (
+                    <span className="text-xs text-stone-400">他{performers.length - 5}名</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {description && (
+              <p className="text-sm text-stone-600 border-t pt-2 mt-2 line-clamp-3">{description}</p>
+            )}
+          </div>
         </div>
       )}
 

@@ -1,0 +1,8 @@
+fix: GoogleMap短縮URL解析・モバイルPC独立設計・チラシ複数ページ対応・プレビュー機能
+
+- functions/api/resolve-url.ts: maps.app.goo.glリダイレクト解決API新設
+- ConcertForm: 短縮URL非同期解析、!3d/!4dパターン追加、登録プレビュー
+- MapSection: MobileMap/DesktopMap完全分離設計、invalidateSize修正
+- FlyerUploader: FlyerFile[]配列管理、onFilesReady API、複数ページ対応
+- UploadPage/ConcertEditPage: 全ページ順次アップロード、モバイルレイアウト
+- ConcertDetailPage: チラシギャラリー(ナビ矢印・ページ表示)、モバイル最適化
