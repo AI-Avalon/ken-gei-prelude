@@ -296,7 +296,8 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
         }
         if (!match) continue;
 
-        // Fetch the detail page to get both the JPG and PDF
+        // Fetch the detail page to get JPG, all additional images, and PDFs
+        const detailImageUrls: string[] = [];
         let pdfUrl: string | undefined;
         try {
           const detailRes = await fetch(match.detailUrl, {
@@ -304,9 +305,21 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
           });
           if (detailRes.ok) {
             const detailHtml = await detailRes.text();
-            const pdfMatch = detailHtml.match(/href="([^"]*\.pdf)"/);
-            if (pdfMatch) {
-              pdfUrl = new URL(pdfMatch[1], match.detailUrl).href;
+            // Get ALL PDFs from detail page (front + back)
+            const pdfMatches = [...detailHtml.matchAll(/href="([^"]*\.pdf)"/g)];
+            const seenPdfs = new Set<string>();
+            for (const pm of pdfMatches) {
+              const fullUrl = new URL(pm[1], match.detailUrl).href;
+              if (!seenPdfs.has(fullUrl) && !fullUrl.includes('apple-touch-icon')) {
+                seenPdfs.add(fullUrl);
+                if (!pdfUrl) pdfUrl = fullUrl;
+              }
+            }
+            // Get ALL images from detail page (not just listing thumbnail)
+            const imgMatches = [...detailHtml.matchAll(/src="(\/event\/item\/[^"]*\.(jpg|jpeg|png|gif|webp))"/gi)];
+            for (const im of imgMatches) {
+              const fullUrl = new URL(im[1], match.detailUrl).href;
+              detailImageUrls.push(fullUrl);
             }
           }
         } catch { /* detail page fetch failed */ }
@@ -328,6 +341,27 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
           await env.KV.put(imgKey, imgBuffer, { metadata: { contentType } });
           await env.KV.put(thumbKey, imgBuffer, { metadata: { contentType } });
           flyerKeys.push(imgKey);
+        }
+
+        // Download additional images from detail page (different from listing thumbnail)
+        const listingImageHash = match.imageUrl.split('/').pop() || '';
+        for (const detailImgUrl of detailImageUrls) {
+          const detailImageHash = detailImgUrl.split('/').pop() || '';
+          if (detailImageHash !== listingImageHash) {
+            try {
+              const diRes = await fetch(detailImgUrl, {
+                headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'image/*' },
+              });
+              if (diRes.ok) {
+                const diBuffer = await diRes.arrayBuffer();
+                const diExt = detailImgUrl.match(/\.(webp|png|jpg|jpeg|gif)$/i)?.[1]?.toLowerCase() || 'jpg';
+                const diContentType = diRes.headers.get('content-type') || 'image/jpeg';
+                const diKey = `flyers/${row.slug}/${timestamp}_detail_${flyerKeys.length}.${diExt}`;
+                await env.KV.put(diKey, diBuffer, { metadata: { contentType: diContentType } });
+                flyerKeys.push(diKey);
+              }
+            } catch { /* skip individual image errors */ }
+          }
         }
 
         // Download PDF flyer if found
@@ -366,7 +400,171 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
 }
 
 // ============================================================
-// Task 7: 誤った画像データをクリアして再取得可能にする
+// Task 7: 入場料の再取得（詳細ページから料金情報を再抽出）
+// ============================================================
+function parsePricingFromText(text: string): Array<{ label: string; amount: number; note?: string }> {
+  const t = text.normalize('NFKC').trim();
+  if (!t) return [];
+  // Check for explicitly free
+  if (/^(無料|入場無料|入場料無料|free)([（(]|$)/i.test(t)) {
+    return [{ label: '入場料', amount: 0 }];
+  }
+  const items: Array<{ label: string; amount: number; note?: string }> = [];
+  // Match patterns like "一般 1,000円", "学生 500円", "大人1000円 子供500円"
+  const linePattern = /([\p{L}\p{N}・（）()]+?)\s*[：:]?\s*(\d[\d,]*)\s*円/gu;
+  let m;
+  while ((m = linePattern.exec(t)) !== null) {
+    const label = m[1].trim().replace(/^[（(]/, '');
+    const amount = parseInt(m[2].replace(/,/g, ''), 10);
+    items.push({ label, amount });
+  }
+  if (items.length > 0) return items;
+  // Fallback: single naked price
+  const singleMatch = t.match(/(\d[\d,]*)\s*円/);
+  if (singleMatch) {
+    return [{ label: '入場料', amount: parseInt(singleMatch[1].replace(/,/g, ''), 10) }];
+  }
+  // No price pattern found and not explicitly free → unknown, leave as-is
+  return [];
+}
+
+function parseDetailSections(html: string): Record<string, string> {
+  // Try to extract content from <div class="detail"> first
+  const detailMatch = html.match(/<div class="detail">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/);
+  const detailHtml = detailMatch ? detailMatch[1] : html;
+
+  const sections: Record<string, string> = {};
+  const sectionPattern = /<h2>([^<]+)<\/h2>([\s\S]*?)(?=<h2>|<\/div>\s*<\/div>|$)/gi;
+  let m;
+  while ((m = sectionPattern.exec(detailHtml)) !== null) {
+    const heading = m[1].trim();
+    const body = m[2]
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    sections[heading] = body;
+  }
+  return sections;
+}
+
+async function fixPricing(env: Env): Promise<TaskResult> {
+  try {
+    // Find events with default pricing (amount=0 only) that might actually have pricing
+    const rows = await env.DB.prepare(
+      `SELECT slug, title, source_url, pricing_json FROM concerts 
+       WHERE source = 'auto_scrape' AND is_deleted = 0 
+       AND pricing_json = '[{"label":"入場料","amount":0}]'
+       ORDER BY date DESC LIMIT 6`
+    ).all<{ slug: string; title: string; source_url: string; pricing_json: string }>();
+
+    if (!rows.results?.length) {
+      return { task: 'fix_pricing', success: true, details: '料金更新が必要なイベントはありません' };
+    }
+
+    let updated = 0;
+    const BASE_URL = 'https://www.aichi-fam-u.ac.jp/event/music/';
+
+    // Build title→detailUrl map from listing pages
+    const titleMap = new Map<string, string>();
+    const pagesToFetch = [BASE_URL];
+    for (let i = 2; i <= 4; i++) {
+      pagesToFetch.push(`${BASE_URL}index_${i}.html`);
+    }
+
+    for (const pageUrl of pagesToFetch) {
+      try {
+        const res = await fetch(pageUrl, {
+          headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'text/html' },
+        });
+        if (!res.ok) continue;
+        const html = await res.text();
+        const blocks = parseAllEventBlocks(html, pageUrl);
+        for (const [title, data] of blocks) {
+          titleMap.set(title, data.detailUrl);
+        }
+      } catch { /* skip */ }
+    }
+
+    for (const row of rows.results) {
+      try {
+        // Determine detail URL
+        let detailUrl = '';
+        if (row.source_url?.match(/\/event\/\d+\.html$/)) {
+          detailUrl = row.source_url;
+        } else {
+          // Look up from listing page
+          let match = titleMap.get(row.title);
+          if (!match) {
+            const prefix = row.title.slice(0, 30);
+            for (const [title, url] of titleMap) {
+              if (title.startsWith(prefix)) {
+                match = url;
+                break;
+              }
+            }
+          }
+          if (match) detailUrl = match;
+        }
+
+        if (!detailUrl) continue;
+
+        // Fetch detail page
+        const detailRes = await fetch(detailUrl, {
+          headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'text/html' },
+        });
+        if (!detailRes.ok) continue;
+
+        const detailHtml = await detailRes.text();
+        const sections = parseDetailSections(detailHtml);
+
+        // Parse pricing
+        const pricingSection = sections['入場料'] || sections['料金'] || sections['チケット'] || '';
+        if (!pricingSection) continue;
+
+        const pricing = parsePricingFromText(pricingSection);
+        if (pricing.length === 0) continue;
+
+        const newPricingJson = JSON.stringify(pricing);
+        const currentDefault = '[{"label":"入場料","amount":0}]';
+        if (newPricingJson === currentDefault) continue; // Actually free
+
+        // Also extract ticket URL
+        let ticketUrl = '';
+        const urlMatch = pricingSection.match(/https?:\/\/[^\s）)]+/);
+        if (urlMatch) ticketUrl = urlMatch[0];
+
+        // Update pricing
+        if (ticketUrl) {
+          await env.DB.prepare(
+            `UPDATE concerts SET pricing_json = ?, ticket_url = ?, updated_at = datetime('now') WHERE slug = ?`
+          ).bind(newPricingJson, ticketUrl, row.slug).run();
+        } else {
+          await env.DB.prepare(
+            `UPDATE concerts SET pricing_json = ?, updated_at = datetime('now') WHERE slug = ?`
+          ).bind(newPricingJson, row.slug).run();
+        }
+        updated++;
+      } catch { /* skip individual errors */ }
+    }
+
+    const details = `${rows.results.length} 件中 ${updated} 件の料金情報を更新しました`;
+    await env.DB.prepare(
+      "INSERT INTO maintenance_log (task, result, details) VALUES ('fix_pricing', 'success', ?)"
+    ).bind(details).run();
+    return { task: 'fix_pricing', success: true, details };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { task: 'fix_pricing', success: false, details: msg };
+  }
+}
+
+// ============================================================
+// Task 8: 誤った画像データをクリアして再取得可能にする
 // ============================================================
 async function clearWrongImages(env: Env): Promise<TaskResult> {
   try {
@@ -472,6 +670,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           break;
         case 'fetch_images':
           results = [await fetchMissingImages(env)];
+          break;
+        case 'fix_pricing':
+          results = [await fixPricing(env)];
           break;
         case 'clear_images':
           results = [await clearWrongImages(env)];

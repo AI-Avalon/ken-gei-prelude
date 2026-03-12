@@ -58,10 +58,11 @@ export function formatTime(concert: Pick<Concert, 'time_start' | 'time_open' | '
 /** Generate Google Calendar URL */
 export function googleCalendarUrl(concert: Concert): string {
   const startDate = concert.date.replace(/-/g, '');
-  const startTime = concert.time_start.replace(':', '') + '00';
+  const timeStart = concert.time_start || '14:00';
+  const startTime = timeStart.replace(':', '') + '00';
   const endTime = concert.time_end
     ? concert.time_end.replace(':', '') + '00'
-    : addHours(concert.time_start, 2).replace(':', '') + '00';
+    : addHours(timeStart, 2).replace(':', '') + '00';
   const dates = `${startDate}T${startTime}/${startDate}T${endTime}`;
   const params = new URLSearchParams({
     action: 'TEMPLATE',
@@ -76,27 +77,34 @@ export function googleCalendarUrl(concert: Concert): string {
 
 /** Generate Outlook Calendar URL */
 export function outlookCalendarUrl(concert: Concert): string {
-  const start = `${concert.date}T${concert.time_start}:00`;
+  const timeStart = concert.time_start || '14:00';
+  const start = `${concert.date}T${timeStart}:00`;
   const end = concert.time_end
     ? `${concert.date}T${concert.time_end}:00`
-    : `${concert.date}T${addHours(concert.time_start, 2)}:00`;
+    : `${concert.date}T${addHours(timeStart, 2)}:00`;
   const params = new URLSearchParams({
     subject: concert.title,
     startdt: start,
     enddt: end,
     location: concert.venue?.name || '',
     body: `${SITE_URL}/concerts/${concert.slug}`,
+    path: '/calendar/action/compose',
+    rru: 'addevent',
   });
-  return `https://outlook.office.com/calendar/deeplink/compose?${params}`;
+  return `https://outlook.live.com/calendar/0/action/compose?${params}`;
 }
 
 /** Generate Yahoo Calendar URL */
 export function yahooCalendarUrl(concert: Concert): string {
-  const st = `${concert.date.replace(/-/g, '')}T${concert.time_start.replace(':', '')}00`;
+  const timeStart = concert.time_start || '14:00';
+  const timeEnd = concert.time_end || addHours(timeStart, 2);
+  const st = `${concert.date.replace(/-/g, '')}T${timeStart.replace(':', '')}00`;
+  const et = `${concert.date.replace(/-/g, '')}T${timeEnd.replace(':', '')}00`;
   const params = new URLSearchParams({
     v: '60',
     TITLE: concert.title,
     ST: st,
+    ET: et,
     in_loc: concert.venue?.name || '',
     DESC: `${SITE_URL}/concerts/${concert.slug}`,
   });
@@ -106,10 +114,11 @@ export function yahooCalendarUrl(concert: Concert): string {
 /** Generate ICS content */
 export function generateICS(concert: Concert): string {
   const startDate = concert.date.replace(/-/g, '');
-  const startTime = `${concert.time_start.replace(':', '')}00`;
+  const timeStart = concert.time_start || '14:00';
+  const startTime = `${timeStart.replace(':', '')}00`;
   const endTime = concert.time_end
     ? `${concert.time_end.replace(':', '')}00`
-    : `${addHours(concert.time_start, 2).replace(':', '')}00`;
+    : `${addHours(timeStart, 2).replace(':', '')}00`;
 
   return [
     'BEGIN:VCALENDAR',
@@ -137,8 +146,11 @@ export function downloadICS(concert: Concert): void {
   const a = document.createElement('a');
   a.href = url;
   a.download = `${concert.slug}.ics`;
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 
 /** Share URLs */

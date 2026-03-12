@@ -237,10 +237,25 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
     }
   }
 
-  // Extract PDF flyer URL
-  const pdfMatch = html.match(/href="([^"]*\.pdf)"/);
-  if (pdfMatch) {
-    (extra as Record<string, unknown>).pdfUrl = pdfMatch[1];
+  // Extract all PDF flyer URLs (front + back pages)
+  const pdfMatches = [...html.matchAll(/href="([^"]*\.pdf)"/g)];
+  const seenPdfs = new Set<string>();
+  const pdfUrls: string[] = [];
+  for (const pm of pdfMatches) {
+    if (!seenPdfs.has(pm[1]) && !pm[1].includes('apple-touch-icon')) {
+      seenPdfs.add(pm[1]);
+      pdfUrls.push(pm[1]);
+    }
+  }
+  if (pdfUrls.length > 0) {
+    (extra as Record<string, unknown>).pdfUrl = pdfUrls[0];
+    (extra as Record<string, unknown>).pdfUrls = pdfUrls;
+  }
+
+  // Extract additional images from detail page
+  const imgMatches = [...html.matchAll(/src="(\/event\/item\/[^"]*\.(?:jpg|jpeg|png|gif|webp))"/gi)];
+  if (imgMatches.length > 0) {
+    (extra as Record<string, unknown>).detailImagePaths = imgMatches.map(m => m[1]);
   }
 
   return extra;
@@ -249,20 +264,22 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
 // Parse pricing text into structured pricing items
 function parsePricingFromText(text: string): Array<{ label: string; amount: number; note?: string }> {
   const t = text.normalize('NFKC').trim();
-  if (!t || /無料|入場無料|入場料無料|free/i.test(t)) {
+  if (!t) return [{ label: '入場料', amount: 0 }];
+  // Check for explicitly free (must be at the start or the whole text)
+  if (/^(無料|入場無料|入場料無料|free)([（(、,\s]|$)/i.test(t)) {
     return [{ label: '入場料', amount: 0 }];
   }
   const items: Array<{ label: string; amount: number; note?: string }> = [];
-  // Try to match patterns like "一般 1,000円", "学生 500円", "大人1000円 子供500円"
-  const linePattern = /([\p{L}\p{N}・（）\(\)]+?)\s*[：:]?\s*(\d[\d,]*)\s*円/gu;
+  // Match patterns like "一般 1,000円", "学生 500円", "大人1000円 子供500円"
+  const linePattern = /([\p{L}\p{N}・（）()]+?)\s*[：:]?\s*(\d[\d,]*)\s*円/gu;
   let m;
   while ((m = linePattern.exec(t)) !== null) {
-    const label = m[1].trim();
+    const label = m[1].trim().replace(/^[（(]/, '');
     const amount = parseInt(m[2].replace(/,/g, ''), 10);
     items.push({ label, amount });
   }
   if (items.length > 0) return items;
-  // Fallback: single price
+  // Fallback: single naked price
   const singleMatch = t.match(/(\d[\d,]*)\s*円/);
   if (singleMatch) {
     return [{ label: '入場料', amount: parseInt(singleMatch[1].replace(/,/g, ''), 10) }];
@@ -362,10 +379,18 @@ async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: nu
 
         // Check if already exists
         const existing = await env.DB.prepare(
-          'SELECT id FROM concerts WHERE fingerprint = ?'
-        ).bind(fingerprint).first();
+          'SELECT id, pricing_json FROM concerts WHERE fingerprint = ?'
+        ).bind(fingerprint).first<{ id: string; pricing_json: string }>();
 
-        if (existing) continue; // Already scraped
+        if (existing) {
+          // Update pricing if it was default (free) and we now have better data
+          if (ev.pricingJson && existing.pricing_json === '[{"label":"入場料","amount":0}]') {
+            await env.DB.prepare(
+              `UPDATE concerts SET pricing_json = ?, updated_at = datetime('now') WHERE id = ?`
+            ).bind(ev.pricingJson, existing.id).run();
+          }
+          continue;
+        }
 
         // Generate slug
         const slug = generateSlug(ev.date, ev.title);
