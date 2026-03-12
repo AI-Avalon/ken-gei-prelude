@@ -204,20 +204,26 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
 }
 
 // Main scraping logic
-async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: number }): Promise<{ found: number; added: number; errors: string[] }> {
+async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: number; startPage?: number }): Promise<{ found: number; added: number; errors: string[] }> {
   const BASE_URL = 'https://www.aichi-fam-u.ac.jp/event/music/';
   const errors: string[] = [];
   let found = 0;
   let added = 0;
 
   // Build list of URLs to scrape
-  const urls: string[] = [BASE_URL];
+  const urls: string[] = [];
   if (options?.allPages) {
-    // Pages 2-16 cover back to 2022
-    for (let i = 2; i <= 16; i++) {
+    const start = options.startPage || 1;
+    if (start === 1) urls.push(BASE_URL);
+    for (let i = Math.max(2, start); i <= 16; i++) {
       urls.push(`${BASE_URL}index_${i}.html`);
     }
+  } else {
+    urls.push(BASE_URL);
   }
+
+  // In bulk mode, skip detail page fetches to stay under subrequest limit
+  const skipDetails = options?.allPages === true;
 
   for (const TARGET_URL of urls) {
   try {
@@ -264,8 +270,8 @@ async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: nu
     // 3. Process each event
     for (const ev of events) {
       try {
-        // Fetch detail page if available
-        if (ev.detailUrl) {
+        // Fetch detail page if available (skip in bulk mode to conserve subrequests)
+        if (ev.detailUrl && !skipDetails) {
           try {
             const detailRes = await fetch(ev.detailUrl, {
               headers: {
@@ -362,15 +368,18 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     // Check for allPages parameter (for historical bulk import)
     let allPages = false;
+    let startPage = 1;
     try {
       const body = await request.clone().json() as Record<string, unknown>;
       if (body.allPages) allPages = true;
+      if (typeof body.startPage === 'number') startPage = body.startPage;
     } catch { /* no body or not JSON */ }
 
     const url = new URL(request.url);
     if (url.searchParams.get('allPages') === 'true') allPages = true;
+    if (url.searchParams.get('startPage')) startPage = parseInt(url.searchParams.get('startPage')!) || 1;
 
-    const result = await runScrape(env, { allPages });
+    const result = await runScrape(env, { allPages, startPage });
 
     const details = `${result.found} events found, ${result.added} new added` +
       (result.errors.length > 0 ? `. Errors: ${result.errors.join('; ')}` : '');
