@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import NavBar from './components/NavBar';
+import MobileTabBar from './components/MobileTabBar';
 import Footer from './components/Footer';
 import ToastContainer from './components/Toast';
 import HomePage from './pages/HomePage';
@@ -15,6 +16,7 @@ import ContactPage from './pages/ContactPage';
 import DocsPage from './pages/DocsPage';
 import ApiDocsPage from './pages/ApiDocsPage';
 import AboutPage from './pages/AboutPage';
+import { useIsMobile } from './hooks/useDevice';
 import { Link } from 'react-router-dom';
 
 function NotFoundPage() {
@@ -62,10 +64,21 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const isMobile = useIsMobile();
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={`min-h-screen flex flex-col ${isMobile ? 'pb-14' : ''}`}>
       <ScrollToTop />
-      <NavBar />
+      {/* Desktop: top navbar, Mobile: simplified top bar + bottom tabs */}
+      {isMobile ? (
+        <header className="bg-navy-900/95 border-b border-primary-800/20 sticky top-0 z-50 backdrop-blur-xl h-12 flex items-center justify-center">
+          <Link to="/" className="text-primary-400 text-lg tracking-widest font-display font-semibold">
+            Crescendo
+          </Link>
+        </header>
+      ) : (
+        <NavBar />
+      )}
       <main className="flex-1">
         <PageTransition>
           <Routes>
@@ -85,7 +98,7 @@ export default function App() {
           </Routes>
         </PageTransition>
       </main>
-      <Footer />
+      {isMobile ? <MobileTabBar /> : <Footer />}
       <ToastContainer />
     </div>
   );

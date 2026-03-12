@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { routeUrls } from '../lib/utils';
+import { UNIVERSITY_VENUES } from '../lib/constants';
 import type { Venue } from '../types';
 
 interface Props {
@@ -10,8 +11,15 @@ export default function MapSection({ venue }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
+  // Check if this is a known university venue
+  const uniVenue = Object.values(UNIVERSITY_VENUES).find(
+    (v) => venue.name?.includes(v.name.replace('愛知県立芸術大学 ', '')) || v.name === venue.name
+  );
+
   useEffect(() => {
-    if (!venue.lat || !venue.lng || !mapRef.current) return;
+    const lat = uniVenue?.lat || venue.lat;
+    const lng = uniVenue?.lng || venue.lng;
+    if (!lat || !lng || !mapRef.current) return;
 
     // Dynamic import of Leaflet
     Promise.all([
@@ -19,11 +27,11 @@ export default function MapSection({ venue }: Props) {
       loadCSS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'),
     ]).then(([L]) => {
       if (!mapRef.current) return;
-      const map = L.default.map(mapRef.current).setView([venue.lat!, venue.lng!], 15);
+      const map = L.default.map(mapRef.current).setView([lat, lng], 16);
       L.default.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(map);
-      L.default.marker([venue.lat!, venue.lng!]).addTo(map)
+      L.default.marker([lat, lng]).addTo(map)
         .bindPopup(venue.name).openPopup();
       setMapLoaded(true);
 
@@ -31,11 +39,13 @@ export default function MapSection({ venue }: Props) {
     }).catch(() => {
       setMapLoaded(false);
     });
-  }, [venue.lat, venue.lng, venue.name]);
+  }, [venue.lat, venue.lng, venue.name, uniVenue]);
 
   const routes = routeUrls(venue);
+  const lat = uniVenue?.lat || venue.lat;
+  const lng = uniVenue?.lng || venue.lng;
 
-  if (!venue.lat || !venue.lng) {
+  if (!lat || !lng) {
     return (
       <div className="bg-stone-50 rounded-lg p-6 text-center text-stone-500">
         地図情報がありません
@@ -46,14 +56,17 @@ export default function MapSection({ venue }: Props) {
   return (
     <div className="space-y-4">
       <div ref={mapRef} className="h-64 rounded-lg overflow-hidden border" />
-      {!mapLoaded && (
-        <div className="text-center text-sm text-stone-500">
-          <a href={`https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lng}`}
-            target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">
-            Google Mapsで開く →
-          </a>
-        </div>
-      )}
+
+      {/* Google Maps link — always show */}
+      <div className="text-center text-sm">
+        <a
+          href={uniVenue?.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
+          target="_blank" rel="noopener noreferrer"
+          className="text-primary-600 hover:underline inline-flex items-center gap-1"
+        >
+          📍 Google Mapsで開く →
+        </a>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <a href={routes.fromUni} target="_blank" rel="noopener noreferrer" className="btn-secondary text-sm">

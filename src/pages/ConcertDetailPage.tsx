@@ -7,6 +7,7 @@ import ShareButtons from '../components/ShareButtons';
 import CalendarAddDropdown from '../components/CalendarAddDropdown';
 import MapSection from '../components/MapSection';
 import ConcertCard from '../components/ConcertCard';
+import { useIsMobile } from '../hooks/useDevice';
 import type { Concert } from '../types';
 
 export default function ConcertDetailPage() {
@@ -16,6 +17,7 @@ export default function ConcertDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [flyerModal, setFlyerModal] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!slug) return;
@@ -37,21 +39,16 @@ export default function ConcertDetailPage() {
   }, [slug]);
 
   if (loading) return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+    <div className={`${isMobile ? 'px-4 py-4' : 'max-w-4xl mx-auto px-4 py-8'} space-y-4`}>
       <div className="skeleton h-4 w-48" />
       <div className="skeleton h-8 w-3/4" />
-      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-6 space-y-4">
+      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-4 space-y-3">
         <div className="skeleton h-4 w-full" />
         <div className="skeleton h-4 w-2/3" />
         <div className="skeleton h-4 w-1/2" />
       </div>
-      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-6 space-y-3">
-        <div className="skeleton h-5 w-24" />
-        <div className="skeleton h-4 w-48" />
-        <div className="skeleton h-4 w-36" />
-      </div>
-      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-6">
-        <div className="skeleton h-64 w-full" />
+      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-4">
+        <div className="skeleton h-48 w-full" />
       </div>
     </div>
   );
@@ -68,15 +65,17 @@ export default function ConcertDetailPage() {
   const daysText = daysUntil(concert.date);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav className="text-sm text-stone-500 mb-6">
-        <Link to="/" className="hover:text-primary-600">ホーム</Link>
-        <span className="mx-2">&gt;</span>
-        <Link to="/concerts" className="hover:text-primary-600">演奏会一覧</Link>
-        <span className="mx-2">&gt;</span>
-        <span className="text-stone-700">{concert.title}</span>
-      </nav>
+    <div className={`${isMobile ? 'px-4 py-4' : 'max-w-4xl mx-auto px-4 py-8'}`}>
+      {/* Breadcrumb — desktop only */}
+      {!isMobile && (
+        <nav className="text-sm text-stone-500 mb-6">
+          <Link to="/" className="hover:text-primary-600">ホーム</Link>
+          <span className="mx-2">&gt;</span>
+          <Link to="/concerts" className="hover:text-primary-600">演奏会一覧</Link>
+          <span className="mx-2">&gt;</span>
+          <span className="text-stone-700">{concert.title}</span>
+        </nav>
+      )}
 
       {/* Category badge & status */}
       <div className="flex items-center gap-3 mb-4">
@@ -94,8 +93,8 @@ export default function ConcertDetailPage() {
       </div>
 
       {/* Title */}
-      <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">{concert.title}</h1>
-      {concert.subtitle && <p className="text-xl text-stone-600 mb-6">{concert.subtitle}</p>}
+      <h1 className={`${isMobile ? 'text-xl' : 'text-3xl md:text-4xl'} font-serif font-bold mb-2`}>{concert.title}</h1>
+      {concert.subtitle && <p className={`${isMobile ? 'text-base' : 'text-xl'} text-stone-600 mb-6`}>{concert.subtitle}</p>}
 
       {/* Ticket URL — prominent button */}
       {concert.ticket_url && (
@@ -186,30 +185,16 @@ export default function ConcertDetailPage() {
       {concert.flyer_r2_keys?.length > 0 && (
         <div className="card p-6 mb-6">
           <h2 className="font-bold text-lg mb-3">チラシ</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {concert.flyer_r2_keys.map((key, i) => (
-              key.endsWith('.pdf') ? (
-                <div key={i} className="rounded-lg border border-stone-200 overflow-hidden">
-                  <iframe
-                    src={`/api/image/${key}`}
-                    title={`${concert.title} チラシ ${i + 1}`}
-                    className="w-full h-[500px] border-0"
-                  />
-                  <a href={`/api/image/${key}`} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-3 hover:bg-stone-50 transition-colors text-sm text-primary-600 border-t border-stone-200">
-                    📄 PDF を別タブで開く
-                  </a>
-                </div>
-              ) : (
-                <img
-                  key={i}
-                  src={`/api/image/${key}`}
-                  alt={`${concert.title} チラシ ${i + 1}`}
-                  className="rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => setFlyerModal(`/api/image/${key}`)}
-                  loading="lazy"
-                />
-              )
+          <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+            {concert.flyer_r2_keys.filter(key => !key.endsWith('.pdf')).map((key, i) => (
+              <img
+                key={i}
+                src={`/api/image/${key}`}
+                alt={`${concert.title} チラシ ${i + 1}`}
+                className="rounded-lg cursor-pointer hover:opacity-90 transition-opacity w-full"
+                onClick={() => setFlyerModal(`/api/image/${key}`)}
+                loading="lazy"
+              />
             ))}
           </div>
         </div>

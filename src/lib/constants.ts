@@ -22,6 +22,54 @@ export const UNIVERSITY = {
   access: ['リニモ「芸大通」下車 徒歩約10分'],
 };
 
+/** 愛知県立芸術大学の学内会場 — 選択時に自動入力されるデータ */
+export const UNIVERSITY_VENUES: Record<string, {
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  access: string[];
+  parking: string;
+  googleMapsUrl: string;
+}> = {
+  concert_hall: {
+    name: '愛知県立芸術大学 奏楽堂',
+    address: '愛知県長久手市岩作三ケ峯1-114',
+    lat: 35.18392,
+    lng: 137.05519,
+    access: ['リニモ「芸大通」下車 徒歩約10分'],
+    parking: '学内駐車場あり（台数制限あり）',
+    googleMapsUrl: 'https://www.google.com/maps/place/%E6%84%9B%E7%9F%A5%E7%9C%8C%E7%AB%8B%E8%8A%B8%E8%A1%93%E5%A4%A7%E5%AD%A6/@35.1839,137.0552,17z',
+  },
+  lecture_hall: {
+    name: '愛知県立芸術大学 講義棟ホール',
+    address: '愛知県長久手市岩作三ケ峯1-114',
+    lat: 35.18350,
+    lng: 137.05480,
+    access: ['リニモ「芸大通」下車 徒歩約10分'],
+    parking: '学内駐車場あり（台数制限あり）',
+    googleMapsUrl: 'https://www.google.com/maps/place/%E6%84%9B%E7%9F%A5%E7%9C%8C%E7%AB%8B%E8%8A%B8%E8%A1%93%E5%A4%A7%E5%AD%A6/@35.1835,137.0548,17z',
+  },
+  new_lecture_hall: {
+    name: '愛知県立芸術大学 新講義棟',
+    address: '愛知県長久手市岩作三ケ峯1-114',
+    lat: 35.18370,
+    lng: 137.05500,
+    access: ['リニモ「芸大通」下車 徒歩約10分'],
+    parking: '学内駐車場あり（台数制限あり）',
+    googleMapsUrl: 'https://www.google.com/maps/place/%E6%84%9B%E7%9F%A5%E7%9C%8C%E7%AB%8B%E8%8A%B8%E8%A1%93%E5%A4%A7%E5%AD%A6/@35.1837,137.0550,17z',
+  },
+  music_building: {
+    name: '愛知県立芸術大学 音楽学部棟',
+    address: '愛知県長久手市岩作三ケ峯1-114',
+    lat: 35.18360,
+    lng: 137.05460,
+    access: ['リニモ「芸大通」下車 徒歩約10分'],
+    parking: '学内駐車場あり（台数制限あり）',
+    googleMapsUrl: 'https://www.google.com/maps/place/%E6%84%9B%E7%9F%A5%E7%9C%8C%E7%AB%8B%E8%8A%B8%E8%A1%93%E5%A4%A7%E5%AD%A6/@35.1836,137.0546,17z',
+  },
+};
+
 export const CATEGORIES: Record<string, { label: string; color: string; icon: string }> = {
   teiki: { label: '定期演奏会', color: 'bg-primary-100 text-primary-800', icon: '🎵' },
   sotsugyou: { label: '卒業演奏会', color: 'bg-purple-100 text-purple-800', icon: '🎓' },

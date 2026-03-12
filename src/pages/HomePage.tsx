@@ -4,6 +4,7 @@ import { fetchConcerts } from '../lib/api';
 import { daysUntil, formatDateShort } from '../lib/utils';
 import { SITE_NAME, SITE_TAGLINE, CATEGORIES } from '../lib/constants';
 import ConcertCard from '../components/ConcertCard';
+import { useIsMobile } from '../hooks/useDevice';
 import type { Concert } from '../types';
 
 export default function HomePage() {
@@ -11,6 +12,7 @@ export default function HomePage() {
   const [thisWeek, setThisWeek] = useState<Concert[]>([]);
   const [upcoming, setUpcoming] = useState<Concert[]>([]);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const d = new Date();
@@ -25,7 +27,6 @@ export default function HomePage() {
     ]).then(([todayRes, weekRes, upcomingRes]) => {
       if (todayRes.ok && todayRes.data) setTodayConcerts(todayRes.data);
       if (weekRes.ok && weekRes.data) {
-        // 今日以外の今週のイベント
         setThisWeek(weekRes.data.filter((c) => c.date !== today));
       }
       if (upcomingRes.ok && upcomingRes.data) {
@@ -35,18 +36,127 @@ export default function HomePage() {
     });
   }, []);
 
+  /* ===== Mobile Layout ===== */
+  if (isMobile) {
+    return (
+      <div>
+        {/* Compact mobile hero */}
+        <section className="bg-hero-gradient text-white py-16 px-4 relative overflow-hidden">
+          <div className="text-center relative z-10">
+            <p className="text-primary-400/70 text-[10px] tracking-[0.3em] uppercase mb-3">
+              愛知県立芸術大学 音楽学部
+            </p>
+            <h1 className="text-3xl font-display font-bold mb-2 tracking-wider">
+              <span className="text-gold">{SITE_NAME}</span>
+            </h1>
+            <p className="text-sm text-stone-400 mb-6 font-serif">{SITE_TAGLINE}</p>
+            <div className="flex justify-center gap-3">
+              <Link to="/concerts" className="bg-primary-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
+                演奏会を見る
+              </Link>
+              <Link to="/upload" className="border border-primary-500/30 text-primary-300 px-6 py-2.5 rounded-lg text-sm font-medium">
+                登録する
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Today — prominent on mobile */}
+        {todayConcerts.length > 0 && (
+          <section className="px-4 py-6">
+            <h2 className="text-lg font-bold text-stone-900 mb-3">🎵 本日の演奏会</h2>
+            <div className="space-y-3">
+              {todayConcerts.map((c) => (
+                <ConcertCard key={c.id} concert={c} highlight />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* This Week — horizontal scroll */}
+        {thisWeek.length > 0 && (
+          <section className="py-6">
+            <h2 className="text-lg font-bold text-stone-900 mb-3 px-4">📅 今週の演奏会</h2>
+            <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-hide">
+              {thisWeek.slice(0, 8).map((c) => (
+                <div key={c.id} className="min-w-[260px] snap-start">
+                  <ConcertCard concert={c} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Upcoming — list style for mobile */}
+        <section className="px-4 py-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-stone-900">今後の演奏会</h2>
+            <Link to="/concerts" className="text-primary-700 text-sm">すべて →</Link>
+          </div>
+          {loading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
+                  <div className="skeleton h-32 w-full" />
+                  <div className="p-3 space-y-2">
+                    <div className="skeleton h-4 w-3/4" />
+                    <div className="skeleton h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : upcoming.length === 0 ? (
+            <div className="text-center py-8 text-stone-400">
+              <p className="mb-2">予定されている演奏会はありません</p>
+              <Link to="/upload" className="text-primary-700 text-sm">演奏会を登録する →</Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {upcoming.slice(0, 6).map((c) => (
+                <ConcertCard key={c.id} concert={c} />
+              ))}
+            </div>
+          )}
+          {upcoming.length > 6 && (
+            <div className="text-center mt-4">
+              <Link to="/concerts" className="btn-secondary text-sm w-full block">
+                もっと見る（{upcoming.length - 6}件以上）
+              </Link>
+            </div>
+          )}
+        </section>
+
+        {/* Categories — compact horizontal scroll */}
+        <section className="bg-stone-50 py-6">
+          <h2 className="text-lg font-bold text-stone-900 mb-3 px-4">カテゴリ</h2>
+          <div className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-hide">
+            {Object.entries(CATEGORIES).map(([key, cat]) => (
+              <Link
+                key={key}
+                to={`/concerts?category=${key}`}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${cat.color}`}
+              >
+                {cat.icon} {cat.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  /* ===== Desktop Layout ===== */
   return (
     <div>
       {/* Hero — Dark elegant concert hall aesthetic */}
       <section className="bg-hero-gradient text-white py-32 md:py-40 px-4 relative overflow-hidden">
-        {/* Decorative elements */}
         <div className="absolute inset-0 opacity-[0.02]" style={{backgroundImage: 'radial-gradient(circle at 25% 25%, #c4ab6e 1px, transparent 1px), radial-gradient(circle at 75% 75%, #c4ab6e 1px, transparent 1px)', backgroundSize: '80px 80px'}} />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-navy-950/50" />
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <p className="text-primary-400/80 text-xs tracking-[0.4em] uppercase mb-6 font-sans animate-fade-in">
             愛知県立芸術大学 音楽学部
           </p>
-          <h1 className="text-4xl sm:text-6xl md:text-8xl font-display font-bold mb-4 tracking-wider animate-blur-in">
+          <h1 className="text-6xl md:text-8xl font-display font-bold mb-4 tracking-wider animate-blur-in">
             <span className="text-gold">{SITE_NAME}</span>
           </h1>
           <div className="flex items-center justify-center gap-8 my-8 animate-fade-in">
@@ -75,7 +185,7 @@ export default function HomePage() {
             <h2 className="text-2xl font-serif font-bold text-stone-900">Today&apos;s Stage</h2>
             <p className="text-sm text-stone-500 mt-1">— 本日の演奏会 —</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
             {todayConcerts.map((c) => (
               <ConcertCard key={c.id} concert={c} highlight />
             ))}
@@ -90,7 +200,7 @@ export default function HomePage() {
             <h2 className="text-2xl font-serif font-bold text-stone-900">This Week</h2>
             <p className="text-sm text-stone-500 mt-1">— 今週の演奏会 —</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {thisWeek.slice(0, 8).map((c) => (
               <ConcertCard key={c.id} concert={c} />
             ))}
@@ -111,7 +221,7 @@ export default function HomePage() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
                 <div className="skeleton h-40 w-full" />
@@ -131,7 +241,7 @@ export default function HomePage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {upcoming.slice(0, 8).map((c) => (
               <ConcertCard key={c.id} concert={c} />
             ))}

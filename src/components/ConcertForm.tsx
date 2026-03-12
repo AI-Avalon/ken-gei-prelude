@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Concert, PricingItem, ProgramItem, Performer, Venue, VenueRecord } from '../types';
-import { CATEGORIES, DEPARTMENTS, SEATING_OPTIONS } from '../lib/constants';
+import { CATEGORIES, DEPARTMENTS, SEATING_OPTIONS, UNIVERSITY_VENUES } from '../lib/constants';
 import { fetchVenues } from '../lib/api';
 import { parsePricingText } from '../lib/utils';
 import FlyerUploader from './FlyerUploader';
@@ -18,7 +18,7 @@ interface Props {
 }
 
 export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug, submitting: externalSubmitting, hideFlyer }: Props) {
-  const [mode, setMode] = useState<'quick' | 'full'>(isEdit ? 'full' : 'quick');
+  const [mode, setMode] = useState<'quick' | 'full'>('full');
   const [loading, setLoading] = useState(false);
   const [venueList, setVenueList] = useState<VenueRecord[]>([]);
   const [venueSuggestions, setVenueSuggestions] = useState<VenueRecord[]>([]);
@@ -244,21 +244,21 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
         <div className="flex gap-2 mb-6">
           <button
             type="button"
-            onClick={() => setMode('quick')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              mode === 'quick' ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600'
-            }`}
-          >
-            ⚡ かんたん登録
-          </button>
-          <button
-            type="button"
             onClick={() => setMode('full')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               mode === 'full' ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600'
             }`}
           >
             🔧 詳細登録
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('quick')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              mode === 'quick' ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600'
+            }`}
+          >
+            ⚡ かんたん登録
           </button>
         </div>
       )}
@@ -294,6 +294,11 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
               <div>
                 <label className="label">開場時刻</label>
                 <input type="time" className="input" value={timeOpen} onChange={(e) => setTimeOpen(e.target.value)} />
+                {timeOpen && timeStart && timeOpen > timeStart && (
+                  <p className="text-amber-600 text-xs mt-1 flex items-center gap-1">
+                    ⚠ 開場時刻が開演時刻より後になっています
+                  </p>
+                )}
               </div>
               <div>
                 <label className="label">終演予定</label>
@@ -323,6 +328,32 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
         {/* Venue with suggestions */}
         <div className="relative">
           <label className="label">会場名 *</label>
+          {/* University venue quick select */}
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {Object.entries(UNIVERSITY_VENUES).map(([key, v]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  setVenueName(v.name);
+                  setVenueAddress(v.address);
+                  setVenueLat(v.lat);
+                  setVenueLng(v.lng);
+                  setVenueAccess(v.access.join('\n'));
+                  setVenueParking(v.parking);
+                  setShowVenueSuggestions(false);
+                  setDirty(true);
+                }}
+                className={`px-2.5 py-1 rounded-full text-xs transition-colors ${
+                  venueName === v.name
+                    ? 'bg-primary-100 text-primary-700 border border-primary-300'
+                    : 'bg-stone-50 text-stone-600 border border-stone-200 hover:bg-primary-50'
+                }`}
+              >
+                🏛️ {v.name.replace('愛知県立芸術大学 ', '')}
+              </button>
+            ))}
+          </div>
           <input
             className="input"
             value={venueName}

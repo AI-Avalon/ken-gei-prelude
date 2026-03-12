@@ -16,10 +16,12 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [pdfProgress, setPdfProgress] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const processFile = useCallback(async (file: File) => {
     setError('');
+    setPdfProgress('');
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError('対応していないファイル形式です。PDF、JPEG、PNG、WebPをアップロードしてください');
@@ -36,55 +38,98 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
 
     try {
       setUploading(true);
-      let blob: Blob;
-      let thumbnailBlob: Blob;
 
       if (file.type === 'application/pdf') {
-        // PDF handling - for now upload as-is, server handles conversion
-        setError('PDFの処理は現在準備中です。JPEG/PNG/WebP画像をアップロードしてください。');
-        setUploading(false);
-        return;
+        // PDF → WebP conversion using pdf.js
+        await processPdf(file);
       } else {
         // Image processing
         const img = await loadImage(file);
-        blob = await imageToWebP(img, 2000, 0.85);
-        thumbnailBlob = await imageToWebP(img, 400, 0.7);
-
-        // Check size
-        if (blob.size > 2 * 1024 * 1024) {
-          blob = await imageToWebP(img, 2000, 0.7);
-        }
-      }
-
-      // Preview
-      const previewUrl = URL.createObjectURL(blob);
-      setPreviews((prev) => [...prev, previewUrl]);
-
-      // If onFileReady is provided, just pass the blobs back (no upload)
-      if (onFileReady) {
-        onFileReady(blob, thumbnailBlob);
-        setUploading(false);
-        return;
-      }
-
-      // Upload
-      const formData = new FormData();
-      formData.append('file', blob, 'flyer.webp');
-      formData.append('thumbnail', thumbnailBlob, 'thumb.webp');
-      if (concertSlug) formData.append('concert_slug', concertSlug);
-
-      const res = await uploadFlyer(formData);
-      if (res.ok && res.data) {
-        onUpload?.(res.data.key, res.data.thumbnail_key);
-      } else {
-        setError(res.error || 'アップロードに失敗しました');
+        const blob = await imageToWebP(img, 2000, 0.85);
+        const thumbnailBlob = await imageToWebP(img, 400, 0.7);
+        await uploadBlob(blob, thumbnailBlob);
       }
     } catch {
       setError('ファイルの変換に失敗しました。別のファイルをお試しください');
     } finally {
       setUploading(false);
+      setPdfProgress('');
     }
   }, [concertSlug, onUpload, onFileReady]);
+
+  const processPdf = async (file: File) => {
+    setPdfProgress('PDFを読み込み中...');
+
+    // Dynamic import of pdf.js
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const totalPages = Math.min(pdf.numPages, 4); // Max 4 pages
+
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      setPdfProgress(`ページ ${pageNum}/${totalPages} を変換中...`);
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 2.0 }); // High resolution
+
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas not supported');
+
+      await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
+
+      // Create a temporary image from canvas for WebP conversion
+      const tempImg = new Image();
+      await new Promise<void>((resolve, reject) => {
+        tempImg.onload = () => resolve();
+        tempImg.onerror = reject;
+        tempImg.src = canvas.toDataURL('image/png');
+      });
+
+      const blob = await imageToWebP(tempImg, 2000, 0.85);
+      const thumbnailBlob = pageNum === 1 ? await imageToWebP(tempImg, 400, 0.7) : null;
+
+      // Preview
+      const previewUrl = URL.createObjectURL(blob);
+      setPreviews((prev) => [...prev, previewUrl]);
+
+      // Upload each page — first page also gets thumbnail
+      if (thumbnailBlob) {
+        await uploadBlob(blob, thumbnailBlob);
+      } else {
+        await uploadBlob(blob, null);
+      }
+    }
+
+    setPdfProgress(`${totalPages}ページの変換完了！`);
+  };
+
+  const uploadBlob = async (blob: Blob, thumbnailBlob: Blob | null) => {
+    if (onFileReady && thumbnailBlob) {
+      onFileReady(blob, thumbnailBlob);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', blob, 'flyer.webp');
+    if (thumbnailBlob) {
+      formData.append('thumbnail', thumbnailBlob, 'thumb.webp');
+    } else {
+      // Generate a small thumbnail from the main blob for non-first pages
+      formData.append('thumbnail', blob, 'thumb.webp');
+    }
+    if (concertSlug) formData.append('concert_slug', concertSlug);
+
+    const res = await uploadFlyer(formData);
+    if (res.ok && res.data) {
+      onUpload?.(res.data.key, res.data.thumbnail_key);
+    } else {
+      setError(res.error || 'アップロードに失敗しました');
+    }
+  };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -135,7 +180,9 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
           className="hidden"
         />
         {uploading ? (
-          <p className="text-primary-600">アップロード中...</p>
+          <>
+            <p className="text-primary-600">{pdfProgress || 'アップロード中...'}</p>
+          </>
         ) : (
           <>
             <p className="text-stone-500">📎 クリックまたはドラッグ&ドロップ</p>
