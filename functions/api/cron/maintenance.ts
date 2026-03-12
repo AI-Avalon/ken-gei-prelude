@@ -168,10 +168,19 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const token = request.headers.get('X-Admin-Token');
   const cronSecret = request.headers.get('X-Cron-Secret');
 
-  const isAdmin = token && env.ADMIN_PASSWORD && token === env.ADMIN_PASSWORD;
+  let isAuthed = false;
+  if (token && env.ADMIN_PASSWORD) {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw', encoder.encode(env.ADMIN_PASSWORD), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    );
+    const sig = await crypto.subtle.sign('HMAC', key, encoder.encode('ken-gei-admin-session'));
+    const expected = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    isAuthed = token === expected;
+  }
   const isCron = cronSecret && env.ADMIN_PASSWORD && cronSecret === env.ADMIN_PASSWORD;
 
-  if (!isAdmin && !isCron) {
+  if (!isAuthed && !isCron) {
     return jsonResponse({ ok: false, error: '認証が必要です' }, 401);
   }
 

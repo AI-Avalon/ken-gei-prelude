@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { CATEGORIES } from '../lib/constants';
 
 interface Props {
@@ -9,6 +9,34 @@ interface Props {
   onSearchChange?: (q: string) => void;
   sortBy?: string;
   onSortChange?: (s: string) => void;
+}
+
+function SearchInput({ value, onChange }: { value: string; onChange: (q: string) => void }) {
+  const [local, setLocal] = useState(value);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => { setLocal(value); }, [value]);
+
+  const handleChange = useCallback((v: string) => {
+    setLocal(v);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => onChange(v), 300);
+  }, [onChange]);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  return (
+    <div className="relative flex-1">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+      <input
+        type="text"
+        value={local}
+        onChange={(e) => handleChange(e.target.value)}
+        placeholder="演奏会を検索..."
+        className="input pl-10 w-full"
+      />
+    </div>
+  );
 }
 
 export default function FilterBar({
@@ -41,16 +69,7 @@ export default function FilterBar({
       {/* Search + Sort row */}
       <div className="flex flex-col sm:flex-row gap-3">
         {onSearchChange && (
-          <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-            <input
-              type="text"
-              value={searchQuery ?? ''}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="演奏会を検索..."
-              className="input pl-10 w-full"
-            />
-          </div>
+          <SearchInput value={searchQuery ?? ''} onChange={onSearchChange} />
         )}
         {onSortChange && (
           <select
@@ -78,20 +97,22 @@ export default function FilterBar({
         >
           すべて
         </button>
-        {visibleCats.map(([key, cat]) => (
-          <button
-            key={key}
-            onClick={() => toggle(key)}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-              selected.includes(key)
-                ? `text-white`
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-            style={selected.includes(key) ? { backgroundColor: cat.color } : undefined}
-          >
-            {cat.icon} {cat.label}
-          </button>
-        ))}
+        {visibleCats.map(([key, cat]) => {
+          const isSelected = selected.includes(key);
+          return (
+            <button
+              key={key}
+              onClick={() => toggle(key)}
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                isSelected
+                  ? `${cat.color} ring-2 ring-offset-1 ring-primary-400`
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {cat.icon} {cat.label}
+            </button>
+          );
+        })}
         {cats.length > 8 && (
           <button
             onClick={() => setShowAll(!showAll)}

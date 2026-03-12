@@ -1,10 +1,17 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import Fuse from 'fuse.js';
 import { fetchConcerts } from '../lib/api';
 import { CATEGORIES } from '../lib/constants';
 import ConcertCard from '../components/ConcertCard';
 import FilterBar from '../components/FilterBar';
 import type { Concert } from '../types';
+
+const fuseOptions = {
+  keys: ['title', 'venue.name', 'category', 'description', 'program'],
+  threshold: 0.3,
+  ignoreLocation: true,
+};
 
 export default function ConcertListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -21,7 +28,10 @@ export default function ConcertListPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date_asc');
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
 
   const loadConcerts = async (pageNum: number, append = false) => {
     setLoading(true);
@@ -52,11 +62,18 @@ export default function ConcertListPage() {
     loadConcerts(next, true);
   };
 
-  // Client-side multi-category filter
+  // Client-side multi-category filter + fuzzy search
   const filtered = useMemo(() => {
-    if (selectedCategories.length <= 1) return concerts;
-    return concerts.filter((c) => selectedCategories.includes(c.category));
-  }, [concerts, selectedCategories]);
+    let result = concerts;
+    if (selectedCategories.length > 1) {
+      result = result.filter((c) => selectedCategories.includes(c.category));
+    }
+    if (searchQuery.trim()) {
+      const fuse = new Fuse(result, fuseOptions);
+      result = fuse.search(searchQuery).map((r) => r.item);
+    }
+    return result;
+  }, [concerts, selectedCategories, searchQuery]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">

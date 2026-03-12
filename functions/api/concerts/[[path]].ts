@@ -22,10 +22,20 @@ function jsonResponse(data: unknown, status = 200): Response {
   });
 }
 
-function isAdmin(request: Request, env: Env): boolean {
+async function generateToken(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', encoder.encode(password), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode('ken-gei-admin-session'));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function isAdmin(request: Request, env: Env): Promise<boolean> {
   const token = request.headers.get('X-Admin-Token');
   if (!token || !env.ADMIN_PASSWORD) return false;
-  return token === env.ADMIN_PASSWORD;
+  const expected = await generateToken(env.ADMIN_PASSWORD);
+  return token === expected;
 }
 
 async function sha256(text: string): Promise<string> {
@@ -136,8 +146,9 @@ async function handleList(request: Request, env: Env): Promise<Response> {
   const search = url.searchParams.get('search') || '';
   const dateFrom = url.searchParams.get('dateFrom') || '';
   const dateTo = url.searchParams.get('dateTo') || '';
-  const includeUnpublished = url.searchParams.get('includeUnpublished') === '1' && isAdmin(request, env);
-  const includeDeleted = url.searchParams.get('includeDeleted') === '1' && isAdmin(request, env);
+  const isAdminUser = await isAdmin(request, env);
+  const includeUnpublished = url.searchParams.get('includeUnpublished') === '1' && isAdminUser;
+  const includeDeleted = url.searchParams.get('includeDeleted') === '1' && isAdminUser;
 
   let where = 'WHERE 1=1';
   const params: (string | number)[] = [];
@@ -365,7 +376,7 @@ async function handleVerify(slug: string, request: Request, env: Env): Promise<R
 // ──────────── PUT /api/concerts/:slug ────────────
 async function handleUpdate(slug: string, request: Request, env: Env): Promise<Response> {
   const body = await request.json() as Record<string, unknown>;
-  const adminMode = isAdmin(request, env);
+  const adminMode = await isAdmin(request, env);
 
   if (!adminMode) {
     const editPassword = String(body.edit_password || '');
@@ -450,7 +461,7 @@ async function handleUpdate(slug: string, request: Request, env: Env): Promise<R
 // ──────────── DELETE /api/concerts/:slug ────────────
 async function handleDelete(slug: string, request: Request, env: Env): Promise<Response> {
   const body = await request.json() as Record<string, unknown>;
-  const adminMode = isAdmin(request, env);
+  const adminMode = await isAdmin(request, env);
 
   if (!adminMode) {
     const editPassword = String(body.edit_password || '');

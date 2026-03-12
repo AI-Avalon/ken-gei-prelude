@@ -12,7 +12,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     Promise.all([
       fetchConcerts({ dateFrom: today, dateTo: today, limit: 10 }),
       fetchConcerts({ dateFrom: today, sort: 'date_asc', limit: 12 }),

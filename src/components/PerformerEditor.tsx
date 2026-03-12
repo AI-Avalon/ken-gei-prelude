@@ -26,20 +26,20 @@ export default function PerformerEditor({ performers, onChange }: Props) {
   return (
     <div className="space-y-3">
       {performers.map((item, i) => (
-        <div key={i} className="flex gap-2 items-end">
-          <div className="flex-1">
+        <div key={i} className="flex flex-wrap sm:flex-nowrap gap-2 items-end">
+          <div className="flex-1 min-w-[120px]">
             <label className="label">名前</label>
             <input className="input" value={item.name}
               onChange={(e) => updateItem(i, 'name', e.target.value)}
               placeholder="例: 山田太郎" />
           </div>
-          <div className="w-40">
+          <div className="w-full sm:w-40">
             <label className="label">学年</label>
             <input className="input" value={item.year || ''}
               onChange={(e) => updateItem(i, 'year', e.target.value)}
               placeholder="例: 大学4年" />
           </div>
-          <div className="w-32">
+          <div className="w-full sm:w-32">
             <label className="label">楽器</label>
             <input className="input" value={item.instrument || ''}
               onChange={(e) => updateItem(i, 'instrument', e.target.value)}

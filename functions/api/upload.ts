@@ -17,6 +17,27 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
 
   try {
+    // Rate limit: max 10 uploads per hour per IP
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const rl = await env.DB.prepare(
+      'SELECT attempts, last_attempt FROM rate_limits WHERE ip = ? AND endpoint = ?'
+    ).bind(ip, 'upload').first<{ attempts: number; last_attempt: string }>();
+    if (rl) {
+      const lastAttempt = new Date(rl.last_attempt + 'Z');
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      if (lastAttempt > oneHourAgo && rl.attempts >= 10) {
+        return jsonResponse({ ok: false, error: 'アップロード回数の上限に達しました。しばらく待ってから再試行してください。' }, 429);
+      }
+      if (lastAttempt < oneHourAgo) {
+        await env.DB.prepare('DELETE FROM rate_limits WHERE ip = ? AND endpoint = ?').bind(ip, 'upload').run();
+      }
+    }
+    await env.DB.prepare(`
+      INSERT INTO rate_limits (ip, endpoint, attempts, last_attempt)
+      VALUES (?, 'upload', 1, datetime('now'))
+      ON CONFLICT(ip, endpoint) DO UPDATE SET attempts = attempts + 1, last_attempt = datetime('now')
+    `).bind(ip).run();
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const thumbnail = formData.get('thumbnail') as File | null;

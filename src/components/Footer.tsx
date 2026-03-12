@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
-import { SITE_NAME } from '../lib/constants';
+import { SITE_NAME, SITE_URL } from '../lib/constants';
+
+const webcalUrl = `webcal://${SITE_URL.replace(/^https?:\/\//, '')}/api/feed/ics`;
 
 export default function Footer() {
   return (
@@ -32,7 +34,7 @@ export default function Footer() {
             <h3 className="text-white font-medium mb-3">カレンダー購読</h3>
             <p className="text-sm mb-2">全演奏会をカレンダーに自動同期</p>
             <code className="text-xs bg-gray-800 px-2 py-1 rounded block break-all">
-              webcal://ken-gei-prelude.pages.dev/api/feed/ics
+              {webcalUrl}
             </code>
             <div className="mt-4">
               <a

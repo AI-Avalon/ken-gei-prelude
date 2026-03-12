@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchConcerts } from '../lib/api';
+import { SITE_URL } from '../lib/constants';
 import Calendar from '../components/Calendar';
 import type { Concert } from '../types';
 
@@ -37,7 +38,7 @@ export default function CalendarPage() {
         </div>
         <div className="text-sm text-gray-500">
           <a
-            href="webcal://ken-gei-prelude.pages.dev/api/feed/ics"
+            href={`webcal://${SITE_URL.replace(/^https?:\/\//, '')}/api/feed/ics`}
             className="text-primary-600 hover:underline"
           >
             📅 カレンダーを購読
@@ -58,7 +59,7 @@ export default function CalendarPage() {
             setSelectedDate(null);
           }}
           onDateClick={(date) => {
-            const ds = date.toISOString().slice(0, 10);
+            const ds = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
             setSelectedDate(ds === selectedDate ? null : ds);
           }}
         />

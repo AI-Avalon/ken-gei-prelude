@@ -1,9 +1,16 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import Fuse from 'fuse.js';
 import { fetchConcerts } from '../lib/api';
 import { CATEGORIES } from '../lib/constants';
 import ConcertCard from '../components/ConcertCard';
 import FilterBar from '../components/FilterBar';
 import type { Concert } from '../types';
+
+const fuseOptions = {
+  keys: ['title', 'venue.name', 'category', 'description', 'program'],
+  threshold: 0.3,
+  ignoreLocation: true,
+};
 
 export default function ArchivePage() {
   const [concerts, setConcerts] = useState<Concert[]>([]);
@@ -41,8 +48,12 @@ export default function ArchivePage() {
     if (selectedCategories.length > 1) {
       result = result.filter((c) => selectedCategories.includes(c.category));
     }
+    if (searchQuery.trim()) {
+      const fuse = new Fuse(result, fuseOptions);
+      result = fuse.search(searchQuery).map((r) => r.item);
+    }
     return result;
-  }, [concerts, selectedCategories]);
+  }, [concerts, selectedCategories, searchQuery]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
