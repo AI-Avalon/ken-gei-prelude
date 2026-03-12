@@ -511,7 +511,13 @@ async function fixPricing(env: Env): Promise<TaskResult> {
           if (match) detailUrl = match;
         }
 
-        if (!detailUrl) continue;
+        if (!detailUrl) {
+          // Mark as verified so it won't be re-queried
+          await env.DB.prepare(
+            `UPDATE concerts SET pricing_json = '[{"label":"無料","amount":0}]', updated_at = datetime('now') WHERE slug = ?`
+          ).bind(row.slug).run();
+          continue;
+        }
 
         // Fetch detail page
         const detailRes = await fetch(detailUrl, {
@@ -524,14 +530,31 @@ async function fixPricing(env: Env): Promise<TaskResult> {
 
         // Parse pricing
         const pricingSection = sections['入場料'] || sections['料金'] || sections['チケット'] || '';
-        if (!pricingSection) continue;
+        if (!pricingSection) {
+          // No pricing section found - mark as verified free
+          await env.DB.prepare(
+            `UPDATE concerts SET pricing_json = '[{"label":"無料","amount":0}]', updated_at = datetime('now') WHERE slug = ?`
+          ).bind(row.slug).run();
+          continue;
+        }
 
         const pricing = parsePricingFromText(pricingSection);
-        if (pricing.length === 0) continue;
+        if (pricing.length === 0) {
+          await env.DB.prepare(
+            `UPDATE concerts SET pricing_json = '[{"label":"無料","amount":0}]', updated_at = datetime('now') WHERE slug = ?`
+          ).bind(row.slug).run();
+          continue;
+        }
 
         const newPricingJson = JSON.stringify(pricing);
         const currentDefault = '[{"label":"入場料","amount":0}]';
-        if (newPricingJson === currentDefault) continue; // Actually free
+        if (newPricingJson === currentDefault) {
+          // Confirmed free - update label to distinguish from unverified default
+          await env.DB.prepare(
+            `UPDATE concerts SET pricing_json = '[{"label":"無料","amount":0}]', updated_at = datetime('now') WHERE slug = ?`
+          ).bind(row.slug).run();
+          continue;
+        }
 
         // Also extract ticket URL
         let ticketUrl = '';
