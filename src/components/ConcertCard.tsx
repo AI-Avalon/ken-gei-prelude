@@ -35,13 +35,6 @@ export default function ConcertCard({ concert, highlight }: Props) {
             />
           )}
         </div>
-      ) : concert.source_url ? (
-        <div className="aspect-[4/3] bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
-          <div className="text-center">
-            <span className="text-primary-400/60 text-3xl font-display tracking-widest">♪</span>
-            <p className="text-stone-600 text-xs mt-2">{cat.label}</p>
-          </div>
-        </div>
       ) : (
         <div className="aspect-[4/3] bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
           <div className="text-center">
@@ -68,7 +61,7 @@ export default function ConcertCard({ concert, highlight }: Props) {
         </h3>
 
         {/* Venue */}
-        <p className="text-xs text-stone-500 mb-3">{concert.venue?.name || '会場未定'}</p>
+        <p className="text-xs text-stone-500 mb-3 truncate">{concert.venue?.name || '会場未定'}</p>
 
         {/* Bottom row */}
         <div className="flex items-center justify-between text-xs border-t border-stone-100 pt-3">

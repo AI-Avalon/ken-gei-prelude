@@ -104,7 +104,7 @@ export default function CalendarAddDropdown({ concert }: Props) {
       </button>
 
       {open && (
-        <div className="absolute z-30 mt-2 w-80 bg-white border border-stone-200 rounded-xl shadow-2xl py-2 left-0 sm:left-auto sm:right-0 animate-scale-in">
+        <div className="absolute z-30 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm bg-white border border-stone-200 rounded-xl shadow-2xl py-2 left-0 sm:left-auto sm:right-0 animate-scale-in">
           {/* この予定だけ追加 */}
           <div className="px-4 pt-2 pb-1">
             <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">📌 この予定だけ追加</span>

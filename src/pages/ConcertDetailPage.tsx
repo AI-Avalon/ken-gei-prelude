@@ -62,6 +62,11 @@ export default function ConcertDetailPage() {
 
       {/* Category badge & status */}
       <div className="flex items-center gap-3 mb-4">
+        <Link to="/concerts" className="text-stone-400 hover:text-primary-600 transition-colors" aria-label="戻る">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </Link>
         <span className={`badge ${cat.color}`}>{cat.icon} {cat.label}</span>
         <span className={`text-sm font-medium ${
           daysText === '本日！' ? 'text-red-600' : daysText === '終了' ? 'text-stone-400' : 'text-primary-600'
@@ -73,6 +78,17 @@ export default function ConcertDetailPage() {
       {/* Title */}
       <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">{concert.title}</h1>
       {concert.subtitle && <p className="text-xl text-stone-600 mb-6">{concert.subtitle}</p>}
+
+      {/* Ticket URL — prominent button */}
+      {concert.ticket_url && (
+        <a href={concert.ticket_url} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 bg-accent-600 hover:bg-accent-700 text-white font-medium px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all mb-6">
+          🎫 チケットはこちらから
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
+      )}
 
       {/* Basic info table */}
       <div className="card p-6 mb-6">
@@ -122,7 +138,7 @@ export default function ConcertDetailPage() {
           <h2 className="font-bold text-lg mb-3">料金</h2>
           <div className="space-y-2">
             {concert.pricing.map((p, i) => (
-              <div key={i} className="flex items-center justify-between">
+              <div key={i} className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-stone-700">{p.label}</span>
                 <span className="font-medium">
                   {p.amount === 0 ? '無料' : `¥${p.amount.toLocaleString()}`}
@@ -138,8 +154,8 @@ export default function ConcertDetailPage() {
           )}
           {concert.ticket_url && (
             <a href={concert.ticket_url} target="_blank" rel="noopener noreferrer"
-              className="inline-block mt-3 text-primary-600 hover:underline text-sm">
-              🎫 チケット情報 →
+              className="inline-flex items-center gap-2 mt-3 text-primary-600 hover:text-primary-700 hover:underline text-sm font-medium">
+              🎫 チケットはこちらから →
             </a>
           )}
           {concert.ticket_note && (
@@ -202,8 +218,8 @@ export default function ConcertDetailPage() {
           <h2 className="font-bold text-lg mb-3">プログラム</h2>
           <div className="space-y-2">
             {concert.program.map((p, i) => (
-              <div key={i} className="flex gap-4 text-sm">
-                <span className="text-stone-500 min-w-[120px]">{p.composer}</span>
+              <div key={i} className="flex flex-col sm:flex-row sm:gap-4 text-sm">
+                <span className="text-stone-500 sm:min-w-[120px] sm:shrink-0">{p.composer}</span>
                 <span className="text-stone-800">{p.piece}</span>
               </div>
             ))}

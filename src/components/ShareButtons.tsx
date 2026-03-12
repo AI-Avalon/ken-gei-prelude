@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { googleCalendarUrl, outlookCalendarUrl, yahooCalendarUrl, downloadICS, shareUrls } from '../lib/utils';
+import { shareUrls } from '../lib/utils';
 import type { Concert } from '../types';
 
 export default function ShareButtons({ concert }: { concert: Concert }) {
@@ -17,39 +17,25 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
   return (
     <div className="space-y-4">
       {/* Share buttons */}
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
         <button onClick={copyLink}
           className="btn-secondary text-sm">
           {copied ? '✅ コピーしました' : '📋 リンクコピー'}
         </button>
         <a href={urls.twitter} target="_blank" rel="noopener noreferrer"
-          className="btn-secondary text-sm inline-flex items-center gap-1">
+          className="btn-secondary text-sm inline-flex items-center justify-center gap-1">
           𝕏 ポスト
         </a>
         <a href={urls.line} target="_blank" rel="noopener noreferrer"
-          className="bg-[#06C755] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#05b34d] transition-colors">
+          className="bg-[#06C755] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#05b34d] transition-colors text-center">
           LINE
         </a>
         <a href={urls.facebook} target="_blank" rel="noopener noreferrer"
-          className="bg-[#1877F2] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#166fe5] transition-colors">
+          className="bg-[#1877F2] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#166fe5] transition-colors text-center">
           Facebook
         </a>
         <button onClick={() => setShowQR(!showQR)}
           className="btn-secondary text-sm">QR</button>
-      </div>
-
-      {/* Calendar buttons */}
-      <div className="flex flex-wrap gap-2">
-        <a href={googleCalendarUrl(concert)} target="_blank" rel="noopener noreferrer"
-          className="btn-secondary text-sm">📅 Google</a>
-        <button onClick={() => downloadICS(concert)}
-          className="btn-secondary text-sm">🍎 Apple/iCal</button>
-        <a href={outlookCalendarUrl(concert)} target="_blank" rel="noopener noreferrer"
-          className="btn-secondary text-sm">📧 Outlook</a>
-        <a href={yahooCalendarUrl(concert)} target="_blank" rel="noopener noreferrer"
-          className="btn-secondary text-sm">📅 Yahoo!</a>
-        <button onClick={() => downloadICS(concert)}
-          className="btn-secondary text-sm">⬇ ICSダウンロード</button>
       </div>
 
       {/* QR Modal */}

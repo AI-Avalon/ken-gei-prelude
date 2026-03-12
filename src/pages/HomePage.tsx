@@ -37,7 +37,7 @@ export default function HomePage() {
           <p className="text-primary-400/80 text-xs tracking-[0.4em] uppercase mb-6 font-sans animate-fade-in">
             愛知県立芸術大学 音楽学部
           </p>
-          <h1 className="text-6xl md:text-8xl font-display font-bold mb-4 tracking-wider animate-blur-in">
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-display font-bold mb-4 tracking-wider animate-blur-in">
             <span className="text-gold">{SITE_NAME}</span>
           </h1>
           <div className="flex items-center justify-center gap-8 my-8 animate-fade-in">
