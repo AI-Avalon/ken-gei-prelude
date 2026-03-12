@@ -1,5 +1,6 @@
 // Ken-Gei Prelude — Calendar Add Dropdown
 // Spec: Chapter 10 — カレンダー連携
+// 2セクション構成: この予定だけ追加 / 全演奏会を自動購読
 
 import { useState, useRef, useEffect } from 'react';
 import type { Concert } from '../types';
@@ -24,9 +25,13 @@ export default function CalendarAddDropdown({ concert }: Props) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const webcalUrl = `webcal://${SITE_URL.replace(/^https?:\/\//, '')}/api/feed/ics`;
+  const host = SITE_URL.replace(/^https?:\/\//, '');
+  const webcalAllUrl = `webcal://${host}/api/feed/ics`;
+  const googleSubUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcalAllUrl)}`;
+  const httpsIcsUrl = `${SITE_URL}/api/feed/ics`;
 
-  const items = [
+  // この予定だけ追加
+  const singleItems = [
     {
       label: 'Google カレンダーに追加',
       icon: '📅',
@@ -57,10 +62,31 @@ export default function CalendarAddDropdown({ concert }: Props) {
       icon: '⬇️',
       onClick: () => downloadICS(concert),
     },
+  ];
+
+  // 全演奏会を自動購読
+  const subscribeItems = [
     {
-      label: 'Webcalで購読する',
+      label: 'Google カレンダーで購読',
+      icon: '📅',
+      onClick: () => window.open(googleSubUrl, '_blank'),
+    },
+    {
+      label: 'Apple / iCalで購読',
+      icon: '🍎',
+      onClick: () => { window.location.href = webcalAllUrl; },
+    },
+    {
+      label: 'Outlookで購読',
+      icon: '📧',
+      onClick: () => { window.location.href = webcalAllUrl; },
+    },
+    {
+      label: '購読URL をコピー',
       icon: '🔗',
-      onClick: () => { window.location.href = webcalUrl; },
+      onClick: () => {
+        navigator.clipboard.writeText(httpsIcsUrl).catch(() => {});
+      },
     },
   ];
 
@@ -78,12 +104,34 @@ export default function CalendarAddDropdown({ concert }: Props) {
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg py-1 right-0">
-          {items.map((item, i) => (
+        <div className="absolute z-20 mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-lg py-1 right-0">
+          {/* この予定だけ追加 */}
+          <div className="px-4 pt-2 pb-1">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">📌 この予定だけ追加</span>
+          </div>
+          {singleItems.map((item, i) => (
             <button
-              key={i}
+              key={`s-${i}`}
               onClick={() => { item.onClick(); setOpen(false); }}
-              className="w-full text-left px-4 py-2.5 text-sm hover:bg-primary-50 flex items-center gap-3 transition-colors"
+              className="w-full text-left px-4 py-2 text-sm hover:bg-primary-50 flex items-center gap-3 transition-colors"
+            >
+              <span className="text-lg">{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+
+          <div className="border-t border-gray-200 my-1" />
+
+          {/* 全演奏会を自動購読 */}
+          <div className="px-4 pt-2 pb-1">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">🔄 全演奏会を自動購読</span>
+          </div>
+          <p className="px-4 pb-1 text-xs text-gray-400">新しい演奏会が追加されると自動で反映されます</p>
+          {subscribeItems.map((item, i) => (
+            <button
+              key={`a-${i}`}
+              onClick={() => { item.onClick(); setOpen(false); }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-accent-50 flex items-center gap-3 transition-colors"
             >
               <span className="text-lg">{item.icon}</span>
               <span>{item.label}</span>
