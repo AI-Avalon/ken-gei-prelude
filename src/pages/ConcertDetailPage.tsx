@@ -4,6 +4,7 @@ import { fetchConcert, fetchConcerts } from '../lib/api';
 import { CATEGORIES, DEPARTMENTS } from '../lib/constants';
 import { formatDateLong, formatTime, formatPricing, daysUntil } from '../lib/utils';
 import ShareButtons from '../components/ShareButtons';
+import CalendarAddDropdown from '../components/CalendarAddDropdown';
 import MapSection from '../components/MapSection';
 import ConcertCard from '../components/ConcertCard';
 import type { Concert } from '../types';
@@ -280,9 +281,15 @@ export default function ConcertDetailPage() {
         </div>
       )}
 
+      {/* Calendar Add */}
+      <div className="card p-6 mb-6">
+        <h2 className="font-bold text-lg mb-3">カレンダーに追加</h2>
+        <CalendarAddDropdown concert={concert} />
+      </div>
+
       {/* Share */}
       <div className="card p-6 mb-6">
-        <h2 className="font-bold text-lg mb-3">共有・カレンダー</h2>
+        <h2 className="font-bold text-lg mb-3">共有</h2>
         <ShareButtons concert={concert} />
       </div>
 

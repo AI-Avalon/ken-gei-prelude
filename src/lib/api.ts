@@ -179,3 +179,23 @@ export async function fetchMaintenanceLogs(
 ): Promise<ApiResponse<import('../types').MaintenanceLogEntry[]>> {
   return request('/admin/maintenance', { headers: { 'X-Admin-Token': token } });
 }
+
+// Cron: Trigger scraping (admin)
+export async function triggerScrape(
+  token: string
+): Promise<ApiResponse<{ found: number; added: number; errors: string[] }>> {
+  return request('/cron/scrape', {
+    method: 'POST',
+    headers: { 'X-Admin-Token': token },
+  });
+}
+
+// Cron: Trigger maintenance (admin)
+export async function triggerMaintenance(
+  token: string
+): Promise<ApiResponse<{ task: string; success: boolean; details: string }[]>> {
+  return request('/cron/maintenance', {
+    method: 'POST',
+    headers: { 'X-Admin-Token': token },
+  });
+}

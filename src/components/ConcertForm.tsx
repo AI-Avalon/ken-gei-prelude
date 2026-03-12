@@ -4,6 +4,9 @@ import { CATEGORIES, DEPARTMENTS, SEATING_OPTIONS } from '../lib/constants';
 import { fetchVenues } from '../lib/api';
 import { parsePricingText } from '../lib/utils';
 import FlyerUploader from './FlyerUploader';
+import PricingEditor from './PricingEditor';
+import ProgramEditor from './ProgramEditor';
+import PerformerEditor from './PerformerEditor';
 
 interface Props {
   initialData?: Partial<Concert>;
@@ -11,9 +14,10 @@ interface Props {
   isEdit?: boolean;
   concertSlug?: string;
   submitting?: boolean;
+  hideFlyer?: boolean;
 }
 
-export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug, submitting: externalSubmitting }: Props) {
+export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug, submitting: externalSubmitting, hideFlyer }: Props) {
   const [mode, setMode] = useState<'quick' | 'full'>(isEdit ? 'full' : 'quick');
   const [loading, setLoading] = useState(false);
   const [venueList, setVenueList] = useState<VenueRecord[]>([]);
@@ -43,6 +47,9 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
   const [program, setProgram] = useState<ProgramItem[]>(initialData?.program || []);
   const [performers, setPerformers] = useState<Performer[]>(initialData?.performers || []);
   const [supervisors, setSupervisors] = useState<string[]>(initialData?.supervisors || []);
+  const [guestArtists, setGuestArtists] = useState<string[]>(initialData?.guest_artists || []);
+  const [ticketUrl, setTicketUrl] = useState(initialData?.ticket_url || '');
+  const [ticketNote, setTicketNote] = useState(initialData?.ticket_note || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [contactEmail, setContactEmail] = useState(initialData?.contact_email || '');
   const [contactTel, setContactTel] = useState(initialData?.contact_tel || '');
@@ -131,6 +138,9 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
       program,
       performers,
       supervisors,
+      guest_artists: guestArtists,
+      ticket_url: ticketUrl,
+      ticket_note: ticketNote,
       description,
       contact_email: contactEmail,
       contact_tel: contactTel,
@@ -305,59 +315,37 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
             <p className="text-xs text-gray-500 mt-1">「無料」「1000円」のように入力してください</p>
           </div>
         ) : (
-          <>
-            {pricing.map((item, i) => (
-              <div key={i} className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <label className="label">区分名</label>
-                  <input className="input" value={item.label}
-                    onChange={(e) => {
-                      const next = [...pricing];
-                      next[i] = { ...next[i], label: e.target.value };
-                      setPricing(next);
-                    }} />
-                </div>
-                <div className="w-32">
-                  <label className="label">金額</label>
-                  <input type="number" className="input" value={item.amount}
-                    onChange={(e) => {
-                      const next = [...pricing];
-                      next[i] = { ...next[i], amount: parseInt(e.target.value) || 0 };
-                      setPricing(next);
-                    }} />
-                </div>
-                <div className="flex-1">
-                  <label className="label">備考</label>
-                  <input className="input" value={item.note || ''}
-                    onChange={(e) => {
-                      const next = [...pricing];
-                      next[i] = { ...next[i], note: e.target.value };
-                      setPricing(next);
-                    }} />
-                </div>
-                <button type="button" onClick={() => setPricing(pricing.filter((_, j) => j !== i))}
-                  className="text-red-500 p-2 hover:bg-red-50 rounded">🗑</button>
-              </div>
-            ))}
-            <button type="button" onClick={() => setPricing([...pricing, { label: '', amount: 0 }])}
-              className="text-sm text-primary-600 hover:text-primary-700">+ 料金区分を追加</button>
-            <div>
-              <label className="label">料金備考</label>
-              <input className="input" value={pricingNote} onChange={(e) => setPricingNote(e.target.value)}
-                placeholder="例: 未就学児入場不可" />
-            </div>
-          </>
+          <PricingEditor
+            pricing={pricing}
+            onChange={setPricing}
+            pricingNote={pricingNote}
+            onNoteChange={setPricingNote}
+          />
         )}
 
         {mode === 'full' && (
-          <div>
-            <label className="label">座席種別</label>
-            <select className="input" value={seating} onChange={(e) => setSeating(e.target.value)}>
-              {SEATING_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
+          <>
+            <div>
+              <label className="label">座席種別</label>
+              <select className="input" value={seating} onChange={(e) => setSeating(e.target.value)}>
+                {SEATING_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">チケットURL</label>
+              <input type="url" className="input" value={ticketUrl}
+                onChange={(e) => setTicketUrl(e.target.value)}
+                placeholder="外部チケットサイトのURL（任意）" />
+            </div>
+            <div>
+              <label className="label">チケット備考</label>
+              <input className="input" value={ticketNote}
+                onChange={(e) => setTicketNote(e.target.value)}
+                placeholder="例: ○○にて整理券配布" />
+            </div>
+          </>
         )}
       </div>
 
@@ -366,71 +354,12 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
         <>
           <div className="bg-white rounded-xl border p-6 space-y-4">
             <h3 className="font-bold text-lg">プログラム</h3>
-            {program.map((item, i) => (
-              <div key={i} className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <label className="label">作曲者</label>
-                  <input className="input" value={item.composer}
-                    onChange={(e) => {
-                      const next = [...program];
-                      next[i] = { ...next[i], composer: e.target.value };
-                      setProgram(next);
-                    }} />
-                </div>
-                <div className="flex-1">
-                  <label className="label">曲名</label>
-                  <input className="input" value={item.piece}
-                    onChange={(e) => {
-                      const next = [...program];
-                      next[i] = { ...next[i], piece: e.target.value };
-                      setProgram(next);
-                    }} />
-                </div>
-                <button type="button" onClick={() => setProgram(program.filter((_, j) => j !== i))}
-                  className="text-red-500 p-2 hover:bg-red-50 rounded">🗑</button>
-              </div>
-            ))}
-            <button type="button" onClick={() => setProgram([...program, { composer: '', piece: '' }])}
-              className="text-sm text-primary-600 hover:text-primary-700">+ プログラムを追加</button>
+            <ProgramEditor program={program} onChange={setProgram} />
           </div>
 
           <div className="bg-white rounded-xl border p-6 space-y-4">
             <h3 className="font-bold text-lg">出演者</h3>
-            {performers.map((item, i) => (
-              <div key={i} className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <label className="label">名前</label>
-                  <input className="input" value={item.name}
-                    onChange={(e) => {
-                      const next = [...performers];
-                      next[i] = { ...next[i], name: e.target.value };
-                      setPerformers(next);
-                    }} />
-                </div>
-                <div className="w-40">
-                  <label className="label">学年</label>
-                  <input className="input" value={item.year || ''}
-                    onChange={(e) => {
-                      const next = [...performers];
-                      next[i] = { ...next[i], year: e.target.value };
-                      setPerformers(next);
-                    }} />
-                </div>
-                <div className="w-32">
-                  <label className="label">楽器</label>
-                  <input className="input" value={item.instrument || ''}
-                    onChange={(e) => {
-                      const next = [...performers];
-                      next[i] = { ...next[i], instrument: e.target.value };
-                      setPerformers(next);
-                    }} />
-                </div>
-                <button type="button" onClick={() => setPerformers(performers.filter((_, j) => j !== i))}
-                  className="text-red-500 p-2 hover:bg-red-50 rounded">🗑</button>
-              </div>
-            ))}
-            <button type="button" onClick={() => setPerformers([...performers, { name: '' }])}
-              className="text-sm text-primary-600 hover:text-primary-700">+ 出演者を追加</button>
+            <PerformerEditor performers={performers} onChange={setPerformers} />
           </div>
 
           <div className="bg-white rounded-xl border p-6 space-y-4">
@@ -450,6 +379,25 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
             ))}
             <button type="button" onClick={() => setSupervisors([...supervisors, ''])}
               className="text-sm text-primary-600 hover:text-primary-700">+ 指導者を追加</button>
+          </div>
+
+          <div className="bg-white rounded-xl border p-6 space-y-4">
+            <h3 className="font-bold text-lg">ゲストアーティスト</h3>
+            {guestArtists.map((name, i) => (
+              <div key={i} className="flex gap-2">
+                <input className="input flex-1" value={name}
+                  onChange={(e) => {
+                    const next = [...guestArtists];
+                    next[i] = e.target.value;
+                    setGuestArtists(next);
+                  }}
+                  placeholder="例: ○○ ○○（ピアノ）" />
+                <button type="button" onClick={() => setGuestArtists(guestArtists.filter((_, j) => j !== i))}
+                  className="text-red-500 p-2 hover:bg-red-50 rounded">🗑</button>
+              </div>
+            ))}
+            <button type="button" onClick={() => setGuestArtists([...guestArtists, ''])}
+              className="text-sm text-primary-600 hover:text-primary-700">+ ゲストアーティストを追加</button>
           </div>
 
           <div className="bg-white rounded-xl border p-6 space-y-4">
@@ -485,18 +433,20 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
         </>
       )}
 
-      {/* Flyer upload */}
-      <div className="bg-white rounded-xl border p-6 space-y-4">
-        <h3 className="font-bold text-lg">チラシ画像</h3>
-        <FlyerUploader
-          concertSlug={concertSlug}
-          existingKeys={flyerKeys}
-          onUpload={(key, thumbKey) => {
-            setFlyerKeys((prev) => [...prev, key]);
-            setFlyerThumb(thumbKey);
-          }}
-        />
-      </div>
+      {/* Flyer upload (only when slug available and not hidden by parent) */}
+      {!hideFlyer && (
+        <div className="bg-white rounded-xl border p-6 space-y-4">
+          <h3 className="font-bold text-lg">チラシ画像</h3>
+          <FlyerUploader
+            concertSlug={concertSlug}
+            existingKeys={flyerKeys}
+            onUpload={(key, thumbKey) => {
+              setFlyerKeys((prev) => [...prev, key]);
+              setFlyerThumb(thumbKey);
+            }}
+          />
+        </div>
+      )}
 
       {/* Edit password */}
       {!isEdit && (

@@ -101,6 +101,7 @@ export default function ConcertEditPage() {
           submitting={submitting}
           initialData={concert}
           isEdit
+          hideFlyer
         />
 
         <div className="mt-8">

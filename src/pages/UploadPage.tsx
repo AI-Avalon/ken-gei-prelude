@@ -50,7 +50,7 @@ export default function UploadPage() {
         誰でも登録できます。編集用パスワードを設定すると、後から内容を変更できます。
       </p>
 
-      <ConcertForm onSubmit={handleSubmit} submitting={submitting} />
+      <ConcertForm onSubmit={handleSubmit} submitting={submitting} hideFlyer />
 
       <div className="mt-8">
         <h2 className="text-lg font-bold mb-4">チラシ画像（任意）</h2>

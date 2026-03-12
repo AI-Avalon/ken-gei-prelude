@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   adminAuth, adminFetchConcerts, adminUpdateConcert, adminDeleteConcert,
   fetchStats, fetchInquiries, updateInquiry, fetchMaintenanceLogs,
+  triggerScrape, triggerMaintenance,
 } from '../lib/api';
 import { CATEGORIES } from '../lib/constants';
 import { formatDateShort } from '../lib/utils';
@@ -102,7 +103,7 @@ export default function AdminPage() {
       {tab === 'inquiries' && <InquiriesTab token={token} />}
       {tab === 'flyers' && <FlyersTab token={token} />}
       {tab === 'analytics' && <AnalyticsTab token={token} />}
-      {tab === 'settings' && <SettingsTab />}
+      {tab === 'settings' && <SettingsTab token={token} />}
       {tab === 'logs' && <LogsTab token={token} />}
     </div>
   );
@@ -718,7 +719,54 @@ function AnalyticsTab({ token }: { token: string }) {
 // ============================================================
 // Settings Tab
 // ============================================================
-function SettingsTab() {
+function SettingsTab({ token }: { token: string }) {
+  const [scraping, setScraping] = useState(false);
+  const [maintaining, setMaintaining] = useState(false);
+  const [scrapeResult, setScrapeResult] = useState<string | null>(null);
+  const [maintenanceResult, setMaintenanceResult] = useState<string | null>(null);
+
+  const handleScrape = async () => {
+    setScraping(true);
+    setScrapeResult(null);
+    try {
+      const res = await triggerScrape(token);
+      if (res.ok && res.data) {
+        const d = res.data;
+        setScrapeResult(`✅ ${d.found}件発見、${d.added}件新規追加${d.errors.length > 0 ? `\n⚠️ ${d.errors.join(', ')}` : ''}`);
+        toast(`スクレイピング完了: ${d.found}件発見、${d.added}件追加`, 'success');
+      } else {
+        setScrapeResult(`❌ ${res.error || '失敗'}`);
+        toast(res.error || 'スクレイピングに失敗しました', 'error');
+      }
+    } catch {
+      setScrapeResult('❌ 通信エラー');
+      toast('スクレイピングに失敗しました', 'error');
+    } finally {
+      setScraping(false);
+    }
+  };
+
+  const handleMaintenance = async () => {
+    setMaintaining(true);
+    setMaintenanceResult(null);
+    try {
+      const res = await triggerMaintenance(token);
+      if (res.ok && res.data) {
+        const results = res.data.map((r) => `${r.success ? '✅' : '❌'} ${r.task}: ${r.details}`).join('\n');
+        setMaintenanceResult(results);
+        toast('メンテナンス完了', 'success');
+      } else {
+        setMaintenanceResult(`❌ ${res.error || '失敗'}`);
+        toast(res.error || 'メンテナンスに失敗しました', 'error');
+      }
+    } catch {
+      setMaintenanceResult('❌ 通信エラー');
+      toast('メンテナンスに失敗しました', 'error');
+    } finally {
+      setMaintaining(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="card p-6">
@@ -742,20 +790,45 @@ function SettingsTab() {
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div>
+              <p className="font-medium text-sm">🌐 大学サイトスクレイピング</p>
+              <p className="text-xs text-gray-500">愛知県芸公式サイトから演奏会情報を取得（通常は毎朝6:00に自動実行）</p>
+            </div>
+            <button
+              onClick={handleScrape}
+              disabled={scraping}
+              className="btn-primary text-sm"
+            >
+              {scraping ? '実行中...' : '手動実行'}
+            </button>
+          </div>
+          {scrapeResult && (
+            <pre className="text-xs bg-gray-100 rounded p-3 whitespace-pre-wrap">{scrapeResult}</pre>
+          )}
+
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div>
+              <p className="font-medium text-sm">🧹 自動メンテナンス</p>
+              <p className="text-xs text-gray-500">古いログ削除・物理削除・レート制限クリア（通常は毎月1日に自動実行）</p>
+            </div>
+            <button
+              onClick={handleMaintenance}
+              disabled={maintaining}
+              className="btn-primary text-sm"
+            >
+              {maintaining ? '実行中...' : '手動実行'}
+            </button>
+          </div>
+          {maintenanceResult && (
+            <pre className="text-xs bg-gray-100 rounded p-3 whitespace-pre-wrap">{maintenanceResult}</pre>
+          )}
+
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div>
               <p className="font-medium text-sm">データバックアップ</p>
               <p className="text-xs text-gray-500">D1データをJSON形式でエクスポート</p>
             </div>
             <button className="btn-secondary text-sm" disabled>
               エクスポート（準備中）
-            </button>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
-              <p className="font-medium text-sm">古いログの削除</p>
-              <p className="text-xs text-gray-500">6ヶ月以上前の閲覧ログを削除</p>
-            </div>
-            <button className="btn-secondary text-sm" disabled>
-              実行（Cronで自動実行）
             </button>
           </div>
         </div>

@@ -91,6 +91,11 @@ echo ""
 echo "$ADMIN_PW" | npx wrangler secret put ADMIN_PASSWORD 2>/dev/null
 echo "  → ADMIN_PASSWORD 設定完了"
 
+CRON_SECRET=$(openssl rand -hex 32)
+echo "$CRON_SECRET" | npx wrangler secret put CRON_SECRET 2>/dev/null
+echo "  → CRON_SECRET 設定完了（自動生成）"
+echo "  ⚠️ Cronワーカーにも同じ CRON_SECRET を設定してください"
+
 read -rsp "暗号化キーを入力（32文字以上推奨。空欄で自動生成）: " ENC_KEY
 echo ""
 if [ -z "$ENC_KEY" ]; then
@@ -117,6 +122,23 @@ echo ""
 echo "🚀 デプロイ中..."
 npx wrangler pages deploy dist --project-name=ken-gei-prelude
 
+# 11. Cron ワーカーのデプロイ
+echo ""
+echo "⏰ Cron ワーカーをデプロイ中..."
+if [ -f workers/wrangler.toml ]; then
+  # workers/wrangler.toml の D1/KV ID を本体と同じ値に書き換え
+  sed -i.bak "s/YOUR_D1_DATABASE_ID/$D1_ID/g" workers/wrangler.toml
+  sed -i.bak "s/YOUR_KV_NAMESPACE_ID/$KV_ID/g" workers/wrangler.toml
+  rm -f workers/wrangler.toml.bak
+  cd workers
+  npx wrangler deploy --config wrangler.toml
+  echo "$CRON_SECRET" | npx wrangler secret put CRON_SECRET --config wrangler.toml 2>/dev/null
+  cd ..
+  echo "  → Cron ワーカーデプロイ完了"
+else
+  echo "  ⚠️ workers/wrangler.toml が見つかりません。Cronワーカーは手動でデプロイしてください"
+fi
+
 echo ""
 echo "========================================="
 echo "✅ セットアップ完了！"
@@ -129,5 +151,6 @@ echo "📌 次のステップ:"
 echo "  1. GitHubリポジトリに push"
 echo "  2. GitHub Secrets に CLOUDFLARE_API_TOKEN と CLOUDFLARE_ACCOUNT_ID を設定"
 echo "  3. 以降は main ブランチへの push で自動デプロイ"
+echo "  4. Cronワーカーが毎日21:00(JST)にスクレイピング、毎月1日にメンテナンス実行"
 echo ""
 echo "🎵 Ken-Gei Prelude を楽しんでください！"
