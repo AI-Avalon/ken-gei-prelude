@@ -3,7 +3,7 @@
 
 interface Env {
   DB: D1Database;
-  R2: R2Bucket;
+  KV: KVNamespace;
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -63,16 +63,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const key = `flyers/${slug}/${timestamp}.webp`;
     const thumbnailKey = `flyers/${slug}/${timestamp}_thumb.webp`;
 
-    // Upload main image
-    await env.R2.put(key, await file.arrayBuffer(), {
-      httpMetadata: { contentType: 'image/webp' },
-    });
+    await env.KV.put(key, await file.arrayBuffer());
 
-    // Upload thumbnail if provided
     if (thumbnail) {
-      await env.R2.put(thumbnailKey, await thumbnail.arrayBuffer(), {
-        httpMetadata: { contentType: 'image/webp' },
-      });
+      await env.KV.put(thumbnailKey, await thumbnail.arrayBuffer());
     }
 
     // Update concert record if slug provided

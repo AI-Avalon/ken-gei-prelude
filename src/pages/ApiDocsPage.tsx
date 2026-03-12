@@ -116,7 +116,7 @@ export default function ApiDocsPage() {
         <Endpoint
           method="GET"
           path="/image/:key"
-          description="R2に保存された画像を取得します。7日間キャッシュされます。"
+          description="KVに保存された画像を取得します。7日間キャッシュされます。"
         />
 
         <Endpoint

@@ -8,16 +8,7 @@ binding = "DB"
 database_name = "ken-gei-prelude-db"
 database_id = "<YOUR_D1_DATABASE_ID>"
 
-# R2 Bucket
-[[r2_buckets]]
-binding = "R2"
-bucket_name = "ken-gei-prelude-flyers"
-
-# KV Namespace
+# KV Namespace (cache + flyer images)
 [[kv_namespaces]]
 binding = "KV"
 id = "<YOUR_KV_NAMESPACE_ID>"
-
-# Cron Triggers
-[triggers]
-crons = ["0 21 * * *", "0 18 1 * *", "0 19 1 * *"]

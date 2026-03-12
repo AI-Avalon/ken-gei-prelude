@@ -27,8 +27,7 @@
 | ホスティング | Cloudflare Pages |
 | API | Cloudflare Pages Functions (Workers) |
 | データベース | Cloudflare D1 (SQLite) |
-| ストレージ | Cloudflare R2 |
-| キャッシュ | Cloudflare KV |
+| ストレージ/キャッシュ | Cloudflare KV |
 | 地図 | Leaflet + OpenStreetMap |
 | 検索 | fuse.js |
 | QRコード | qrcode.react |
@@ -36,7 +35,7 @@
 ## 🚀 セットアップ
 
 > 📖 **詳細なデプロイ手順は [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) を参照してください**
-> （Cloudflareアカウント作成 → APIトークン → GitHub Secrets → D1/R2/KV → Cron まで完全網羅）
+> （Cloudflareアカウント作成 → APIトークン → GitHub Secrets → D1/KV → Cron まで完全網羅）
 
 ### 全自動セットアップ
 
@@ -62,7 +61,6 @@ bash setup.sh
 3. **Cloudflare リソースの作成**
    ```bash
    npx wrangler d1 create ken-gei-prelude-db
-   npx wrangler r2 bucket create ken-gei-prelude-flyers
    npx wrangler kv namespace create ken-gei-prelude-cache
    ```
 

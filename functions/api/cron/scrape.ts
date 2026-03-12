@@ -4,9 +4,9 @@
 
 interface Env {
   DB: D1Database;
-  R2: R2Bucket;
   KV: KVNamespace;
   ADMIN_PASSWORD: string;
+  CRON_SECRET: string;
 }
 
 interface ScrapedEvent {
@@ -341,7 +341,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const expected = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
     isAuthed = token === expected;
   }
-  const isCron = cronSecret && env.ADMIN_PASSWORD && cronSecret === env.ADMIN_PASSWORD;
+  const isCron = cronSecret && env.CRON_SECRET && cronSecret === env.CRON_SECRET;
 
   if (!isAuthed && !isCron) {
     return jsonResponse({ ok: false, error: '認証が必要です' }, 401);

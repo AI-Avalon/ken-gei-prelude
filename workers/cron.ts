@@ -9,9 +9,8 @@
 
 interface Env {
   DB: D1Database;
-  R2: R2Bucket;
   KV: KVNamespace;
-  ADMIN_PASSWORD: string;
+  CRON_SECRET: string;
   SITE_URL: string;
 }
 
@@ -48,7 +47,7 @@ async function runScrapeViaApi(env: Env): Promise<void> {
     const res = await fetch(`${siteUrl}/api/cron/scrape`, {
       method: 'POST',
       headers: {
-        'X-Cron-Secret': env.ADMIN_PASSWORD,
+        'X-Cron-Secret': env.CRON_SECRET,
         'Content-Type': 'application/json',
       },
     });
@@ -70,7 +69,7 @@ async function runMaintenanceViaApi(env: Env): Promise<void> {
     const res = await fetch(`${siteUrl}/api/cron/maintenance`, {
       method: 'POST',
       headers: {
-        'X-Cron-Secret': env.ADMIN_PASSWORD,
+        'X-Cron-Secret': env.CRON_SECRET,
         'Content-Type': 'application/json',
       },
     });

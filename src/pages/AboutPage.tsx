@@ -62,7 +62,7 @@ export default function AboutPage() {
             <TechItem label="ホスティング" value="Cloudflare Pages" />
             <TechItem label="API" value="Pages Functions (Workers)" />
             <TechItem label="データベース" value="Cloudflare D1 (SQLite)" />
-            <TechItem label="ファイルストレージ" value="Cloudflare R2" />
+            <TechItem label="ファイルストレージ" value="Cloudflare KV" />
             <TechItem label="地図" value="Leaflet + OpenStreetMap" />
             <TechItem label="検索" value="fuse.js (曖昧検索)" />
           </div>

@@ -39,12 +39,7 @@ if [ -z "$D1_ID" ]; then
 fi
 echo "  → database_id: $D1_ID"
 
-# 5. R2 バケット作成
-echo ""
-echo "📁 R2 バケットを作成中..."
-npx wrangler r2 bucket create ken-gei-prelude-flyers 2>/dev/null || echo "  (既に存在する場合はスキップ)"
-
-# 6. KV namespace 作成
+# 5. KV namespace 作成
 echo ""
 echo "💾 KV namespace を作成中..."
 KV_OUTPUT=$(npx wrangler kv namespace create ken-gei-prelude-cache 2>&1)
@@ -56,7 +51,7 @@ if [ -z "$KV_ID" ]; then
 fi
 echo "  → kv namespace id: $KV_ID"
 
-# 7. wrangler.toml 生成
+# 6. wrangler.toml 生成
 echo ""
 echo "📝 wrangler.toml を生成中..."
 cat > wrangler.toml << EOF
@@ -69,30 +64,23 @@ binding = "DB"
 database_name = "ken-gei-prelude-db"
 database_id = "$D1_ID"
 
-[[r2_buckets]]
-binding = "R2"
-bucket_name = "ken-gei-prelude-flyers"
-
 [[kv_namespaces]]
 binding = "KV"
 id = "$KV_ID"
-
-[triggers]
-crons = ["0 21 * * *", "0 18 1 * *", "0 19 1 * *"]
 EOF
 echo "  → wrangler.toml 生成完了"
 
-# 8. Secrets 設定
+# 7. Secrets 設定
 echo ""
 echo "🔒 秘密情報を設定します"
 echo ""
 read -rsp "管理画面パスワードを入力: " ADMIN_PW
 echo ""
-echo "$ADMIN_PW" | npx wrangler secret put ADMIN_PASSWORD 2>/dev/null
+echo "$ADMIN_PW" | npx wrangler pages secret put ADMIN_PASSWORD --project-name=ken-gei-prelude 2>/dev/null || true
 echo "  → ADMIN_PASSWORD 設定完了"
 
 CRON_SECRET=$(openssl rand -hex 32)
-echo "$CRON_SECRET" | npx wrangler secret put CRON_SECRET 2>/dev/null
+echo "$CRON_SECRET" | npx wrangler pages secret put CRON_SECRET --project-name=ken-gei-prelude 2>/dev/null || true
 echo "  → CRON_SECRET 設定完了（自動生成）"
 echo "  ⚠️ Cronワーカーにも同じ CRON_SECRET を設定してください"
 
@@ -103,26 +91,26 @@ if [ -z "$ENC_KEY" ]; then
   echo "  → 自動生成: $ENC_KEY"
   echo "  ⚠️ このキーをメモしてください！お問い合わせの復号に必要です"
 fi
-echo "$ENC_KEY" | npx wrangler secret put CONTACT_ENCRYPTION_KEY 2>/dev/null
+echo "$ENC_KEY" | npx wrangler pages secret put CONTACT_ENCRYPTION_KEY --project-name=ken-gei-prelude 2>/dev/null || true
 echo "  → CONTACT_ENCRYPTION_KEY 設定完了"
 
-# 9. DB マイグレーション
+# 8. DB マイグレーション
 echo ""
 echo "🗄️ データベースを初期化中..."
-npx wrangler d1 execute ken-gei-prelude-db --remote --file=./migrations/0001_init.sql
+npx wrangler d1 execute ken-gei-prelude-db --remote --yes --file=./migrations/0001_init.sql
 echo "  → テーブル作成完了"
-npx wrangler d1 execute ken-gei-prelude-db --remote --file=./migrations/0002_seed.sql
+npx wrangler d1 execute ken-gei-prelude-db --remote --yes --file=./migrations/0002_seed.sql
 echo "  → 初期データ投入完了"
 
-# 10. ビルド＆デプロイ
+# 9. ビルド＆デプロイ
 echo ""
 echo "🔨 ビルド中..."
 npm run build
 echo ""
 echo "🚀 デプロイ中..."
-npx wrangler pages deploy dist --project-name=ken-gei-prelude
+npx wrangler pages deploy dist --project-name=ken-gei-prelude --branch=main --commit-message "initial deploy"
 
-# 11. Cron ワーカーのデプロイ
+# 10. Cron ワーカーのデプロイ
 echo ""
 echo "⏰ Cron ワーカーをデプロイ中..."
 if [ -f workers/wrangler.toml ]; then

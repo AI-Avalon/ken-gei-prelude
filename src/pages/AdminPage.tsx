@@ -841,7 +841,7 @@ function SettingsTab({ token }: { token: string }) {
           <p>フレームワーク: React 18 + Vite 5</p>
           <p>ホスティング: Cloudflare Pages</p>
           <p>データベース: Cloudflare D1 (SQLite)</p>
-          <p>ストレージ: Cloudflare R2</p>
+          <p>ストレージ: Cloudflare KV</p>
           <p>ライセンス: MIT</p>
         </div>
       </div>

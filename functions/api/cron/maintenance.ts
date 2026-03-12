@@ -4,9 +4,9 @@
 
 interface Env {
   DB: D1Database;
-  R2: R2Bucket;
   KV: KVNamespace;
   ADMIN_PASSWORD: string;
+  CRON_SECRET: string;
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -53,24 +53,23 @@ async function cleanOldAnalytics(env: Env): Promise<TaskResult> {
 // ============================================================
 async function purgeDeletedConcerts(env: Env): Promise<TaskResult> {
   try {
-    // Get concerts to be purged (for R2 cleanup)
+    // Get concerts to be purged (for flyer cleanup)
     const toDelete = await env.DB.prepare(
       "SELECT id, slug, flyer_r2_keys FROM concerts WHERE is_deleted = 1 AND deleted_at < datetime('now', '-30 days')"
     ).all<{ id: string; slug: string; flyer_r2_keys: string }>();
 
-    let r2Cleaned = 0;
+    let kvCleaned = 0;
 
-    // Clean up R2 flyer images for each concert
+    // Clean up KV flyer images for each concert
     for (const concert of toDelete.results || []) {
       try {
         const keys: string[] = JSON.parse(concert.flyer_r2_keys || '[]');
         for (const key of keys) {
           try {
-            await env.R2.delete(key);
-            // Also delete thumbnail
-            await env.R2.delete(key.replace('.webp', '_thumb.webp'));
-            r2Cleaned++;
-          } catch { /* ignore individual R2 delete errors */ }
+            await env.KV.delete(key);
+            await env.KV.delete(key.replace('.webp', '_thumb.webp'));
+            kvCleaned++;
+          } catch { /* ignore individual KV delete errors */ }
         }
       } catch { /* ignore JSON parse errors */ }
     }
@@ -87,7 +86,7 @@ async function purgeDeletedConcerts(env: Env): Promise<TaskResult> {
     ).run();
     const deletedAnalytics = analyticsResult.meta?.changes || 0;
 
-    const details = `${deletedConcerts} 件の演奏会を物理削除、${deletedAnalytics} 件の孤立ログを削除、${r2Cleaned} 件のR2ファイルを削除`;
+    const details = `${deletedConcerts} 件の演奏会を物理削除、${deletedAnalytics} 件の孤立ログを削除、${kvCleaned} 件の画像ファイルを削除`;
 
     await env.DB.prepare(
       "INSERT INTO maintenance_log (task, result, details) VALUES ('purge_deleted', 'success', ?)"
@@ -178,7 +177,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const expected = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
     isAuthed = token === expected;
   }
-  const isCron = cronSecret && env.ADMIN_PASSWORD && cronSecret === env.ADMIN_PASSWORD;
+  const isCron = cronSecret && env.CRON_SECRET && cronSecret === env.CRON_SECRET;
 
   if (!isAuthed && !isCron) {
     return jsonResponse({ ok: false, error: '認証が必要です' }, 401);

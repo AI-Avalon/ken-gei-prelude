@@ -3,7 +3,6 @@
 
 interface Env {
   DB: D1Database;
-  R2: R2Bucket;
   KV: KVNamespace;
   ADMIN_PASSWORD: string;
   CONTACT_ENCRYPTION_KEY: string;
