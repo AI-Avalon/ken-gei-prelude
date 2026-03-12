@@ -204,12 +204,22 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
 }
 
 // Main scraping logic
-async function runScrape(env: Env): Promise<{ found: number; added: number; errors: string[] }> {
-  const TARGET_URL = 'https://www.aichi-fam-u.ac.jp/event/music/';
+async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: number }): Promise<{ found: number; added: number; errors: string[] }> {
+  const BASE_URL = 'https://www.aichi-fam-u.ac.jp/event/music/';
   const errors: string[] = [];
   let found = 0;
   let added = 0;
 
+  // Build list of URLs to scrape
+  const urls: string[] = [BASE_URL];
+  if (options?.allPages) {
+    // Pages 2-16 cover back to 2022
+    for (let i = 2; i <= 16; i++) {
+      urls.push(`${BASE_URL}index_${i}.html`);
+    }
+  }
+
+  for (const TARGET_URL of urls) {
   try {
     // 1. Fetch university event page
     const res = await fetch(TARGET_URL, {
@@ -220,17 +230,18 @@ async function runScrape(env: Env): Promise<{ found: number; added: number; erro
     });
 
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status} from ${TARGET_URL}`);
+      errors.push(`HTTP ${res.status} from ${TARGET_URL}`);
+      continue;
     }
 
     const html = await res.text();
 
     // 2. Parse events
     const events = parseEventList(html, TARGET_URL);
-    found = events.length;
+    found += events.length;
 
-    if (events.length === 0) {
-      // No events found — could mean site structure changed
+    if (events.length === 0 && urls.length === 1) {
+      // No events found on single-page scrape — could mean site structure changed
       errors.push('パース結果が0件です。サイト構造が変更された可能性があります。');
 
       // Check how many consecutive zero-result days
@@ -286,13 +297,13 @@ async function runScrape(env: Env): Promise<{ found: number; added: number; erro
         const slug = generateSlug(ev.date, ev.title);
         const id = generateId(12);
 
-        // Insert as unpublished draft
+        // Insert as published (auto-scraped events are public)
         await env.DB.prepare(
           `INSERT INTO concerts (
             id, slug, fingerprint, title, date, time_start,
             venue_json, category, description, source, source_url,
             is_published, edit_password_hash, created_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'auto_scrape', ?, 0, 'auto_generated', 'scraper')`
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'auto_scrape', ?, 1, 'auto_generated', 'scraper')`
         ).bind(
           id, slug, fingerprint,
           ev.title, ev.date, ev.timeStart,
@@ -317,9 +328,9 @@ async function runScrape(env: Env): Promise<{ found: number; added: number; erro
     }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    errors.push(msg);
-    throw err; // Re-throw for outer handler
+    errors.push(`Page ${TARGET_URL}: ${msg}`);
   }
+  } // end for urls loop
 
   return { found, added, errors };
 }
@@ -349,7 +360,17 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   try {
-    const result = await runScrape(env);
+    // Check for allPages parameter (for historical bulk import)
+    let allPages = false;
+    try {
+      const body = await request.clone().json() as Record<string, unknown>;
+      if (body.allPages) allPages = true;
+    } catch { /* no body or not JSON */ }
+
+    const url = new URL(request.url);
+    if (url.searchParams.get('allPages') === 'true') allPages = true;
+
+    const result = await runScrape(env, { allPages });
 
     const details = `${result.found} events found, ${result.added} new added` +
       (result.errors.length > 0 ? `. Errors: ${result.errors.join('; ')}` : '');

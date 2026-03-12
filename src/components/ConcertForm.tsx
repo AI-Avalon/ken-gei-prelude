@@ -100,6 +100,80 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
     setShowVenueSuggestions(false);
   };
 
+  // Google Maps URL parser — extracts place name and coordinates
+  const [gmapUrl, setGmapUrl] = useState('');
+  const [gmapStatus, setGmapStatus] = useState<'idle' | 'parsing' | 'ok' | 'error'>('idle');
+
+  const parseGoogleMapsUrl = useCallback((url: string) => {
+    setGmapUrl(url);
+    setDirty(true);
+    if (!url.trim()) { setGmapStatus('idle'); return; }
+
+    try {
+      setGmapStatus('parsing');
+      const u = new URL(url.trim());
+
+      // Validate it's a Google Maps domain
+      if (!u.hostname.includes('google.com') && !u.hostname.includes('google.co.jp') && !u.hostname.includes('goo.gl') && !u.hostname.includes('maps.app.goo.gl')) {
+        setGmapStatus('error');
+        return;
+      }
+
+      let lat = 0, lng = 0, placeName = '';
+
+      // Pattern 1: /maps/place/PlaceName/@lat,lng,zoom
+      const placeMatch = u.pathname.match(/\/place\/([^/@]+)(?:\/@(-?\d+\.?\d*),(-?\d+\.?\d*))?/);
+      if (placeMatch) {
+        placeName = decodeURIComponent(placeMatch[1]).replace(/\+/g, ' ');
+        if (placeMatch[2] && placeMatch[3]) {
+          lat = parseFloat(placeMatch[2]);
+          lng = parseFloat(placeMatch[3]);
+        }
+      }
+
+      // Pattern 2: /@lat,lng in path (without place)
+      if (!lat) {
+        const atMatch = u.pathname.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+        if (atMatch) {
+          lat = parseFloat(atMatch[1]);
+          lng = parseFloat(atMatch[2]);
+        }
+      }
+
+      // Pattern 3: ?q=lat,lng or ?q=place+name
+      const q = u.searchParams.get('q');
+      if (q) {
+        const coordMatch = q.match(/^(-?\d+\.?\d*),(-?\d+\.?\d*)$/);
+        if (coordMatch) {
+          lat = parseFloat(coordMatch[1]);
+          lng = parseFloat(coordMatch[2]);
+        } else if (!placeName) {
+          placeName = q.replace(/\+/g, ' ');
+        }
+      }
+
+      // Pattern 4: /maps?ll=lat,lng
+      const ll = u.searchParams.get('ll');
+      if (ll && !lat) {
+        const llMatch = ll.match(/(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+        if (llMatch) {
+          lat = parseFloat(llMatch[1]);
+          lng = parseFloat(llMatch[2]);
+        }
+      }
+
+      // Apply extracted data
+      if (placeName && !venueName) setVenueName(placeName);
+      if (lat && lng) {
+        setVenueLat(lat);
+        setVenueLng(lng);
+      }
+      setGmapStatus((lat || placeName) ? 'ok' : 'error');
+    } catch {
+      setGmapStatus('error');
+    }
+  }, [venueName]);
+
   const toggleDept = (dept: string) => {
     setDirty(true);
     setDepartments((prev) => prev.includes(dept) ? prev.filter((d) => d !== dept) : [...prev, dept]);
@@ -227,6 +301,23 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
               </div>
             </>
           )}
+        </div>
+
+        {/* Google Maps URL auto-fill */}
+        <div>
+          <label className="label">📍 Google Maps URL（自動入力）</label>
+          <div className="flex gap-2">
+            <input
+              className="input flex-1"
+              value={gmapUrl}
+              onChange={(e) => parseGoogleMapsUrl(e.target.value)}
+              placeholder="Google MapsのURLを貼り付けると会場情報を自動入力"
+              type="url"
+            />
+            {gmapStatus === 'ok' && <span className="self-center text-green-600 text-sm font-medium">✓ 取得済</span>}
+            {gmapStatus === 'error' && <span className="self-center text-red-500 text-xs">URL解析不可</span>}
+          </div>
+          <p className="text-xs text-stone-500 mt-1">Google Mapsで会場を検索 → 「共有」→ URLをコピーして貼り付け</p>
         </div>
 
         {/* Venue with suggestions */}

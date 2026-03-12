@@ -27,6 +27,7 @@ export default function Footer() {
               <li><Link to="/contact" className="hover:text-primary-400 transition-colors">お問い合わせ</Link></li>
               <li><Link to="/docs" className="hover:text-primary-400 transition-colors">使い方</Link></li>
               <li><Link to="/about" className="hover:text-primary-400 transition-colors">このサイトについて</Link></li>
+              <li><Link to="/admin" className="hover:text-primary-400 transition-colors text-stone-600">管理者</Link></li>
             </ul>
           </div>
           <div>

@@ -20,34 +20,35 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-700 text-white px-5 py-2.5 rounded font-medium
-           hover:bg-primary-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-           shadow-sm hover:shadow-md;
+    @apply bg-primary-700 text-white px-5 py-2.5 rounded-lg font-medium
+           hover:bg-primary-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-sm hover:shadow-md hover:-translate-y-px;
   }
   .btn-secondary {
-    @apply bg-white text-gray-800 px-5 py-2.5 rounded font-medium border border-gray-200
-           hover:bg-gray-50 hover:border-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-white text-stone-700 px-5 py-2.5 rounded font-medium border border-stone-200
+           hover:bg-stone-50 hover:border-stone-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-sm;
   }
   .btn-danger {
-    @apply bg-red-700 text-white px-5 py-2.5 rounded font-medium
-           hover:bg-red-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-red-600 text-white px-5 py-2.5 rounded-lg font-medium
+           hover:bg-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-accent {
-    @apply bg-accent-700 text-white px-5 py-2.5 rounded font-medium
-           hover:bg-accent-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-           shadow-sm hover:shadow-md;
+    @apply bg-accent-700 text-white px-5 py-2.5 rounded-lg font-medium
+           hover:bg-accent-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-sm hover:shadow-md hover:-translate-y-px;
   }
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden
-           hover:shadow-lg transition-all duration-300;
+    @apply bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden
+           hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 ease-out;
   }
   .input {
-    @apply w-full px-3 py-2 border border-stone-300 rounded
-           focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent
-           bg-white;
+    @apply w-full px-3.5 py-2.5 border border-stone-200 rounded-lg
+           focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400
+           bg-white transition-all duration-200;
   }
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply block text-sm font-medium text-stone-700 mb-1;
   }
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
@@ -76,7 +77,31 @@
   to { opacity: 1; }
 }
 .animate-fade-in {
-  animation: fade-in 0.6s ease-out;
+  animation: fade-in 0.5s ease-out;
+}
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-page-enter {
+  animation: page-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in {
+  animation: scale-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes blur-in {
+  from { opacity: 0; filter: blur(4px); }
+  to { opacity: 1; filter: blur(0); }
+}
+.animate-blur-in {
+  animation: blur-in 0.5s ease-out;
 }
 
 /* Gold shimmer for accents */

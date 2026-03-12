@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import ToastContainer from './components/Toast';
@@ -39,27 +39,51 @@ function ScrollToTop() {
   return null;
 }
 
+// Page transition wrapper — animates on route change
+function PageTransition({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const [displayKey, setDisplayKey] = useState(location.key);
+  const [animClass, setAnimClass] = useState('animate-page-enter');
+
+  useEffect(() => {
+    setAnimClass('');
+    const frame = requestAnimationFrame(() => {
+      setDisplayKey(location.key);
+      setAnimClass('animate-page-enter');
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [location.key]);
+
+  return (
+    <div key={displayKey} className={animClass}>
+      {children}
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
       <ScrollToTop />
       <NavBar />
       <main className="flex-1">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/concerts" element={<ConcertListPage />} />
-          <Route path="/concerts/:slug" element={<ConcertDetailPage />} />
-          <Route path="/concerts/:slug/edit" element={<ConcertEditPage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/archive" element={<ArchivePage />} />
-          <Route path="/upload" element={<UploadPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/docs" element={<DocsPage />} />
-          <Route path="/docs/api" element={<ApiDocsPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+        <PageTransition>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/concerts" element={<ConcertListPage />} />
+            <Route path="/concerts/:slug" element={<ConcertDetailPage />} />
+            <Route path="/concerts/:slug/edit" element={<ConcertEditPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/archive" element={<ArchivePage />} />
+            <Route path="/upload" element={<UploadPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/docs" element={<DocsPage />} />
+            <Route path="/docs/api" element={<ApiDocsPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </PageTransition>
       </main>
       <Footer />
       <ToastContainer />

@@ -1,0 +1,43 @@
+name: Scheduled Scrape & Maintenance
+
+on:
+  schedule:
+    # Run daily at 06:00 JST (21:00 UTC)
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scrape
+        run: |
+          echo "🎵 Triggering daily scrape..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://ken-gei-prelude.pages.dev/api/cron/scrape" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "::warning::Scrape returned non-200 status"
+          fi
+
+      - name: Trigger maintenance
+        run: |
+          echo "🔧 Triggering daily maintenance..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://ken-gei-prelude.pages.dev/api/cron/maintenance" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
