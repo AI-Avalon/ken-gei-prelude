@@ -1,14 +1,24 @@
 // Crescendo — Calendar Add Dropdown
 // Spec: Chapter 10 — カレンダー連携
-// 2セクション構成: この予定だけ追加 / 全演奏会を自動購読
+// 2セクション構成: この予定だけ追加 / 全演奏会をカレンダーに同期
 
 import { useState, useRef, useEffect } from 'react';
 import type { Concert } from '../types';
 import { googleCalendarUrl, outlookCalendarUrl, yahooCalendarUrl, downloadICS } from '../lib/utils';
 import { SITE_URL } from '../lib/constants';
+import { toast } from './Toast';
 
 interface Props {
   concert: Concert;
+}
+
+// プラットフォーム検出
+function detectPlatform() {
+  const ua = navigator.userAgent;
+  const isAndroid = /Android/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isMac = /Macintosh|MacIntel/i.test(ua) && !isIOS;
+  return { isAndroid, isIOS, isMac };
 }
 
 export default function CalendarAddDropdown({ concert }: Props) {
@@ -27,8 +37,19 @@ export default function CalendarAddDropdown({ concert }: Props) {
 
   const host = SITE_URL.replace(/^https?:\/\//, '');
   const webcalAllUrl = `webcal://${host}/api/feed/ics`;
-  const googleSubUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcalAllUrl)}`;
   const httpsIcsUrl = `${SITE_URL}/api/feed/ics`;
+  // Google Calendar は https:// の cid でも動作する（Android含む）
+  const googleSubUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(httpsIcsUrl)}`;
+
+  const { isAndroid, isIOS, isMac } = detectPlatform();
+
+  const copyIcsUrl = () => {
+    navigator.clipboard.writeText(httpsIcsUrl).then(() => {
+      toast('カレンダーURLをコピーしました', 'success');
+    }).catch(() => {
+      toast('コピーに失敗しました', 'error');
+    });
+  };
 
   // この予定だけ追加
   const singleItems = [
@@ -38,9 +59,10 @@ export default function CalendarAddDropdown({ concert }: Props) {
       onClick: () => window.open(googleCalendarUrl(concert), '_blank'),
     },
     {
-      label: 'Apple / iCalに追加',
+      label: 'Apple カレンダーに追加',
       icon: '🍎',
       onClick: () => downloadICS(concert),
+      hidden: isAndroid,
     },
     {
       label: 'TimeTreeに追加',
@@ -50,7 +72,14 @@ export default function CalendarAddDropdown({ concert }: Props) {
     {
       label: 'Outlookに追加',
       icon: '📧',
-      onClick: () => window.open(outlookCalendarUrl(concert), '_blank'),
+      onClick: () => {
+        if (isAndroid) {
+          // Androidでは直接URLを使わずICSダウンロード
+          downloadICS(concert);
+        } else {
+          window.open(outlookCalendarUrl(concert), '_blank');
+        }
+      },
     },
     {
       label: 'Yahoo!カレンダーに追加',
@@ -62,37 +91,54 @@ export default function CalendarAddDropdown({ concert }: Props) {
       icon: '⬇️',
       onClick: () => downloadICS(concert),
     },
-  ];
+  ].filter((item) => !item.hidden);
 
-  // 全演奏会を自動購読
-  const subscribeItems = [
+  // 全演奏会をカレンダーに同期
+  const syncItems = [
     {
-      label: 'Google カレンダーで購読',
+      label: 'Google カレンダーと同期',
       icon: '📅',
+      description: 'すべての端末で使えます',
       onClick: () => window.open(googleSubUrl, '_blank'),
     },
-    {
-      label: 'Apple / iCalで購読',
+    // iOS / macOS のみ webcal:// を使う
+    ...(!isAndroid ? [{
+      label: isIOS ? 'Apple カレンダーに登録' : 'Apple / iCal に登録',
       icon: '🍎',
+      description: `${isIOS ? 'iPhone / iPad' : 'Mac'} のカレンダーアプリ`,
       onClick: () => { window.location.href = webcalAllUrl; },
-    },
-    {
-      label: 'Outlookで購読',
+    }] : []),
+    // Android 専用: Google Calendar 経由を明示案内
+    ...(isAndroid ? [{
+      label: 'Androidカレンダーに登録',
+      icon: '🤖',
+      description: 'Google カレンダーアプリで開きます',
+      onClick: () => window.open(googleSubUrl, '_blank'),
+    }] : []),
+    // デスクトップのみ Outlook
+    ...(!isIOS && !isAndroid ? [{
+      label: 'Outlookに登録',
       icon: '📧',
+      description: 'webcal://リンクを使用',
       onClick: () => { window.location.href = webcalAllUrl; },
-    },
+    }] : []),
     {
-      label: '購読URL をコピー',
+      label: 'カレンダーURLをコピー',
       icon: '🔗',
-      onClick: () => {
-        navigator.clipboard.writeText(httpsIcsUrl).catch(() => {});
-      },
+      description: 'その他のアプリへ貼り付け',
+      onClick: copyIcsUrl,
     },
   ];
+
+  // macOS かつデスクトップの場合のみ追加
+  if (isMac && !isIOS) {
+    // macOSの場合はすでに Apple/iCal が入っているのでOK
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        type="button"
         onClick={() => setOpen(!open)}
         className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center text-base py-3 px-6"
         aria-expanded={open}
@@ -113,6 +159,7 @@ export default function CalendarAddDropdown({ concert }: Props) {
           {singleItems.map((item, i) => (
             <button
               key={`s-${i}`}
+              type="button"
               onClick={() => { item.onClick(); setOpen(false); }}
               className="w-full text-left px-4 py-2.5 text-sm hover:bg-primary-50 flex items-center gap-3 transition-colors"
             >
@@ -123,19 +170,25 @@ export default function CalendarAddDropdown({ concert }: Props) {
 
           <div className="border-t border-stone-200 my-1" />
 
-          {/* 全演奏会を自動購読 */}
+          {/* 全演奏会をカレンダーに同期 */}
           <div className="px-4 pt-2 pb-1">
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">🔄 全演奏会を自動購読</span>
+            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">🔄 全演奏会をカレンダーに同期</span>
           </div>
-          <p className="px-4 pb-1 text-xs text-stone-400">新しい演奏会が追加されると自動で反映されます</p>
-          {subscribeItems.map((item, i) => (
+          <p className="px-4 pb-1 text-xs text-stone-400">新しい演奏会が自動で反映されます</p>
+          {syncItems.map((item, i) => (
             <button
               key={`a-${i}`}
+              type="button"
               onClick={() => { item.onClick(); setOpen(false); }}
-              className="w-full text-left px-4 py-2.5 text-sm hover:bg-accent-50 flex items-center gap-3 transition-colors"
+              className="w-full text-left px-4 py-2 text-sm hover:bg-accent-50 flex items-center gap-3 transition-colors"
             >
               <span className="text-lg">{item.icon}</span>
-              <span>{item.label}</span>
+              <div>
+                <div>{item.label}</div>
+                {item.description && (
+                  <div className="text-xs text-stone-400">{item.description}</div>
+                )}
+              </div>
             </button>
           ))}
         </div>

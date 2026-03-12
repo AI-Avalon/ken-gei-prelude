@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 
-const MOBILE_BREAKPOINT = 768;
+// 640px: スマートフォン/タブレット境界
+// iPad mini portrait (744px) はタブレットとしてデスクトップNavBarを表示
+const MOBILE_BREAKPOINT = 640;
 
 export function useIsMobile(): boolean {
   const [isMobile, setIsMobile] = useState(() => {
@@ -9,7 +11,7 @@ export function useIsMobile(): boolean {
   });
 
   useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`); // 639px以下がモバイル
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mql.addEventListener('change', handler);
     setIsMobile(mql.matches);

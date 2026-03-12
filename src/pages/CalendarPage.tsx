@@ -3,7 +3,76 @@ import { Link } from 'react-router-dom';
 import { fetchConcerts } from '../lib/api';
 import { SITE_URL } from '../lib/constants';
 import Calendar from '../components/Calendar';
+import { toast } from '../components/Toast';
 import type { Concert } from '../types';
+
+function CalendarSyncButton() {
+  const [showMenu, setShowMenu] = useState(false);
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  const host = SITE_URL.replace(/^https?:\/\//, '');
+  const webcalUrl = `webcal://${host}/api/feed/ics`;
+  const httpsUrl = `${SITE_URL}/api/feed/ics`;
+  const googleUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(httpsUrl)}`;
+
+  const copyUrl = () => {
+    navigator.clipboard.writeText(httpsUrl).then(() => {
+      toast('URLをコピーしました', 'success');
+    }).catch(() => {});
+    setShowMenu(false);
+  };
+
+  if (!showMenu) {
+    return (
+      <button
+        type="button"
+        onClick={() => setShowMenu(true)}
+        className="text-primary-600 hover:underline text-sm flex items-center gap-1"
+      >
+        📅 カレンダーに同期
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <div className="absolute right-0 top-0 bg-white border border-stone-200 rounded-xl shadow-xl py-2 w-64 z-20 animate-scale-in">
+        <div className="px-3 pb-1 text-xs font-bold text-stone-400 uppercase tracking-wider">カレンダーに同期</div>
+        <button
+          type="button"
+          onClick={() => { window.open(googleUrl, '_blank'); setShowMenu(false); }}
+          className="w-full text-left px-4 py-2 text-sm hover:bg-stone-50 flex items-center gap-2"
+        >
+          <span>📅</span> <span>Google カレンダーと同期</span>
+        </button>
+        {(isIOS || (!isAndroid)) && (
+          <button
+            type="button"
+            onClick={() => { window.location.href = webcalUrl; setShowMenu(false); }}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-stone-50 flex items-center gap-2"
+          >
+            <span>🍎</span> <span>{isIOS ? 'Apple カレンダーに登録' : 'Apple / iCal に登録'}</span>
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={copyUrl}
+          className="w-full text-left px-4 py-2 text-sm hover:bg-stone-50 flex items-center gap-2"
+        >
+          <span>🔗</span> <span>URLをコピー</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowMenu(false)}
+          className="w-full text-left px-4 py-2 text-xs text-stone-400 hover:bg-stone-50"
+        >
+          閉じる
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function CalendarPage() {
   const today = new Date();
@@ -36,14 +105,7 @@ export default function CalendarPage() {
           <h1 className="text-3xl font-bold">カレンダー</h1>
           <p className="text-stone-500 text-sm mt-1">演奏会のスケジュールを月ごとに確認</p>
         </div>
-        <div className="text-sm text-stone-500">
-          <a
-            href={`webcal://${SITE_URL.replace(/^https?:\/\//, '')}/api/feed/ics`}
-            className="text-primary-600 hover:underline"
-          >
-            📅 カレンダーを購読
-          </a>
-        </div>
+        <CalendarSyncButton />
       </div>
 
       {loading ? (

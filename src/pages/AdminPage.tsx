@@ -125,14 +125,37 @@ function OverviewTab({ token }: { token: string }) {
     recentInquiries: number;
     unpublished: number;
   } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(null);
     fetchStats(token).then((res) => {
-      if (res.ok && res.data) setStats(res.data);
+      if (res.ok && res.data) {
+        setStats(res.data);
+      } else {
+        setError(res.error || 'データの取得に失敗しました');
+      }
+      setLoading(false);
+    }).catch(() => {
+      setError('通信エラーが発生しました');
+      setLoading(false);
     });
-  }, [token]);
+  };
 
-  if (!stats) return <div className="text-center py-8 text-stone-400">読み込み中...</div>;
+  useEffect(() => { load(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (loading) return <div className="text-center py-8 text-stone-400">読み込み中...</div>;
+  if (error) return (
+    <div className="text-center py-12">
+      <p className="text-4xl mb-4">⚠️</p>
+      <p className="text-red-600 mb-2 font-medium">データの読み込みに失敗しました</p>
+      <p className="text-stone-400 text-sm mb-6">{error}</p>
+      <button onClick={load} className="btn-primary text-sm">再読み込み</button>
+    </div>
+  );
+  if (!stats) return null;
 
   return (
     <div className="space-y-6">
@@ -628,14 +651,37 @@ function AnalyticsTab({ token }: { token: string }) {
     byCategory: Record<string, number>;
     dailyViews: { date: string; count: number }[];
   } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(null);
     fetchStats(token).then((res) => {
-      if (res.ok && res.data) setStats(res.data);
+      if (res.ok && res.data) {
+        setStats(res.data);
+      } else {
+        setError(res.error || 'データの取得に失敗しました');
+      }
+      setLoading(false);
+    }).catch(() => {
+      setError('通信エラーが発生しました');
+      setLoading(false);
     });
-  }, [token]);
+  };
 
-  if (!stats) return <div className="text-center py-8 text-stone-400">読み込み中...</div>;
+  useEffect(() => { load(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (loading) return <div className="text-center py-8 text-stone-400">読み込み中...</div>;
+  if (error) return (
+    <div className="text-center py-12">
+      <p className="text-4xl mb-4">⚠️</p>
+      <p className="text-red-600 mb-2 font-medium">データの読み込みに失敗しました</p>
+      <p className="text-stone-400 text-sm mb-6">{error}</p>
+      <button onClick={load} className="btn-primary text-sm">再読み込み</button>
+    </div>
+  );
+  if (!stats) return null;
 
   const maxDaily = Math.max(...stats.dailyViews.map((d) => d.count), 1);
 
@@ -775,10 +821,12 @@ function SettingsTab({ token }: { token: string }) {
           <div>
             <label className="label">大学公式イベントページURL</label>
             <input
+              id="scrape-url"
               type="url"
               defaultValue="https://www.aichi-fam-u.ac.jp/event/music/"
               className="input w-full"
               readOnly
+              aria-label="スクレイピング対象URL"
             />
             <p className="text-xs text-stone-400 mt-1">スクレイピング対象URL（コード変更が必要）</p>
           </div>
@@ -908,13 +956,3 @@ function LogsTab({ token }: { token: string }) {
   );
 }
 
-// Reuse StatCard in FlyersTab
-function StatCard2({ label, value, icon, color }: { label: string; value: number; icon: string; color?: string }) {
-  return (
-    <div className="card p-4 text-center">
-      <div className="text-2xl mb-1">{icon}</div>
-      <div className={`text-2xl font-bold ${color || 'text-stone-800'}`}>{value.toLocaleString()}</div>
-      <div className="text-xs text-stone-500">{label}</div>
-    </div>
-  );
-}

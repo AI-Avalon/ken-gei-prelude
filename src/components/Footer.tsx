@@ -2,11 +2,16 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SITE_NAME, SITE_URL, SITE_TAGLINE, CREATOR_NAME } from '../lib/constants';
 
-const webcalUrl = `webcal://${SITE_URL.replace(/^https?:\/\//, '')}/api/feed/ics`;
+const host = SITE_URL.replace(/^https?:\/\//, '');
+const webcalUrl = `webcal://${host}/api/feed/ics`;
 const httpsIcsUrl = `${SITE_URL}/api/feed/ics`;
+const googleSyncUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(httpsIcsUrl)}`;
 
 export default function Footer() {
   const [copied, setCopied] = useState(false);
+
+  const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+  const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   const copyUrl = () => {
     navigator.clipboard.writeText(httpsIcsUrl).catch(() => {});
@@ -48,17 +53,30 @@ export default function Footer() {
             <h3 className="text-stone-300 font-medium mb-4 text-sm tracking-wider uppercase">Calendar</h3>
             <p className="text-sm mb-3">全演奏会をカレンダーに自動同期</p>
             <div className="space-y-2">
-              <a
-                href={webcalUrl}
-                className="inline-flex items-center gap-2 text-sm bg-primary-700/20 text-primary-400 hover:bg-primary-700/30 px-3 py-2 rounded-lg transition-colors"
-              >
-                📅 カレンダーアプリで購読
-              </a>
+              {/* Androidはwebcal非対応のため Google Calendar リンクを使用 */}
+              {isAndroid ? (
+                <a
+                  href={googleSyncUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm bg-primary-700/20 text-primary-400 hover:bg-primary-700/30 px-3 py-2 rounded-lg transition-colors"
+                >
+                  📅 Google カレンダーと同期
+                </a>
+              ) : (
+                <a
+                  href={webcalUrl}
+                  className="inline-flex items-center gap-2 text-sm bg-primary-700/20 text-primary-400 hover:bg-primary-700/30 px-3 py-2 rounded-lg transition-colors"
+                >
+                  📅 {isIOS ? 'Apple カレンダーに登録' : 'カレンダーアプリと同期'}
+                </a>
+              )}
               <button
+                type="button"
                 onClick={copyUrl}
                 className="flex items-center gap-2 text-sm text-stone-400 hover:text-stone-300 transition-colors"
               >
-                {copied ? '✅ コピーしました' : '📋 購読URLをコピー'}
+                {copied ? '✅ コピーしました' : '📋 カレンダーURLをコピー'}
               </button>
             </div>
           </div>
