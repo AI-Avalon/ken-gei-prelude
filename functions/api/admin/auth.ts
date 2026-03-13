@@ -88,65 +88,11 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return jsonResponse({ ok: false, error: '管理者権限が必要です' }, 403);
   }
 
-  // GET /api/admin/stats
-  if (request.method === 'GET' && path.endsWith('/stats')) {
-    const today = new Date().toISOString().split('T')[0];
-    const monthStart = today.slice(0, 7) + '-01';
-
-    const [total, upcoming, past, totalViews, monthViews, unpublished, recentInquiries] = await Promise.all([
-      env.DB.prepare('SELECT COUNT(*) as c FROM concerts WHERE is_deleted = 0').first<{ c: number }>(),
-      env.DB.prepare('SELECT COUNT(*) as c FROM concerts WHERE date >= ? AND is_deleted = 0 AND is_published = 1').bind(today).first<{ c: number }>(),
-      env.DB.prepare('SELECT COUNT(*) as c FROM concerts WHERE date < ? AND is_deleted = 0 AND is_published = 1').bind(today).first<{ c: number }>(),
-      env.DB.prepare('SELECT COALESCE(SUM(views), 0) as c FROM concerts WHERE is_deleted = 0').first<{ c: number }>(),
-      env.DB.prepare('SELECT COUNT(*) as c FROM analytics WHERE viewed_at >= ?').bind(monthStart).first<{ c: number }>(),
-      env.DB.prepare('SELECT COUNT(*) as c FROM concerts WHERE is_published = 0 AND is_deleted = 0').first<{ c: number }>(),
-      env.DB.prepare("SELECT COUNT(*) as c FROM inquiries WHERE status = 'unread'").first<{ c: number }>(),
-    ]);
-
-    // Category distribution
-    const catResults = await env.DB.prepare(
-      'SELECT category, COUNT(*) as c FROM concerts WHERE is_deleted = 0 GROUP BY category'
-    ).all();
-    const byCategory: Record<string, number> = {};
-    for (const r of catResults.results || []) {
-      byCategory[r.category as string] = r.c as number;
-    }
-
-    // Top 10 by views
-    const topResults = await env.DB.prepare(
-      'SELECT slug, title, views FROM concerts WHERE is_deleted = 0 ORDER BY views DESC LIMIT 10'
-    ).all();
-
-    // Daily views (last 30 days)
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const dailyResults = await env.DB.prepare(
-      "SELECT DATE(viewed_at) as date, COUNT(*) as count FROM analytics WHERE viewed_at >= ? GROUP BY DATE(viewed_at) ORDER BY date"
-    ).bind(thirtyDaysAgo).all();
-
-    return jsonResponse({
-      ok: true,
-      data: {
-        total: total?.c || 0,
-        upcoming: upcoming?.c || 0,
-        past: past?.c || 0,
-        totalViews: totalViews?.c || 0,
-        monthViews: monthViews?.c || 0,
-        unpublished: unpublished?.c || 0,
-        recentInquiries: recentInquiries?.c || 0,
-        byCategory,
-        topConcerts: topResults.results || [],
-        dailyViews: dailyResults.results || [],
-      },
-    });
-  }
-
-  // GET /api/admin/maintenance
-  if (request.method === 'GET' && path.endsWith('/maintenance')) {
-    const results = await env.DB.prepare(
-      'SELECT * FROM maintenance_log ORDER BY executed_at DESC LIMIT 100'
-    ).all();
-    return jsonResponse({ ok: true, data: results.results || [] });
-  }
+  // NOTE: /api/admin/stats  → functions/api/admin/stats.ts
+  //       /api/admin/maintenance → functions/api/admin/maintenance.ts
+  // Cloudflare Pages Functions の仕様上、このファイル (auth.ts) は
+  // /api/admin/auth にのみルーティングされるため、stats/maintenance は
+  // 専用ファイルで処理する。
 
   return jsonResponse({ ok: false, error: 'Not Found' }, 404);
 };

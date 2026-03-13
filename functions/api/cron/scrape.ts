@@ -99,6 +99,30 @@ function classifyCategory(title: string): string {
 }
 
 // ============================================================
+// 会場名から金額・入場料情報を除去するクリーン関数
+// event_info には "愛知県立芸術大学奏楽堂・入場料1000円" のように
+// 会場名と金額が混在することがある
+// ============================================================
+function cleanVenueName(raw: string): string {
+  if (!raw) return '愛知県立芸術大学';
+  let v = raw.normalize('NFKC').trim();
+
+  // 括弧内に金額・入場料が含まれている場合は括弧ごと除去
+  v = v.replace(/[（(【][^）)】]*(?:円|入場料|無料|チケット|料金)[^）)】]*[）)】]/g, '');
+
+  // 「・」「　」「 」「、」などで区切って最初の部分のみ取得
+  // ただし「愛知県立芸術大学 奏楽堂」のような半角スペースは許容する
+  v = v
+    .replace(/(?:入場料|料金|チケット|全席[自指][由定])[^\n]*/g, '') // 入場料・全席〇〇以降を削除
+    .replace(/\d+[\d,]*\s*円[^\n]*/g, '')                           // NNN円以降を削除
+    .replace(/無料[^\n]*/g, '')                                      // 無料以降を削除
+    .split(/[・。\n]/)[0]                                            // 中点・改行で分割し最初の部分
+    .trim();
+
+  return v || '愛知県立芸術大学';
+}
+
+// ============================================================
 // HTML Parser for 愛知県立芸術大学 event page
 // Target: https://www.aichi-fam-u.ac.jp/event/music/
 // Actual structure (verified 2026-03):
@@ -136,9 +160,9 @@ function parseEventList(html: string, baseUrl: string): ScrapedEvent[] {
     const title = titleMatch ? titleMatch[1].trim().replace(/\s+/g, ' ') : '';
     if (!title) continue;
 
-    // <p class="event_info">会場名やサブ情報</p>
+    // <p class="event_info">会場名やサブ情報</p>（金額混在を除去してクリーンな会場名を取得）
     const infoMatch = block.match(/<p\s+class="event_info">([^<]*)<\/p>/);
-    const venue = infoMatch ? infoMatch[1].trim() : '愛知県立芸術大学';
+    const venue = cleanVenueName(infoMatch ? infoMatch[1] : '');
 
     // <img src="/event/item/..." />
     const imgMatch = block.match(/<img\s+src="([^"]+)"/);
@@ -195,9 +219,9 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
     extra.timeStart = `${startMatch[1].padStart(2, '0')}:${startMatch[2]}`;
   }
 
-  // Parse venue from 場所 section
+  // Parse venue from 場所 section（cleanVenueNameで金額情報を除去）
   if (sections['場所']) {
-    extra.venue = sections['場所'].split(/[（(]/)[0].trim();
+    extra.venue = cleanVenueName(sections['場所']);
   }
 
   // Build description from 概要 section + other details
@@ -450,7 +474,7 @@ async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: nu
           } catch { /* image download failed */ }
 
           // Also download PDF flyer if found on detail page
-          const pdfUrl = (ev as Record<string, unknown>).pdfUrl as string | undefined;
+          const pdfUrl = (ev as unknown as Record<string, unknown>).pdfUrl as string | undefined;
           if (pdfUrl && ev.detailUrl) {
             try {
               const fullPdfUrl = new URL(pdfUrl, ev.detailUrl).href;
