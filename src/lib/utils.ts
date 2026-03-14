@@ -39,13 +39,22 @@ export function formatViews(views: number): string {
   return String(views);
 }
 
-/** Format pricing display */
+/** Format pricing display — 一般価格優先、なければレンジ */
 export function formatPricing(pricing: PricingItem[]): string {
   if (!pricing || pricing.length === 0) return '無料';
   const allFree = pricing.every((p) => p.amount === 0);
   if (allFree) return '無料';
-  const maxPrice = Math.max(...pricing.map((p) => p.amount));
-  return `¥${maxPrice.toLocaleString()}`;
+
+  // 「一般」ラベルの有料項目を優先
+  const ippan = pricing.find((p) => p.label.includes('一般') && p.amount > 0);
+  if (ippan) return `¥${ippan.amount.toLocaleString()}`;
+
+  // 有料額のレンジ表示
+  const nonZero = pricing.filter((p) => p.amount > 0).map((p) => p.amount);
+  const min = Math.min(...nonZero);
+  const max = Math.max(...nonZero);
+  if (min === max) return `¥${min.toLocaleString()}`;
+  return `¥${min.toLocaleString()}〜¥${max.toLocaleString()}`;
 }
 
 /** Format time display: "18:00開演（17:30開場）" */

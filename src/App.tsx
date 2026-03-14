@@ -35,7 +35,7 @@ function NotFoundPage() {
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   }, [pathname]);
   return null;
 }
@@ -79,7 +79,7 @@ export default function App() {
         <NavBar />
       )}
       <main className="flex-1">
-        <PageTransition>
+        {isMobile ? (
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/concerts" element={<ConcertListPage />} />
@@ -95,7 +95,25 @@ export default function App() {
             <Route path="/about" element={<AboutPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-        </PageTransition>
+        ) : (
+          <PageTransition>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/concerts" element={<ConcertListPage />} />
+              <Route path="/concerts/:slug" element={<ConcertDetailPage />} />
+              <Route path="/concerts/:slug/edit" element={<ConcertEditPage />} />
+              <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/archive" element={<ArchivePage />} />
+              <Route path="/upload" element={<UploadPage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/docs" element={<DocsPage />} />
+              <Route path="/docs/api" element={<ApiDocsPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </PageTransition>
+        )}
       </main>
       {isMobile ? <MobileTabBar /> : <Footer />}
       <ToastContainer />

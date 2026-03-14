@@ -4,7 +4,6 @@
 
 @layer base {
   html {
-    scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
   }
   /* Safe area for mobile bottom nav */
@@ -44,7 +43,12 @@
   }
   .card {
     @apply bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden
-           hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 ease-out;
+           transition-all duration-300 ease-out;
+  }
+  @media (hover: hover) {
+    .card:hover {
+      @apply shadow-xl -translate-y-0.5;
+    }
   }
   .input {
     @apply w-full px-3.5 py-2.5 border border-stone-200 rounded-lg
@@ -120,6 +124,7 @@
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

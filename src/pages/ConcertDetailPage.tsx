@@ -11,7 +11,7 @@ import PdfFlyerRenderer from '../components/PdfFlyerRenderer';
 import { useIsMobile } from '../hooks/useDevice';
 import type { Concert } from '../types';
 
-// Collapsible section with smooth animation
+// Collapsible section with grid-based animation (no max-h jank)
 function Section({ title, icon, children, defaultOpen = true }: {
   title: string; icon: string; children: React.ReactNode; defaultOpen?: boolean;
 }) {
@@ -35,20 +35,22 @@ function Section({ title, icon, children, defaultOpen = true }: {
         </svg>
       </button>
       <div
-        className={`transition-all duration-300 ease-out ${
-          open ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-        } overflow-hidden`}
+        className="grid transition-[grid-template-rows] duration-300 ease-out"
+        style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
       >
-        <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0">
-          {children}
+        <div className="overflow-hidden">
+          <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0">
+            {children}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// Staggered fade-in wrapper
-function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+// Staggered fade-in wrapper — no delays on mobile for instant rendering
+function FadeIn({ children, delay = 0, mobile }: { children: React.ReactNode; delay?: number; mobile?: boolean }) {
+  if (mobile) return <>{children}</>;
   return (
     <div
       className="animate-slide-up"
@@ -128,7 +130,7 @@ export default function ConcertDetailPage() {
     <div className={`${isMobile ? 'px-4 py-4 pb-24' : 'max-w-4xl mx-auto px-4 py-8'}`}>
       {/* Breadcrumb — desktop only */}
       {!isMobile && (
-        <FadeIn>
+        <FadeIn mobile={isMobile}>
           <nav className="text-sm text-stone-500 mb-6 flex items-center gap-2">
             <Link to="/" className="hover:text-primary-600 transition-colors">ホーム</Link>
             <span className="text-stone-300">/</span>
@@ -140,7 +142,7 @@ export default function ConcertDetailPage() {
       )}
 
       {/* Header */}
-      <FadeIn delay={50}>
+      <FadeIn delay={50} mobile={isMobile}>
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
             <Link to="/concerts" className="text-stone-400 hover:text-primary-600 transition-colors p-1 -ml-1" aria-label="戻る">
@@ -166,7 +168,7 @@ export default function ConcertDetailPage() {
       </FadeIn>
 
       {/* Quick info bar */}
-      <FadeIn delay={100}>
+      <FadeIn delay={100} mobile={isMobile}>
         <div className={`bg-white rounded-xl border border-stone-200 shadow-sm ${isMobile ? 'p-4' : 'p-5'} mb-4`}>
           <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-3 gap-6'}`}>
             <div className="flex items-center gap-3">
@@ -206,7 +208,8 @@ export default function ConcertDetailPage() {
                       : concert.pricing.map((p, i) => (
                           <span key={i}>
                             {i > 0 && ' / '}
-                            {p.amount === 0 ? '無料' : `¥${p.amount.toLocaleString()}`}
+                            <span className="text-stone-500">{p.label}</span>{' '}
+                            {p.amount === 0 ? <span className="text-emerald-600">無料</span> : `¥${p.amount.toLocaleString()}`}
                           </span>
                         ))
                   ) : <span className="text-stone-400">情報なし</span>}
@@ -219,7 +222,7 @@ export default function ConcertDetailPage() {
 
       {/* Ticket CTA */}
       {concert.ticket_url && (
-        <FadeIn delay={150}>
+        <FadeIn delay={150} mobile={isMobile}>
           <a href={concert.ticket_url} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 bg-accent-600 hover:bg-accent-700 text-white font-medium px-6 py-3.5 rounded-xl shadow-md hover:shadow-lg transition-all mb-4 w-full sm:w-auto sm:inline-flex">
             🎫 チケットを購入・予約する
@@ -237,7 +240,7 @@ export default function ConcertDetailPage() {
         if (imageKeys.length === 0 && pdfKeys.length === 0) return null;
 
         return (
-          <FadeIn delay={200}>
+          <FadeIn delay={200} mobile={isMobile}>
             <Section title="チラシ" icon="📄" defaultOpen={true}>
               {/* Rendered image flyers */}
               {imageKeys.length > 0 && (
@@ -252,7 +255,7 @@ export default function ConcertDetailPage() {
                           <img
                             src={`/api/image/${key}`}
                             alt={`${concert.title} チラシ ${i + 1}`}
-                            className="rounded-lg w-full active:scale-[0.98] transition-transform cursor-pointer shadow-sm"
+                            className="rounded-lg w-full cursor-pointer shadow-sm"
                             onClick={() => setFlyerModal(`/api/image/${key}`)}
                             loading={i === 0 ? 'eager' : 'lazy'}
                           />
@@ -281,14 +284,15 @@ export default function ConcertDetailPage() {
                 </>
               )}
 
-              {/* PDF flyers — rendered client-side */}
-              {pdfKeys.length > 0 && imageKeys.length === 0 && pdfKeys.map((key, i) => (
+              {/* PDF flyers — rendered client-side (skip page 1 if image keys already cover front) */}
+              {pdfKeys.length > 0 && pdfKeys.map((key, i) => (
                 <PdfFlyerRenderer
                   key={key}
                   pdfKey={key}
                   concertSlug={concert.slug}
-                  alt={`${concert.title} チラシ ${i + 1}`}
+                  alt={`${concert.title} チラシ ${imageKeys.length + i + 1}`}
                   onClick={(url) => setFlyerModal(url)}
+                  startPage={imageKeys.length > 0 ? 2 : 1}
                 />
               ))}
             </Section>
@@ -347,7 +351,7 @@ export default function ConcertDetailPage() {
 
       {/* Pricing — detailed */}
       {concert.pricing && concert.pricing.length > 0 && concert.pricing.some(p => p.amount > 0 || p.note) && (
-        <FadeIn delay={250}>
+        <FadeIn delay={250} mobile={isMobile}>
           <Section title="料金" icon="💰" defaultOpen={true}>
             <div className="space-y-2">
               {concert.pricing.map((p, i) => (
@@ -372,7 +376,7 @@ export default function ConcertDetailPage() {
 
       {/* Program */}
       {concert.program?.length > 0 && (
-        <FadeIn delay={300}>
+        <FadeIn delay={300} mobile={isMobile}>
           <Section title="プログラム" icon="🎼" defaultOpen={true}>
             <div className="space-y-3">
               {concert.program.map((p, i) => (
@@ -388,7 +392,7 @@ export default function ConcertDetailPage() {
 
       {/* Performers */}
       {concert.performers?.length > 0 && (
-        <FadeIn delay={350}>
+        <FadeIn delay={350} mobile={isMobile}>
           <Section title="出演者" icon="🎤" defaultOpen={concert.performers.length <= 10}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {concert.performers.map((p, i) => (
@@ -410,7 +414,7 @@ export default function ConcertDetailPage() {
 
       {/* Supervisors + Guests */}
       {(concert.supervisors?.length > 0 || concert.guest_artists?.length > 0) && (
-        <FadeIn delay={400}>
+        <FadeIn delay={400} mobile={isMobile}>
           <Section title={concert.guest_artists?.length > 0 ? '指導者・ゲスト' : '指導者'} icon="👨‍🏫" defaultOpen={true}>
             {concert.supervisors?.length > 0 && (
               <div className="mb-3">
@@ -434,7 +438,7 @@ export default function ConcertDetailPage() {
 
       {/* Description */}
       {concert.description && (
-        <FadeIn delay={450}>
+        <FadeIn delay={450} mobile={isMobile}>
           <Section title="詳細" icon="📝" defaultOpen={true}>
             <p className="text-sm text-stone-700 whitespace-pre-wrap leading-relaxed">{concert.description}</p>
           </Section>
@@ -443,7 +447,7 @@ export default function ConcertDetailPage() {
 
       {/* Seating + Departments */}
       {(concert.seating || concert.departments?.length > 0) && (
-        <FadeIn delay={500}>
+        <FadeIn delay={500} mobile={isMobile}>
           <Section title="その他の情報" icon="ℹ️" defaultOpen={true}>
             {concert.seating && (
               <div className="flex items-center gap-2 text-sm mb-2">
@@ -466,7 +470,7 @@ export default function ConcertDetailPage() {
 
       {/* Contact */}
       {(concert.contact_email || concert.contact_tel || concert.contact_person || concert.contact_url) && (
-        <FadeIn delay={550}>
+        <FadeIn delay={550} mobile={isMobile}>
           <Section title="お問い合わせ先" icon="📞" defaultOpen={false}>
             <div className="space-y-2 text-sm">
               {concert.contact_person && <p className="flex items-center gap-2"><span className="text-stone-400">👤</span>{concert.contact_person}</p>}
@@ -490,7 +494,7 @@ export default function ConcertDetailPage() {
 
       {/* Map */}
       {concert.venue && (concert.venue.lat || concert.venue.access?.length) && (
-        <FadeIn delay={600}>
+        <FadeIn delay={600} mobile={isMobile}>
           <Section title="地図・アクセス" icon="🗺️" defaultOpen={true}>
             {concert.venue.access && concert.venue.access.length > 0 && (
               <ul className="text-sm text-stone-600 mb-4 space-y-1">
@@ -506,7 +510,7 @@ export default function ConcertDetailPage() {
       )}
 
       {/* Actions: Calendar + Share */}
-      <FadeIn delay={650}>
+      <FadeIn delay={650} mobile={isMobile}>
         <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-2 gap-4'} mb-4`}>
           <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-4 sm:p-5">
             <h2 className="font-bold text-sm mb-3 text-stone-500 uppercase tracking-wider">📅 カレンダーに追加</h2>
@@ -521,7 +525,7 @@ export default function ConcertDetailPage() {
 
       {/* Related */}
       {related.length > 0 && (
-        <FadeIn delay={700}>
+        <FadeIn delay={700} mobile={isMobile}>
           <div className="mb-6">
             <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
               <span>🎵</span> 関連する演奏会
@@ -536,7 +540,7 @@ export default function ConcertDetailPage() {
       )}
 
       {/* Footer info */}
-      <FadeIn delay={750}>
+      <FadeIn delay={750} mobile={isMobile}>
         <div className="flex items-center justify-between text-sm text-stone-400 pt-4 border-t border-stone-200">
           <span>👁 {concert.views.toLocaleString()} 回閲覧</span>
           <Link to={`/concerts/${concert.slug}/edit`} className="text-primary-600 hover:text-primary-700 transition-colors flex items-center gap-1">

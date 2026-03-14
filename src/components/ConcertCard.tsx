@@ -23,7 +23,7 @@ export default function ConcertCard({ concert, highlight }: Props) {
     return (
       <Link
         to={`/concerts/${concert.slug}`}
-        className={`flex bg-white rounded-xl shadow-sm border overflow-hidden active:scale-[0.98] transition-all duration-200 ${
+        className={`flex bg-white rounded-xl shadow-sm border overflow-hidden transition-colors ${
           highlight ? 'border-primary-400 shadow-md' : 'border-stone-100'
         } ${isEnded ? 'opacity-75' : ''}`}
       >

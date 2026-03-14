@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   adminAuth, adminFetchConcerts, adminUpdateConcert, adminDeleteConcert,
   fetchStats, fetchInquiries, updateInquiry, fetchMaintenanceLogs,
-  triggerScrape, triggerMaintenance,
+  triggerScrape, triggerMaintenance, triggerReset, triggerBulkScrape,
 } from '../lib/api';
 import { CATEGORIES } from '../lib/constants';
 import { formatDateShort } from '../lib/utils';
@@ -768,8 +768,11 @@ function AnalyticsTab({ token }: { token: string }) {
 function SettingsTab({ token }: { token: string }) {
   const [scraping, setScraping] = useState(false);
   const [maintaining, setMaintaining] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [scrapeResult, setScrapeResult] = useState<string | null>(null);
   const [maintenanceResult, setMaintenanceResult] = useState<string | null>(null);
+  const [resetResult, setResetResult] = useState<string | null>(null);
 
   const handleScrape = async () => {
     setScraping(true);
@@ -878,6 +881,70 @@ function SettingsTab({ token }: { token: string }) {
             <button className="btn-secondary text-sm" disabled>
               エクスポート（準備中）
             </button>
+          </div>
+
+          {/* Data reset section */}
+          <div className="border-t border-stone-200 pt-3 mt-3">
+            <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+              <div>
+                <p className="font-medium text-sm text-red-800">🗑️ データ全削除＆再構築</p>
+                <p className="text-xs text-red-600/80">全演奏会データ・画像・ログを削除し、大学サイトから全ページ再スクレイプ</p>
+              </div>
+              {!confirmReset ? (
+                <button
+                  onClick={() => setConfirmReset(true)}
+                  disabled={resetting}
+                  className="btn-danger text-sm"
+                >
+                  リセット
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setConfirmReset(false)}
+                    className="btn-secondary text-sm"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setResetting(true);
+                      setResetResult(null);
+                      setConfirmReset(false);
+                      try {
+                        const resetRes = await triggerReset(token);
+                        if (resetRes.ok && resetRes.data) {
+                          setResetResult(`✅ 削除完了: ${resetRes.data.deleted.join(', ')}\n⏳ 全ページスクレイピング開始...`);
+                          toast('データ削除完了。再スクレイプ中...', 'success');
+                          const scrapeRes = await triggerBulkScrape(token);
+                          if (scrapeRes.ok && scrapeRes.data) {
+                            setResetResult(prev => `${prev}\n✅ ${scrapeRes.data!.found}件発見、${scrapeRes.data!.added}件追加`);
+                            toast(`再構築完了: ${scrapeRes.data.added}件追加`, 'success');
+                          } else {
+                            setResetResult(prev => `${prev}\n❌ スクレイプ失敗: ${scrapeRes.error}`);
+                          }
+                        } else {
+                          setResetResult(`❌ ${resetRes.error || 'リセット失敗'}`);
+                          toast(resetRes.error || 'リセットに失敗しました', 'error');
+                        }
+                      } catch {
+                        setResetResult('❌ 通信エラー');
+                        toast('リセットに失敗しました', 'error');
+                      } finally {
+                        setResetting(false);
+                      }
+                    }}
+                    disabled={resetting}
+                    className="btn-danger text-sm"
+                  >
+                    {resetting ? '実行中...' : '本当に削除する'}
+                  </button>
+                </div>
+              )}
+            </div>
+            {resetResult && (
+              <pre className="text-xs bg-stone-100 rounded p-3 whitespace-pre-wrap mt-2">{resetResult}</pre>
+            )}
           </div>
         </div>
       </div>

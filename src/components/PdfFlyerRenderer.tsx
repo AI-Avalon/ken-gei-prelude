@@ -5,6 +5,7 @@ interface Props {
   concertSlug: string;
   alt: string;
   onClick?: (url: string) => void;
+  startPage?: number;
 }
 
 /**
@@ -12,7 +13,7 @@ interface Props {
  * Uses pdfjs-dist (already a dependency) to render each page to canvas → WebP.
  * After rendering, POSTs the converted image to /api/upload for permanent KV storage.
  */
-export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick }: Props) {
+export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, startPage = 1 }: Props) {
   const [pages, setPages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -35,7 +36,7 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick }: 
       const totalPages = Math.min(pdf.numPages, 4);
       const urls: string[] = [];
 
-      for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      for (let pageNum = startPage; pageNum <= totalPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: 2.0 });
 
@@ -69,7 +70,7 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick }: 
     } finally {
       setLoading(false);
     }
-  }, [pdfKey, concertSlug]);
+  }, [pdfKey, concertSlug, startPage]);
 
   useEffect(() => {
     convertPdf();
@@ -105,7 +106,7 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick }: 
           <img
             src={url}
             alt={`${alt} ${i + 1}`}
-            className="rounded-lg w-full cursor-pointer active:scale-[0.98] transition-transform shadow-sm"
+            className="rounded-lg w-full cursor-pointer shadow-sm"
             onClick={() => onClick?.(url)}
             loading={i === 0 ? 'eager' : 'lazy'}
           />

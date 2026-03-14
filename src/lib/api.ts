@@ -199,3 +199,23 @@ export async function triggerMaintenance(
     headers: { 'X-Admin-Token': token },
   });
 }
+
+// Admin: Reset all data
+export async function triggerReset(
+  token: string
+): Promise<ApiResponse<{ deleted: string[]; kvDeleted: number }>> {
+  return request('/admin/reset', {
+    method: 'POST',
+    headers: { 'X-Admin-Token': token },
+  });
+}
+
+// Admin: Trigger bulk scrape (all pages)
+export async function triggerBulkScrape(
+  token: string
+): Promise<ApiResponse<{ found: number; added: number; errors: string[] }>> {
+  return request('/cron/scrape?allPages=true', {
+    method: 'POST',
+    headers: { 'X-Admin-Token': token },
+  });
+}

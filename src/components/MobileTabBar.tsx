@@ -5,11 +5,11 @@ const MAIN_TABS = [
   { path: '/', label: 'ホーム', icon: '🏠' },
   { path: '/concerts', label: '一覧', icon: '🎵' },
   { path: '/calendar', label: 'カレンダー', icon: '📅' },
-  { path: '/upload', label: '登録', icon: '✏️' },
+  { path: '/archive', label: '検索', icon: '🔍' },
 ];
 
 const MORE_LINKS = [
-  { path: '/archive', label: 'アーカイブ検索', icon: '🔍' },
+  { path: '/upload', label: '演奏会を登録', icon: '✏️' },
   { path: '/contact', label: 'お問い合わせ', icon: '✉️' },
   { path: '/docs', label: '使い方ガイド', icon: '📖' },
   { path: '/about', label: 'このサイトについて', icon: 'ℹ️' },

@@ -120,7 +120,11 @@ export default function ConcertListPage() {
           <div className="text-center py-16 text-stone-400">
             <div className="text-4xl mb-3">🔍</div>
             <p className="text-lg mb-2">該当する演奏会がありません</p>
-            <p className="text-sm">フィルターを変更してみてください</p>
+            <p className="text-sm">
+              {selectedCategories.length > 0 || searchQuery
+                ? 'フィルターや検索条件を変更してみてください'
+                : '近日中に演奏会が追加される予定です'}
+            </p>
           </div>
         ) : (
           <>

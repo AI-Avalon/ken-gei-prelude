@@ -274,7 +274,7 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
 
         // Fetch the detail page to get JPG, all additional images, and PDFs
         const detailImageUrls: string[] = [];
-        let pdfUrl: string | undefined;
+        const pdfUrls: string[] = [];
         try {
           const detailRes = await fetch(match.detailUrl, {
             headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'text/html' },
@@ -288,7 +288,7 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
               const fullUrl = new URL(pm[1], match.detailUrl).href;
               if (!seenPdfs.has(fullUrl) && !fullUrl.includes('apple-touch-icon')) {
                 seenPdfs.add(fullUrl);
-                if (!pdfUrl) pdfUrl = fullUrl;
+                pdfUrls.push(fullUrl);
               }
             }
             // Get ALL images from detail page (not just listing thumbnail)
@@ -340,15 +340,15 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
           }
         }
 
-        // Download PDF flyer if found
-        if (pdfUrl) {
+        // Download ALL PDF flyers (front + back pages)
+        for (let pi = 0; pi < pdfUrls.length; pi++) {
           try {
-            const pdfRes = await fetch(pdfUrl, {
+            const pdfRes = await fetch(pdfUrls[pi], {
               headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'application/pdf' },
             });
             if (pdfRes.ok) {
               const pdfBuffer = await pdfRes.arrayBuffer();
-              const pdfKey = `flyers/${row.slug}/${timestamp}.pdf`;
+              const pdfKey = `flyers/${row.slug}/${timestamp}_p${pi + 1}.pdf`;
               await env.KV.put(pdfKey, pdfBuffer, { metadata: { contentType: 'application/pdf' } });
               flyerKeys.push(pdfKey);
             }
