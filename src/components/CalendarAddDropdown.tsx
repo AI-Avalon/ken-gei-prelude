@@ -38,8 +38,8 @@ export default function CalendarAddDropdown({ concert }: Props) {
   const host = SITE_URL.replace(/^https?:\/\//, '');
   const webcalAllUrl = `webcal://${host}/api/feed/ics`;
   const httpsIcsUrl = `${SITE_URL}/api/feed/ics`;
-  // Google Calendar は https:// の cid でも動作する（Android含む）
-  const googleSubUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(httpsIcsUrl)}`;
+  // Google Calendar の cid には webcal:// URL を渡す（https:// よりも確実に同期される）
+  const googleSubUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcalAllUrl)}`;
 
   const { isAndroid, isIOS, isMac } = detectPlatform();
 
@@ -108,18 +108,11 @@ export default function CalendarAddDropdown({ concert }: Props) {
       description: `${isIOS ? 'iPhone / iPad' : 'Mac'} のカレンダーアプリ`,
       onClick: () => { window.location.href = webcalAllUrl; },
     }] : []),
-    // Android 専用: Google Calendar 経由を明示案内
-    ...(isAndroid ? [{
-      label: 'Androidカレンダーに登録',
-      icon: '🤖',
-      description: 'Google カレンダーアプリで開きます',
-      onClick: () => window.open(googleSubUrl, '_blank'),
-    }] : []),
     // デスクトップのみ Outlook
     ...(!isIOS && !isAndroid ? [{
       label: 'Outlookに登録',
       icon: '📧',
-      description: 'webcal://リンクを使用',
+      description: 'デスクトップアプリに連携',
       onClick: () => { window.location.href = webcalAllUrl; },
     }] : []),
     {
@@ -129,11 +122,6 @@ export default function CalendarAddDropdown({ concert }: Props) {
       onClick: copyIcsUrl,
     },
   ];
-
-  // macOS かつデスクトップの場合のみ追加
-  if (isMac && !isIOS) {
-    // macOSの場合はすでに Apple/iCal が入っているのでOK
-  }
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -170,11 +158,11 @@ export default function CalendarAddDropdown({ concert }: Props) {
 
           <div className="border-t border-stone-200 my-1" />
 
-          {/* 全演奏会をカレンダーに同期 */}
+          {/* すべての演奏会をまとめて登録 */}
           <div className="px-4 pt-2 pb-1">
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">🔄 全演奏会をカレンダーに同期</span>
+            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">🔄 すべての演奏会をまとめて登録</span>
           </div>
-          <p className="px-4 pb-1 text-xs text-stone-400">新しい演奏会が自動で反映されます</p>
+          <p className="px-4 pb-1 text-xs text-stone-400">新しい演奏会が追加されると自動でカレンダーに反映されます</p>
           {syncItems.map((item, i) => (
             <button
               key={`a-${i}`}

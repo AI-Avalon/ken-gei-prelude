@@ -90,7 +90,7 @@ export default function ApiDocsPage() {
         <Endpoint
           method="DELETE"
           path="/concerts/:slug"
-          description="演奏会を論理削除します。30日後に自動で物理削除されます。"
+          description="演奏会を論理削除します。90日後に自動で物理削除されます。"
           body={`{
   "edit_password": "your-password"
 }`}
@@ -116,7 +116,7 @@ export default function ApiDocsPage() {
         <Endpoint
           method="GET"
           path="/image/:key"
-          description="KVに保存された画像を取得します。7日間キャッシュされます。"
+          description="KVに保存された画像を取得します。30日間キャッシュされます。"
         />
 
         <Endpoint
@@ -134,7 +134,7 @@ export default function ApiDocsPage() {
         <Endpoint
           method="GET"
           path="/feed/ics"
-          description="全公開演奏会のICS (iCalendar) フィードを返します。Webcal購読に使用。"
+          description="全公開演奏会のICS (iCalendar) フィードを返します。Webcal同期に使用。"
           response={`BEGIN:VCALENDAR
 VERSION:2.0
 ...

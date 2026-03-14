@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { SITE_NAME, SITE_URL, SITE_TAGLINE, CREATOR_NAME } from '../lib/constants';
+import { SITE_NAME, SITE_URL, SITE_TAGLINE, CREATOR_DISPLAY_NAME } from '../lib/constants';
 
 const host = SITE_URL.replace(/^https?:\/\//, '');
 const webcalUrl = `webcal://${host}/api/feed/ics`;
 const httpsIcsUrl = `${SITE_URL}/api/feed/ics`;
-const googleSyncUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(httpsIcsUrl)}`;
+const googleSyncUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcalUrl)}`;
 
 export default function Footer() {
   const [copied, setCopied] = useState(false);
@@ -30,7 +30,7 @@ export default function Footer() {
             <p className="text-sm leading-relaxed text-stone-500">
               {SITE_TAGLINE}
               <br />
-              愛知県立芸術大学 音楽学部 演奏会情報ポータル
+              愛知県立芸術大学 演奏会情報ポータル
             </p>
           </div>
           <div>
@@ -51,7 +51,7 @@ export default function Footer() {
           </div>
           <div>
             <h3 className="text-stone-300 font-medium mb-4 text-sm tracking-wider uppercase">Calendar</h3>
-            <p className="text-sm mb-3">全演奏会をカレンダーに自動同期</p>
+            <p className="text-sm mb-3">演奏会をカレンダーアプリに登録</p>
             <div className="space-y-2">
               {/* Androidはwebcal非対応のため Google Calendar リンクを使用 */}
               {isAndroid ? (
@@ -83,7 +83,7 @@ export default function Footer() {
         </div>
         <div className="border-t border-stone-800 mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-stone-600">
           <p>© {new Date().getFullYear()} {SITE_NAME} — MIT License</p>
-          <p>Made with ♪ by {CREATOR_NAME}</p>
+          <p>Made with ♪ by {CREATOR_DISPLAY_NAME}</p>
         </div>
       </div>
     </footer>

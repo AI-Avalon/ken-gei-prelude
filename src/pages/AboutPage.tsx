@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { UNIVERSITY, SITE_NAME, SITE_NAME_JP, SITE_TAGLINE, CREATOR_NAME } from '../lib/constants';
+import { UNIVERSITY, SITE_NAME, SITE_NAME_JP, SITE_TAGLINE, CREATOR_DISPLAY_NAME } from '../lib/constants';
 
 export default function AboutPage() {
   return (
@@ -17,7 +17,7 @@ export default function AboutPage() {
             {SITE_TAGLINE}
           </blockquote>
           <p className="text-stone-700 text-sm leading-relaxed">
-            {SITE_NAME}（{SITE_NAME_JP}）は、愛知県立芸術大学 音楽学部の演奏会情報を
+            {SITE_NAME}（{SITE_NAME_JP}）は、愛知県立芸術大学の演奏会情報を
             集約・共有するためのポータルサイトです。
             学生や教職員が主催・出演する演奏会の情報を、
             誰でも簡単に登録・閲覧・共有できます。
@@ -58,7 +58,7 @@ export default function AboutPage() {
               ♪
             </div>
             <div>
-              <p className="font-medium text-stone-900">{CREATOR_NAME}</p>
+              <p className="font-medium text-stone-900">{CREATOR_DISPLAY_NAME}</p>
               <p className="text-sm text-stone-600 mt-2 leading-relaxed">
                 愛知県立芸術大学の演奏会情報をより多くの人に届けたいという思いから、
                 このサイトを開発しました。

@@ -5,6 +5,7 @@ import { fetchConcerts } from '../lib/api';
 import { CATEGORIES } from '../lib/constants';
 import ConcertCard from '../components/ConcertCard';
 import FilterBar from '../components/FilterBar';
+import { useIsMobile } from '../hooks/useDevice';
 import type { Concert } from '../types';
 
 const fuseOptions = {
@@ -14,12 +15,12 @@ const fuseOptions = {
 };
 
 export default function ConcertListPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [concerts, setConcerts] = useState<Concert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const isMobile = useIsMobile();
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
     const c = searchParams.get('category');
@@ -45,7 +46,6 @@ export default function ConcertListPage() {
     });
     if (res.ok && res.data) {
       setConcerts((prev) => append ? [...prev, ...res.data!] : res.data!);
-      setTotal(res.total ?? res.data.length);
       setHasMore(res.data.length === 20);
     }
     setLoading(false);
@@ -73,9 +73,9 @@ export default function ConcertListPage() {
   }, [concerts, searchQuery]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-serif font-bold mb-2">演奏会一覧</h1>
-      <p className="text-stone-500 mb-6">今後開催される演奏会</p>
+    <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
+      <h1 className="text-2xl sm:text-3xl font-serif font-bold mb-1">演奏会一覧</h1>
+      <p className="text-stone-500 text-sm mb-5">今後開催される演奏会</p>
 
       <FilterBar
         categories={CATEGORIES}
@@ -87,28 +87,48 @@ export default function ConcertListPage() {
         onSortChange={setSortBy}
       />
 
-      <div className="mt-6">
+      <div className="mt-5 sm:mt-6">
         {loading && concerts.length === 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
-                <div className="skeleton h-40 w-full" />
-                <div className="p-4 space-y-3">
-                  <div className="skeleton h-4 w-3/4" />
-                  <div className="skeleton h-3 w-1/2" />
-                  <div className="skeleton h-3 w-2/3" />
+          isMobile ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
+                  <div className="skeleton w-24 min-h-[96px]" style={{ borderRadius: 0 }} />
+                  <div className="flex-1 p-3 space-y-2">
+                    <div className="skeleton h-3 w-20" />
+                    <div className="skeleton h-4 w-full" />
+                    <div className="skeleton h-3 w-2/3" />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
+                  <div className="skeleton h-40 w-full" style={{ borderRadius: 0 }} />
+                  <div className="p-4 space-y-3">
+                    <div className="skeleton h-4 w-3/4" />
+                    <div className="skeleton h-3 w-1/2" />
+                    <div className="skeleton h-3 w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-stone-400">
+            <div className="text-4xl mb-3">🔍</div>
             <p className="text-lg mb-2">該当する演奏会がありません</p>
             <p className="text-sm">フィルターを変更してみてください</p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <p className="text-xs text-stone-400 mb-3">{filtered.length}件{hasMore ? '+' : ''}</p>
+            <div className={isMobile
+              ? 'space-y-3'
+              : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+            }>
               {filtered.map((c) => (
                 <ConcertCard key={c.id} concert={c} />
               ))}
@@ -119,9 +139,9 @@ export default function ConcertListPage() {
                 <button
                   onClick={loadMore}
                   disabled={loading}
-                  className="btn-secondary"
+                  className="btn-secondary w-full sm:w-auto"
                 >
-                  {loading ? '読み込み中...' : 'もっと見る（20件ずつ）'}
+                  {loading ? '読み込み中...' : 'もっと見る'}
                 </button>
               </div>
             )}

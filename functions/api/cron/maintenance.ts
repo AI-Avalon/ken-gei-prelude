@@ -2,6 +2,8 @@
 // Route: POST /api/cron/maintenance (admin-only)
 // Spec: Chapter 13 — 自動メンテナンス機構
 
+import { classifyCategory, parsePricingFromText } from './shared';
+
 interface Env {
   DB: D1Database;
   KV: KVNamespace;
@@ -49,13 +51,13 @@ async function cleanOldAnalytics(env: Env): Promise<TaskResult> {
 }
 
 // ============================================================
-// Task 2: 論理削除から30日超の物理削除
+// Task 2: 論理削除から90日超の物理削除
 // ============================================================
 async function purgeDeletedConcerts(env: Env): Promise<TaskResult> {
   try {
     // Get concerts to be purged (for flyer cleanup)
     const toDelete = await env.DB.prepare(
-      "SELECT id, slug, flyer_r2_keys FROM concerts WHERE is_deleted = 1 AND deleted_at < datetime('now', '-30 days')"
+      "SELECT id, slug, flyer_r2_keys FROM concerts WHERE is_deleted = 1 AND deleted_at < datetime('now', '-90 days')"
     ).all<{ id: string; slug: string; flyer_r2_keys: string }>();
 
     let kvCleaned = 0;
@@ -76,7 +78,7 @@ async function purgeDeletedConcerts(env: Env): Promise<TaskResult> {
 
     // Physical delete concerts
     const concertResult = await env.DB.prepare(
-      "DELETE FROM concerts WHERE is_deleted = 1 AND deleted_at < datetime('now', '-30 days')"
+      "DELETE FROM concerts WHERE is_deleted = 1 AND deleted_at < datetime('now', '-90 days')"
     ).run();
     const deletedConcerts = concertResult.meta?.changes || 0;
 
@@ -150,26 +152,6 @@ async function cleanOldLogs(env: Env): Promise<TaskResult> {
 // ============================================================
 // Task 5: 自動分類の再実行（auto_scrapeイベントのカテゴリ更新）
 // ============================================================
-function classifyCategory(title: string): string {
-  const t = title.normalize('NFKC');
-  if (/定期演奏会/.test(t)) return 'teiki';
-  if (/卒業演奏会|卒業/.test(t)) return 'sotsugyou';
-  if (/学位審査|学位/.test(t)) return 'gakui';
-  if (/修了演奏会/.test(t)) return 'sotsugyou';
-  if (/オペラ|opera/i.test(t)) return 'opera';
-  if (/オーケストラ|管弦楽団|orchestra/i.test(t)) return 'orchestra';
-  if (/ウインドオーケストラ|吹奏楽|ウィンド/i.test(t)) return 'wind';
-  if (/リサイタル|recital/i.test(t)) return 'recital';
-  if (/室内楽|チェンバー|chamber/i.test(t)) return 'chamber';
-  if (/アンサンブル|ensemble/i.test(t)) return 'ensemble';
-  if (/弦楽合奏|弦楽/.test(t)) return 'chamber';
-  if (/声楽|vocal/i.test(t)) return 'vocal';
-  if (/ピアノ|piano/i.test(t)) return 'piano';
-  if (/作曲作品演奏会|作曲/.test(t)) return 'ensemble';
-  if (/ドクトラル|博士/.test(t)) return 'recital';
-  return 'daigaku';
-}
-
 async function recategorizeConcerts(env: Env): Promise<TaskResult> {
   try {
     const rows = await env.DB.prepare(
@@ -245,12 +227,7 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
     const pageUrls = new Set<string>();
     for (const row of rows.results) {
       const src = row.source_url || BASE_URL;
-      // If source_url is a detail page, we can use it directly
-      if (src.match(/\/event\/\d+\.html$/)) {
-        pageUrls.add(src);
-      } else {
-        pageUrls.add(src);
-      }
+      pageUrls.add(src);
     }
 
     // If all sources are the base listing URL, also fetch additional pages
@@ -260,7 +237,6 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
       // But limit to 3 pages per run to conserve subrequests
       // Use date-based heuristic: older events are on later pages
       const oldestDate = rows.results[rows.results.length - 1]?.date || '';
-      const yearMonth = oldestDate.slice(0, 7);
       // Start from page 1 and add a few more
       for (let i = 2; i <= 4; i++) {
         pageUrls.add(`${BASE_URL}index_${i}.html`);
@@ -402,64 +378,6 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
 // ============================================================
 // Task 7: 入場料の再取得（詳細ページから料金情報を再抽出）
 // ============================================================
-function parsePricingFromText(text: string): Array<{ label: string; amount: number; note?: string }> {
-  const t = text.normalize('NFKC').trim();
-  if (!t) return [];
-  // Check for explicitly free
-  if (/^(無料|入場無料|入場料無料|free)([（(、,\s]|$)/i.test(t)) {
-    return [{ label: '入場料', amount: 0 }];
-  }
-  const items: Array<{ label: string; amount: number; note?: string }> = [];
-  // Process line by line to avoid cross-segment matching
-  const lines = t.split(/[\n\r]+/);
-  for (const line of lines) {
-    // Try 'label：price円' format (with colon separator)
-    const colonMatch = line.match(/^(.+?)\s*[:：]\s*(\d[\d,]*)\s*円/);
-    if (colonMatch) {
-      let label = colonMatch[1].trim();
-      // Only strip wrapping parens if they match
-      if (/^[（(].*[）)]$/.test(label)) label = label.slice(1, -1);
-      const amount = parseInt(colonMatch[2].replace(/,/g, ''), 10);
-      if (amount <= 100000 && label.length >= 1 && label.length <= 30 && !/^\d+月|^\d+時|^※|^【/.test(label)) {
-        items.push({ label, amount });
-        continue;
-      }
-    }
-    // Try 'price円（label）' format (price before label)
-    const priceFirstPattern = /(\d[\d,]*)\s*円\s*[（(]([^）)]+)[）)]/g;
-    let pf;
-    let priceFirstMatched = false;
-    while ((pf = priceFirstPattern.exec(line)) !== null) {
-      const amount = parseInt(pf[1].replace(/,/g, ''), 10);
-      let label = pf[2].trim();
-      if (amount <= 100000 && label.length >= 1 && label.length <= 30) {
-        items.push({ label, amount });
-        priceFirstMatched = true;
-      }
-    }
-    if (priceFirstMatched) continue;
-    // Try inline patterns: 'label price円' or 'labelN,NNN円'
-    const inlinePattern = /([^\d\n]{2,}?)\s*(\d[\d,]*)\s*円/g;
-    let m;
-    while ((m = inlinePattern.exec(line)) !== null) {
-      let label = m[1].trim().replace(/^[（(]/, '').replace(/[）)：:]$/, '').trim();
-      if (/^\d+月|^\d+時|^※|^【/.test(label)) continue;
-      if (label.length < 1 || label.length > 30) continue;
-      const amount = parseInt(m[2].replace(/,/g, ''), 10);
-      if (amount > 100000) continue;
-      items.push({ label, amount });
-    }
-  }
-  if (items.length > 0) return items;
-  // Fallback: single naked price
-  const singleMatch = t.match(/(\d[\d,]*)\s*円/);
-  if (singleMatch) {
-    return [{ label: '入場料', amount: parseInt(singleMatch[1].replace(/,/g, ''), 10) }];
-  }
-  // No price pattern found and not explicitly free → unknown, leave as-is
-  return [];
-}
-
 function parseDetailSections(html: string): Record<string, string> {
   // Try to extract content from <div class="detail"> first
   const detailMatch = html.match(/<div class="detail">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/);
@@ -661,6 +579,108 @@ async function clearWrongImages(env: Env): Promise<TaskResult> {
   }
 }
 
+// ============================================================
+// Task 9: 重複演奏会の検出・統合
+// 同じ日付＋同じタイトル（先頭20文字正規化一致）の演奏会を検出し、
+// 古い方を論理削除する
+// ============================================================
+async function deduplicateConcerts(env: Env): Promise<TaskResult> {
+  try {
+    // Get all non-deleted concerts with their normalized title prefix
+    const all = await env.DB.prepare(
+      "SELECT id, slug, title, date, venue_json, created_at, views, flyer_r2_keys, flyer_thumbnail_key FROM concerts WHERE is_deleted = 0 ORDER BY date, title"
+    ).all<{
+      id: string; slug: string; title: string; date: string;
+      venue_json: string; created_at: string; views: number;
+      flyer_r2_keys: string; flyer_thumbnail_key: string;
+    }>();
+
+    if (!all.results || all.results.length === 0) {
+      return { task: 'deduplicate', success: true, details: '演奏会なし' };
+    }
+
+    // Group by date + normalized title prefix (20 chars)
+    const groups = new Map<string, typeof all.results>();
+    for (const c of all.results) {
+      const normTitle = c.title.normalize('NFKC').replace(/\s+/g, '').toLowerCase().slice(0, 20);
+      const key = `${c.date}|${normTitle}`;
+      const group = groups.get(key) || [];
+      group.push(c);
+      groups.set(key, group);
+    }
+
+    let merged = 0;
+    for (const [, group] of groups) {
+      if (group.length <= 1) continue;
+
+      // Keep the one with more views, or more flyer data, or newer
+      group.sort((a, b) => {
+        // Prefer the one with a thumbnail
+        const aHasThumb = a.flyer_thumbnail_key ? 1 : 0;
+        const bHasThumb = b.flyer_thumbnail_key ? 1 : 0;
+        if (aHasThumb !== bHasThumb) return bHasThumb - aHasThumb;
+        // Then prefer more views
+        if (a.views !== b.views) return b.views - a.views;
+        // Then prefer newer
+        return b.created_at.localeCompare(a.created_at);
+      });
+
+      // Keep first (best), merge data and soft-delete the rest
+      const winner = group[0];
+      for (let i = 1; i < group.length; i++) {
+        const loser = group[i];
+
+        // Merge views to winner
+        if (loser.views > 0) {
+          await env.DB.prepare(
+            "UPDATE concerts SET views = views + ? WHERE id = ?"
+          ).bind(loser.views, winner.id).run();
+        }
+
+        // Transfer flyer_r2_keys (merge unique keys)
+        const winnerKeys: string[] = JSON.parse(winner.flyer_r2_keys || '[]');
+        const loserKeys: string[] = JSON.parse(loser.flyer_r2_keys || '[]');
+        const mergedKeys = [...new Set([...winnerKeys, ...loserKeys])];
+        if (mergedKeys.length > winnerKeys.length) {
+          await env.DB.prepare(
+            "UPDATE concerts SET flyer_r2_keys = ? WHERE id = ?"
+          ).bind(JSON.stringify(mergedKeys), winner.id).run();
+          winner.flyer_r2_keys = JSON.stringify(mergedKeys);
+        }
+
+        // Transfer thumbnail if winner lacks one
+        if (!winner.flyer_thumbnail_key && loser.flyer_thumbnail_key) {
+          await env.DB.prepare(
+            "UPDATE concerts SET flyer_thumbnail_key = ? WHERE id = ?"
+          ).bind(loser.flyer_thumbnail_key, winner.id).run();
+          winner.flyer_thumbnail_key = loser.flyer_thumbnail_key;
+        }
+
+        // Record slug redirect
+        try {
+          await env.DB.prepare(
+            "INSERT OR IGNORE INTO slug_redirects (old_slug, new_slug) VALUES (?, ?)"
+          ).bind(loser.slug, winner.slug).run();
+        } catch { /* table may not exist yet */ }
+
+        // Soft-delete the loser
+        await env.DB.prepare(
+          "UPDATE concerts SET is_deleted = 1, deleted_at = datetime('now') WHERE id = ?"
+        ).bind(loser.id).run();
+        merged++;
+      }
+    }
+
+    return {
+      task: 'deduplicate',
+      success: true,
+      details: `${merged}件の重複を検出・統合`,
+    };
+  } catch (err: unknown) {
+    return { task: 'deduplicate', success: false, details: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // Run all maintenance tasks
 async function runMaintenance(env: Env): Promise<TaskResult[]> {
   const results: TaskResult[] = [];
@@ -671,6 +691,7 @@ async function runMaintenance(env: Env): Promise<TaskResult[]> {
   results.push(await cleanOldLogs(env));
       results.push(await recategorizeConcerts(env));
       results.push(await fetchMissingImages(env));
+      results.push(await deduplicateConcerts(env));
   return results;
 }
 
@@ -731,6 +752,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           break;
         case 'clear_images':
           results = [await clearWrongImages(env)];
+          break;
+        case 'deduplicate':
+          results = [await deduplicateConcerts(env)];
           break;
         default:
           return jsonResponse({ ok: false, error: `不明なタスク: ${taskName}` }, 400);

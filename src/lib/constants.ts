@@ -3,9 +3,10 @@
 export const SITE_NAME = 'Crescendo';
 export const SITE_NAME_JP = 'クレッシェンド';
 export const SITE_URL = 'https://ken-gei-prelude.pages.dev';
-export const SITE_DESCRIPTION = '愛知県立芸術大学 音楽学部 演奏会情報ポータル';
+export const SITE_DESCRIPTION = '愛知県立芸術大学 演奏会情報ポータル';
 export const SITE_TAGLINE = '若き音楽家たちの響きを、あなたの手のひらに。';
 export const CREATOR_NAME = 'Crescendo Team';
+export const CREATOR_DISPLAY_NAME = '梅田幸史朗';
 export const CREATOR_HANDLE = '';
 export const CREATOR_EMAIL = '';
 

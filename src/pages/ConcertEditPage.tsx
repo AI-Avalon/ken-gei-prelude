@@ -122,7 +122,7 @@ export default function ConcertEditPage() {
         <div className="mt-12 pt-8 border-t border-red-200">
           <h2 className="text-lg font-bold text-red-600 mb-2">危険な操作</h2>
           <p className="text-sm text-stone-500 mb-4">
-            この演奏会を削除すると、30日間はゴミ箱に保管されますが、その後完全に削除されます。
+            この演奏会を削除すると、90日間はゴミ箱に保管されますが、その後完全に削除されます。
           </p>
           {confirmDelete ? (
             <div className="flex items-center gap-3">

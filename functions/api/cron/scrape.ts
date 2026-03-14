@@ -2,6 +2,8 @@
 // Route: POST /api/cron/scrape (admin-only or cron-triggered)
 // Spec: Chapter 8 — 大学公式サイト解析
 
+import { classifyCategory, parsePricingFromText } from './shared';
+
 interface Env {
   DB: D1Database;
   KV: KVNamespace;
@@ -70,32 +72,10 @@ function generateSlug(date: string, title: string): string {
   return `${dateStr}-${titleSlug}-${suffix}`.slice(0, 60);
 }
 
-async function generateFingerprint(date: string, venue: string, title: string): Promise<string> {
-  const input = `${date}|${normalize(venue)}|${normalize(title).slice(0, 10)}`;
+async function generateFingerprint(date: string, _venue: string, title: string): Promise<string> {
+  // venueは不安定（listing/detail/cleanVenueName変更で変わる）のため、date+titleのみ使用
+  const input = `${date}|${normalize(title).slice(0, 20)}`;
   return sha256(input);
-}
-
-// ============================================================
-// Auto-classify category from title keywords
-// ============================================================
-function classifyCategory(title: string): string {
-  const t = title.normalize('NFKC');
-  if (/定期演奏会/.test(t)) return 'teiki';
-  if (/卒業演奏会|卒業/.test(t)) return 'sotsugyou';
-  if (/学位審査|学位/.test(t)) return 'gakui';
-  if (/修了演奏会/.test(t)) return 'sotsugyou';
-  if (/オペラ|opera/i.test(t)) return 'opera';
-  if (/オーケストラ|管弦楽団|orchestra/i.test(t)) return 'orchestra';
-  if (/ウインドオーケストラ|吹奏楽|ウィンド/i.test(t)) return 'wind';
-  if (/リサイタル|recital/i.test(t)) return 'recital';
-  if (/室内楽|チェンバー|chamber/i.test(t)) return 'chamber';
-  if (/アンサンブル|ensemble/i.test(t)) return 'ensemble';
-  if (/弦楽合奏|弦楽/.test(t)) return 'chamber';
-  if (/声楽|vocal/i.test(t)) return 'vocal';
-  if (/ピアノ|piano/i.test(t)) return 'piano';
-  if (/作曲作品演奏会|作曲/.test(t)) return 'ensemble';
-  if (/ドクトラル|博士/.test(t)) return 'recital';
-  return 'daigaku';
 }
 
 // ============================================================
@@ -108,16 +88,19 @@ function cleanVenueName(raw: string): string {
   let v = raw.normalize('NFKC').trim();
 
   // 括弧内に金額・入場料が含まれている場合は括弧ごと除去
-  v = v.replace(/[（(【][^）)】]*(?:円|入場料|無料|チケット|料金)[^）)】]*[）)】]/g, '');
+  v = v.replace(/[（(【][^）)】]*(?:円|入場料|無料|チケット|料金|予約)[^）)】]*[）)】]/g, '');
 
-  // 「・」「　」「 」「、」などで区切って最初の部分のみ取得
-  // ただし「愛知県立芸術大学 奏楽堂」のような半角スペースは許容する
+  // 料金・時間・電話番号などの非会場情報を除去
   v = v
-    .replace(/(?:入場料|料金|チケット|全席[自指][由定])[^\n]*/g, '') // 入場料・全席〇〇以降を削除
-    .replace(/\d+[\d,]*\s*円[^\n]*/g, '')                           // NNN円以降を削除
-    .replace(/無料[^\n]*/g, '')                                      // 無料以降を削除
-    .split(/[・。\n]/)[0]                                            // 中点・改行で分割し最初の部分
+    .replace(/(?:入場料|料金|チケット|全席[自指][由定]|予約|前売|当日券)[^\n]*/g, '')
+    .replace(/\d+[\d,]*\s*円[^\n]*/g, '')
+    .replace(/無料[^\n]*/g, '')
+    .replace(/\s*TEL[:：]?\s*[\d-]+/g, '')
+    .replace(/\s*(?:開場|開演)\s*\d{1,2}[:：]\d{2}[^\n]*/g, '')
     .trim();
+
+  // 改行・句点で分割（中点は会場名に含まれることがあるため維持）
+  v = v.split(/[。\n]/)[0].trim();
 
   return v || '愛知県立芸術大学';
 }
@@ -255,7 +238,7 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
   // Parse pricing from 入場料 / 料金 / チケット section
   const pricingSection = sections['入場料'] || sections['料金'] || sections['チケット'] || '';
   if (pricingSection) {
-    const pricing = parsePricingFromText(pricingSection);
+    const pricing = parsePricingFromText(pricingSection, [{ label: '入場料', amount: 0 }]);
     if (pricing.length > 0) {
       extra.pricingJson = JSON.stringify(pricing);
     }
@@ -283,63 +266,6 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
   }
 
   return extra;
-}
-
-// Parse pricing text into structured pricing items
-function parsePricingFromText(text: string): Array<{ label: string; amount: number; note?: string }> {
-  const t = text.normalize('NFKC').trim();
-  if (!t) return [{ label: '入場料', amount: 0 }];
-  // Check for explicitly free (must be at the start or the whole text)
-  if (/^(無料|入場無料|入場料無料|free)([（(、,\s]|$)/i.test(t)) {
-    return [{ label: '入場料', amount: 0 }];
-  }
-  const items: Array<{ label: string; amount: number; note?: string }> = [];
-  // Process line by line to avoid cross-segment matching
-  const lines = t.split(/[\n\r]+/);
-  for (const line of lines) {
-    // Try 'label：price円' format (with colon separator)
-    const colonMatch = line.match(/^(.+?)\s*[:：]\s*(\d[\d,]*)\s*円/);
-    if (colonMatch) {
-      let label = colonMatch[1].trim();
-      if (/^[（(].*[）)]$/.test(label)) label = label.slice(1, -1);
-      const amount = parseInt(colonMatch[2].replace(/,/g, ''), 10);
-      if (amount <= 100000 && label.length >= 1 && label.length <= 30 && !/^\d+月|^\d+時|^※|^【/.test(label)) {
-        items.push({ label, amount });
-        continue;
-      }
-    }
-    // Try 'price円（label）' format (price before label)
-    const priceFirstPattern = /(\d[\d,]*)\s*円\s*[（(]([^）)]+)[）)]/g;
-    let pf;
-    let priceFirstMatched = false;
-    while ((pf = priceFirstPattern.exec(line)) !== null) {
-      const amount = parseInt(pf[1].replace(/,/g, ''), 10);
-      let label = pf[2].trim();
-      if (amount <= 100000 && label.length >= 1 && label.length <= 30) {
-        items.push({ label, amount });
-        priceFirstMatched = true;
-      }
-    }
-    if (priceFirstMatched) continue;
-    // Try inline patterns: 'label price円' or 'labelN,NNN円'
-    const inlinePattern = /([^\d\n]{2,}?)\s*(\d[\d,]*)\s*円/g;
-    let m;
-    while ((m = inlinePattern.exec(line)) !== null) {
-      let label = m[1].trim().replace(/^[（(]/, '').replace(/[）)：:]$/, '').trim();
-      if (/^\d+月|^\d+時|^※|^【/.test(label)) continue;
-      if (label.length < 1 || label.length > 30) continue;
-      const amount = parseInt(m[2].replace(/,/g, ''), 10);
-      if (amount > 100000) continue;
-      items.push({ label, amount });
-    }
-  }
-  if (items.length > 0) return items;
-  // Fallback: single naked price
-  const singleMatch = t.match(/(\d[\d,]*)\s*円/);
-  if (singleMatch) {
-    return [{ label: '入場料', amount: parseInt(singleMatch[1].replace(/,/g, ''), 10) }];
-  }
-  return [{ label: '入場料', amount: 0 }];
 }
 
 // Main scraping logic
@@ -434,7 +360,7 @@ async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: nu
 
         // Check if already exists
         const existing = await env.DB.prepare(
-          'SELECT id, pricing_json FROM concerts WHERE fingerprint = ?'
+          'SELECT id, pricing_json FROM concerts WHERE fingerprint = ? AND is_deleted = 0'
         ).bind(fingerprint).first<{ id: string; pricing_json: string }>();
 
         if (existing) {
@@ -473,22 +399,24 @@ async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: nu
             }
           } catch { /* image download failed */ }
 
-          // Also download PDF flyer if found on detail page
-          const pdfUrl = (ev as unknown as Record<string, unknown>).pdfUrl as string | undefined;
-          if (pdfUrl && ev.detailUrl) {
-            try {
-              const fullPdfUrl = new URL(pdfUrl, ev.detailUrl).href;
-              const pdfRes = await fetch(fullPdfUrl, {
-                headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'application/pdf' },
-              });
-              if (pdfRes.ok) {
-                const pdfBuffer = await pdfRes.arrayBuffer();
-                const timestamp = Date.now();
-                const pdfKey = `flyers/${slug}/${timestamp}.pdf`;
-                await env.KV.put(pdfKey, pdfBuffer, { metadata: { contentType: 'application/pdf' } });
-                flyerR2Keys.push(pdfKey);
-              }
-            } catch { /* PDF download failed */ }
+          // Also download all PDF flyers found on detail page (front + back pages)
+          const pdfUrls = (ev as unknown as Record<string, unknown>).pdfUrls as string[] | undefined;
+          if (pdfUrls && pdfUrls.length > 0 && ev.detailUrl) {
+            for (let pi = 0; pi < pdfUrls.length; pi++) {
+              try {
+                const fullPdfUrl = new URL(pdfUrls[pi], ev.detailUrl).href;
+                const pdfRes = await fetch(fullPdfUrl, {
+                  headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'application/pdf' },
+                });
+                if (pdfRes.ok) {
+                  const pdfBuffer = await pdfRes.arrayBuffer();
+                  const pdfTimestamp = Date.now();
+                  const pdfKey = `flyers/${slug}/${pdfTimestamp}_p${pi + 1}.pdf`;
+                  await env.KV.put(pdfKey, pdfBuffer, { metadata: { contentType: 'application/pdf' } });
+                  flyerR2Keys.push(pdfKey);
+                }
+              } catch { /* PDF download failed */ }
+            }
           }
         }
 

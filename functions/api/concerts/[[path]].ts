@@ -224,7 +224,18 @@ async function handleGet(slug: string, request: Request, env: Env): Promise<Resp
     'SELECT * FROM concerts WHERE slug = ? AND is_deleted = 0'
   ).bind(slug).first();
 
-  if (!row) return jsonResponse({ ok: false, error: '演奏会が見つかりません' }, 404);
+  if (!row) {
+    // Check for slug redirect (from merged/deduplicated concerts)
+    try {
+      const redirect = await env.DB.prepare(
+        'SELECT new_slug FROM slug_redirects WHERE old_slug = ?'
+      ).bind(slug).first<{ new_slug: string }>();
+      if (redirect) {
+        return jsonResponse({ ok: false, error: 'redirect', redirect_slug: redirect.new_slug }, 301);
+      }
+    } catch { /* slug_redirects table may not exist yet */ }
+    return jsonResponse({ ok: false, error: '演奏会が見つかりません' }, 404);
+  }
 
   // Increment view
   await env.DB.prepare('UPDATE concerts SET views = views + 1 WHERE slug = ?').bind(slug).run();

@@ -60,10 +60,16 @@ export function googleCalendarUrl(concert: Concert): string {
   const startDate = concert.date.replace(/-/g, '');
   const timeStart = concert.time_start || '14:00';
   const startTime = timeStart.replace(':', '') + '00';
-  const endTime = concert.time_end
-    ? concert.time_end.replace(':', '') + '00'
-    : addHours(timeStart, 2).replace(':', '') + '00';
-  const dates = `${startDate}T${startTime}/${startDate}T${endTime}`;
+  let endDate = startDate;
+  let endTime: string;
+  if (concert.time_end) {
+    endTime = concert.time_end.replace(':', '') + '00';
+  } else {
+    const end = addHours(concert.date, timeStart, 2);
+    endDate = end.date.replace(/-/g, '');
+    endTime = end.time.replace(':', '') + '00';
+  }
+  const dates = `${startDate}T${startTime}/${endDate}T${endTime}`;
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: concert.title,
@@ -79,9 +85,13 @@ export function googleCalendarUrl(concert: Concert): string {
 export function outlookCalendarUrl(concert: Concert): string {
   const timeStart = concert.time_start || '14:00';
   const start = `${concert.date}T${timeStart}:00`;
-  const end = concert.time_end
-    ? `${concert.date}T${concert.time_end}:00`
-    : `${concert.date}T${addHours(timeStart, 2)}:00`;
+  let end: string;
+  if (concert.time_end) {
+    end = `${concert.date}T${concert.time_end}:00`;
+  } else {
+    const endResult = addHours(concert.date, timeStart, 2);
+    end = `${endResult.date}T${endResult.time}:00`;
+  }
   const params = new URLSearchParams({
     subject: concert.title,
     startdt: start,
@@ -97,9 +107,18 @@ export function outlookCalendarUrl(concert: Concert): string {
 /** Generate Yahoo Calendar URL */
 export function yahooCalendarUrl(concert: Concert): string {
   const timeStart = concert.time_start || '14:00';
-  const timeEnd = concert.time_end || addHours(timeStart, 2);
+  let endDateStr: string;
+  let endTimeStr: string;
+  if (concert.time_end) {
+    endDateStr = concert.date.replace(/-/g, '');
+    endTimeStr = concert.time_end.replace(':', '');
+  } else {
+    const endResult = addHours(concert.date, timeStart, 2);
+    endDateStr = endResult.date.replace(/-/g, '');
+    endTimeStr = endResult.time.replace(':', '');
+  }
   const st = `${concert.date.replace(/-/g, '')}T${timeStart.replace(':', '')}00`;
-  const et = `${concert.date.replace(/-/g, '')}T${timeEnd.replace(':', '')}00`;
+  const et = `${endDateStr}T${endTimeStr}00`;
   const params = new URLSearchParams({
     v: '60',
     TITLE: concert.title,
@@ -116,9 +135,15 @@ export function generateICS(concert: Concert): string {
   const startDate = concert.date.replace(/-/g, '');
   const timeStart = concert.time_start || '14:00';
   const startTime = `${timeStart.replace(':', '')}00`;
-  const endTime = concert.time_end
-    ? `${concert.time_end.replace(':', '')}00`
-    : `${addHours(timeStart, 2).replace(':', '')}00`;
+  let endDate = startDate;
+  let endTime: string;
+  if (concert.time_end) {
+    endTime = `${concert.time_end.replace(':', '')}00`;
+  } else {
+    const endResult = addHours(concert.date, timeStart, 2);
+    endDate = endResult.date.replace(/-/g, '');
+    endTime = `${endResult.time.replace(':', '')}00`;
+  }
 
   return [
     'BEGIN:VCALENDAR',
@@ -127,7 +152,7 @@ export function generateICS(concert: Concert): string {
     'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT',
     `DTSTART;TZID=Asia/Tokyo:${startDate}T${startTime}`,
-    `DTEND;TZID=Asia/Tokyo:${startDate}T${endTime}`,
+    `DTEND;TZID=Asia/Tokyo:${endDate}T${endTime}`,
     `SUMMARY:${concert.title}`,
     `LOCATION:${concert.venue?.name || ''}`,
     `URL:${SITE_URL}/concerts/${concert.slug}`,
@@ -177,11 +202,14 @@ export function routeUrls(venue: { address?: string; name?: string }) {
   };
 }
 
-/** Add hours to HH:MM string */
-function addHours(time: string, hours: number): string {
+/** Add hours to a date+time, correctly handling midnight crossover */
+function addHours(date: string, time: string, hours: number): { date: string; time: string } {
+  const [y, mo, d] = date.split('-').map(Number);
   const [h, m] = time.split(':').map(Number);
-  const newH = (h + hours) % 24;
-  return `${String(newH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  const dt = new Date(y, mo - 1, d, h + hours, m);
+  const newDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  const newTime = `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+  return { date: newDate, time: newTime };
 }
 
 /** SHA-256 hash (browser) */

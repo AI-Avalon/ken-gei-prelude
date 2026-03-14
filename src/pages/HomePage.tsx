@@ -44,7 +44,7 @@ export default function HomePage() {
         <section className="bg-hero-gradient text-white py-16 px-4 relative overflow-hidden">
           <div className="text-center relative z-10">
             <p className="text-primary-400/70 text-[10px] tracking-[0.3em] uppercase mb-3">
-              愛知県立芸術大学 音楽学部
+              愛知県立芸術大学
             </p>
             <h1 className="text-3xl font-display font-bold mb-2 tracking-wider">
               <span className="text-gold">{SITE_NAME}</span>
@@ -96,11 +96,12 @@ export default function HomePage() {
           {loading ? (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
-                  <div className="skeleton h-32 w-full" />
-                  <div className="p-3 space-y-2">
-                    <div className="skeleton h-4 w-3/4" />
-                    <div className="skeleton h-3 w-1/2" />
+                <div key={i} className="flex bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
+                  <div className="skeleton w-24 min-h-[96px]" style={{ borderRadius: 0 }} />
+                  <div className="flex-1 p-3 space-y-2">
+                    <div className="skeleton h-3 w-20" />
+                    <div className="skeleton h-4 w-full" />
+                    <div className="skeleton h-3 w-2/3" />
                   </div>
                 </div>
               ))}
@@ -120,7 +121,7 @@ export default function HomePage() {
           {upcoming.length > 6 && (
             <div className="text-center mt-4">
               <Link to="/concerts" className="btn-secondary text-sm w-full block">
-                もっと見る（{upcoming.length - 6}件以上）
+                もっと見る（残り{upcoming.length - 6}件）
               </Link>
             </div>
           )}
@@ -154,7 +155,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-navy-950/50" />
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <p className="text-primary-400/80 text-xs tracking-[0.4em] uppercase mb-6 font-sans animate-fade-in">
-            愛知県立芸術大学 音楽学部
+            愛知県立芸術大学
           </p>
           <h1 className="text-6xl md:text-8xl font-display font-bold mb-4 tracking-wider animate-blur-in">
             <span className="text-gold">{SITE_NAME}</span>
@@ -251,7 +252,7 @@ export default function HomePage() {
         {upcoming.length > 8 && (
           <div className="text-center mt-10">
             <Link to="/concerts" className="btn-secondary">
-              もっと見る（{upcoming.length - 8}件以上）
+              もっと見る（残り{upcoming.length - 8}件）
             </Link>
           </div>
         )}

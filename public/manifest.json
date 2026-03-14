@@ -1,7 +1,7 @@
 {
   "name": "Crescendo — 演奏会ポータル",
   "short_name": "Crescendo",
-  "description": "愛知県立芸術大学 音楽学部 演奏会情報ポータル",
+  "description": "愛知県立芸術大学 演奏会情報ポータル",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf8f1",

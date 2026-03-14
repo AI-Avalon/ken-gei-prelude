@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import NavBar from './components/NavBar';
 import MobileTabBar from './components/MobileTabBar';
@@ -17,7 +17,6 @@ import DocsPage from './pages/DocsPage';
 import ApiDocsPage from './pages/ApiDocsPage';
 import AboutPage from './pages/AboutPage';
 import { useIsMobile } from './hooks/useDevice';
-import { Link } from 'react-router-dom';
 
 function NotFoundPage() {
   return (

@@ -38,7 +38,7 @@ function UserDocs() {
     <div className="prose prose-primary max-w-none space-y-10">
       <Section id="about" title="1. Crescendo とは">
         <p>
-          Crescendo（クレッシェンド）は、愛知県立芸術大学 音楽学部の演奏会情報ポータルサイトです。
+          Crescendo（クレッシェンド）は、愛知県立芸術大学の演奏会情報ポータルサイトです。
           学生・教職員の演奏会を「掲載・閲覧・検索・共有」できます。
         </p>
         <p>
@@ -93,10 +93,12 @@ function UserDocs() {
           <li>Google カレンダー / Outlook / Yahoo! カレンダー</li>
           <li>Apple カレンダー（ICSダウンロード）</li>
         </ul>
-        <h4>📅 Webcal購読（自動同期）</h4>
-        <code className="block bg-stone-100 p-3 rounded text-sm break-all">
-          webcal://ken-gei-prelude.pages.dev/api/feed/ics
-        </code>
+        <h4>📅 カレンダーの自動同期</h4>
+        <p className="text-sm text-stone-600 mb-2">
+          お使いのカレンダーアプリ（Google カレンダー・Apple カレンダー等）に、
+          新しい演奏会が自動で追加されるようになります。
+          演奏会詳細ページの「カレンダーに追加」ボタンから設定できます。
+        </p>
       </Section>
 
       <Section id="share" title="5. 共有する">
@@ -107,7 +109,7 @@ function UserDocs() {
 
       <Section id="edit" title="6. 編集・削除">
         <p>
-          演奏会詳細ページの「✏️ この演奏会を編集」から編集可能。削除後30日間はゴミ箱保管。
+          演奏会詳細ページの「✏️ この演奏会を編集」から編集可能。削除後90日間はゴミ箱保管。
         </p>
       </Section>
 
@@ -286,7 +288,7 @@ GET    /api/concerts         一覧取得
 GET    /api/concerts/:slug   詳細取得（閲覧数+1、分析レコード挿入）
 POST   /api/concerts         新規作成（edit_password必須）
 PUT    /api/concerts/:slug   更新（edit_password or admin_token必須）
-DELETE /api/concerts/:slug   削除（soft delete, 30日後自動削除）
+DELETE /api/concerts/:slug   削除（soft delete, 90日後自動削除）
 
 GET    /api/concerts/venues  会場一覧（過去の登録会場サジェスト用）`}</Pre>
 
@@ -335,7 +337,7 @@ Cache Strategy:
       <Section id="mobile-pc" title="6. モバイル/PC独立UI">
         <p>モバイルとPCでは完全に独立したUIを提供しています。</p>
         <Pre>{`
-判定: useIsMobile() フック（MediaQuery: max-width 767px）
+判定: useIsMobile() フック（MediaQuery: max-width 639px）
 
 モバイル専用:
   - MobileTabBar: 下部固定タブバー（ホーム/一覧/カレンダー/登録/その他）
@@ -378,7 +380,7 @@ PC専用:
   - 登録: 同一フィンガープリントで短時間重複防止
 
 入力検証:
-  - DOMPurify でXSS対策
+  - ReactデフォルトのXSSエスケープ
   - URLバリデーション（Google Maps URL解析時）
   - ファイルサイズ・MIME制限`}</Pre>
       </Section>
@@ -439,7 +441,7 @@ UNIVERSITY_VENUES:
   - JSON型カラムは _json サフィックス（venue_json, pricing_json等）
   - APIレスポンスは { ok: boolean, data?: T, error?: string } 形式
   - 画像キーは flyer_r2_keys だが実際はKVに保存（歴史的命名）
-  - モバイル判定は useIsMobile() フックを使用（768px境界）
+  - モバイル判定は useIsMobile() フックを使用（640px境界）
   - CSS はTailwind + index.css のカスタムクラス（.card, .btn-primary等）
 
 変更時の注意:
