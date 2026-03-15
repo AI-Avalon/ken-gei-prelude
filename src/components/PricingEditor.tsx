@@ -133,39 +133,44 @@ export default function PricingEditor({ pricing, onChange, pricingNote, onNoteCh
           <div className="space-y-3">
             {pricing.map((item, i) => (
               <div key={i} className="bg-stone-50 rounded-lg p-3 border border-stone-200">
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
+                <div className="grid grid-cols-[1fr_5rem] sm:grid-cols-[1fr_6rem_1fr] gap-2 items-end">
+                  <div>
                     <label className="label">区分名</label>
                     <input className="input" value={item.label}
                       onChange={(e) => updateItem(i, 'label', e.target.value)}
-                      placeholder="例: 一般・大人・学生・前売り・S席" />
+                      placeholder="例: 一般・学生" />
                   </div>
-                  <div className="w-28">
-                    <label className="label">金額 (円)</label>
+                  <div>
+                    <label className="label">金額</label>
                     <input type="number" className="input" value={item.amount}
                       onChange={(e) => updateItem(i, 'amount', parseInt(e.target.value) || 0)}
                       min={0} step={100} />
                   </div>
-                  <div className="flex-1">
+                  <div className="hidden sm:block">
                     <label className="label">備考</label>
                     <input className="input" value={item.note || ''}
                       onChange={(e) => updateItem(i, 'note', e.target.value)}
-                      placeholder="例: 要学生証・税込" />
+                      placeholder="例: 要学生証" />
                   </div>
-                  <div className="flex flex-col gap-0.5 flex-shrink-0">
-                    <button type="button" onClick={() => moveItem(i, -1)} disabled={i === 0}
-                      className="text-stone-400 hover:text-stone-600 disabled:opacity-30 text-xs px-1" title="上へ">▲</button>
-                    <button type="button" onClick={() => moveItem(i, 1)} disabled={i === pricing.length - 1}
-                      className="text-stone-400 hover:text-stone-600 disabled:opacity-30 text-xs px-1" title="下へ">▼</button>
-                  </div>
-                  <button type="button" onClick={() => duplicateItem(i)}
-                    className="text-stone-400 hover:text-stone-600 p-1 flex-shrink-0" title="複製">📋</button>
-                  <button type="button" onClick={() => removeItem(i)}
-                    className="text-red-500 p-1 hover:bg-red-50 rounded flex-shrink-0" title="削除">🗑</button>
                 </div>
-                {item.amount === 0 && (
-                  <p className="text-xs text-green-600 mt-1 ml-1">💚 無料</p>
-                )}
+                {/* Controls row */}
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center gap-1">
+                    {item.amount === 0 && (
+                      <span className="text-xs text-green-600">無料</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => moveItem(i, -1)} disabled={i === 0}
+                      className="text-stone-400 hover:text-stone-600 disabled:opacity-30 text-xs p-1" title="上へ">▲</button>
+                    <button type="button" onClick={() => moveItem(i, 1)} disabled={i === pricing.length - 1}
+                      className="text-stone-400 hover:text-stone-600 disabled:opacity-30 text-xs p-1" title="下へ">▼</button>
+                    <button type="button" onClick={() => duplicateItem(i)}
+                      className="text-stone-400 hover:text-stone-600 p-1" title="複製">📋</button>
+                    <button type="button" onClick={() => removeItem(i)}
+                      className="text-red-500 p-1 hover:bg-red-50 rounded" title="削除">🗑</button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
