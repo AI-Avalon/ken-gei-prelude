@@ -778,7 +778,8 @@ function SettingsTab({ token }: { token: string }) {
     setScraping(true);
     setScrapeResult(null);
     try {
-      const res = await triggerScrape(token);
+      // Always scrape all pages to get past events too
+      const res = await triggerBulkScrape(token);
       if (res.ok && res.data) {
         const d = res.data;
         setScrapeResult(`✅ ${d.found}件発見、${d.added}件新規追加${d.errors.length > 0 ? `\n⚠️ ${d.errors.join(', ')}` : ''}`);
@@ -788,8 +789,8 @@ function SettingsTab({ token }: { token: string }) {
         toast(res.error || 'スクレイピングに失敗しました', 'error');
       }
     } catch {
-      setScrapeResult('❌ 通信エラー');
-      toast('スクレイピングに失敗しました', 'error');
+      setScrapeResult('⚠️ タイムアウト — バックグラウンドで処理中の可能性があります。\n数分後にページを更新してください。');
+      toast('タイムアウト。しばらく待ってからページを更新してください', 'info');
     } finally {
       setScraping(false);
     }
@@ -842,7 +843,7 @@ function SettingsTab({ token }: { token: string }) {
           <div className="flex items-center justify-between gap-3 p-3 bg-stone-50 rounded-lg">
             <div className="min-w-0">
               <p className="font-medium text-sm">🌐 大学サイトスクレイピング</p>
-              <p className="text-xs text-stone-500">愛知県芸公式サイトから演奏会情報を取得（通常は毎朝6:00に自動実行）</p>
+              <p className="text-xs text-stone-500">愛知県芸公式サイトから全ページの演奏会情報を取得（過去分含む）</p>
             </div>
             <button
               onClick={handleScrape}
