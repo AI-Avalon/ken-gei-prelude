@@ -219,3 +219,16 @@ export async function triggerBulkScrape(
     headers: { 'X-Admin-Token': token },
   });
 }
+
+// Admin: Export all data as JSON
+export async function exportData(token: string): Promise<Blob | null> {
+  try {
+    const res = await fetch(`${BASE}/admin/export`, {
+      headers: { 'X-Admin-Token': token },
+    });
+    if (!res.ok) return null;
+    return await res.blob();
+  } catch {
+    return null;
+  }
+}

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   adminAuth, adminFetchConcerts, adminUpdateConcert, adminDeleteConcert,
   fetchStats, fetchInquiries, updateInquiry, fetchMaintenanceLogs,
-  triggerScrape, triggerMaintenance, triggerReset, triggerBulkScrape,
+  triggerScrape, triggerMaintenance, triggerReset, triggerBulkScrape, exportData,
 } from '../lib/api';
 import { CATEGORIES } from '../lib/constants';
 import { formatDateShort } from '../lib/utils';
@@ -878,8 +878,25 @@ function SettingsTab({ token }: { token: string }) {
               <p className="font-medium text-sm">データバックアップ</p>
               <p className="text-xs text-stone-500">D1データをJSON形式でエクスポート</p>
             </div>
-            <button className="btn-secondary text-sm flex-shrink-0" disabled>
-              エクスポート（準備中）
+            <button
+              className="btn-secondary text-sm flex-shrink-0"
+              onClick={async () => {
+                toast('エクスポート中...', 'info');
+                const blob = await exportData(token);
+                if (blob) {
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `crescendo-export-${new Date().toISOString().slice(0, 10)}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast('エクスポート完了', 'success');
+                } else {
+                  toast('エクスポートに失敗しました', 'error');
+                }
+              }}
+            >
+              エクスポート
             </button>
           </div>
 
@@ -914,14 +931,21 @@ function SettingsTab({ token }: { token: string }) {
                       try {
                         const resetRes = await triggerReset(token);
                         if (resetRes.ok && resetRes.data) {
-                          setResetResult(`✅ 削除完了: ${resetRes.data.deleted.join(', ')}\n⏳ 全ページスクレイピング開始...`);
+                          setResetResult(`✅ 削除完了: ${resetRes.data.deleted.join(', ')}\n⏳ 全ページスクレイピング開始...\n（最大2分程度かかります）`);
                           toast('データ削除完了。再スクレイプ中...', 'success');
-                          const scrapeRes = await triggerBulkScrape(token);
-                          if (scrapeRes.ok && scrapeRes.data) {
-                            setResetResult(prev => `${prev}\n✅ ${scrapeRes.data!.found}件発見、${scrapeRes.data!.added}件追加`);
-                            toast(`再構築完了: ${scrapeRes.data.added}件追加`, 'success');
-                          } else {
-                            setResetResult(prev => `${prev}\n❌ スクレイプ失敗: ${scrapeRes.error}`);
+                          // Bulk scrape can take a long time — use independent try/catch
+                          try {
+                            const scrapeRes = await triggerBulkScrape(token);
+                            if (scrapeRes.ok && scrapeRes.data) {
+                              setResetResult(prev => `${prev}\n✅ ${scrapeRes.data!.found}件発見、${scrapeRes.data!.added}件追加`);
+                              toast(`再構築完了: ${scrapeRes.data.added}件追加`, 'success');
+                            } else {
+                              setResetResult(prev => `${prev}\n⚠️ スクレイプ: ${scrapeRes.error || '応答なし — バックグラウンドで処理中の可能性があります'}`);
+                              toast('スクレイプの応答がありません。数分後に手動実行してください', 'info');
+                            }
+                          } catch {
+                            setResetResult(prev => `${prev}\n⚠️ スクレイプがタイムアウトしました。バックグラウンドで処理中の可能性があります。\n数分後に「大学サイトスクレイピング」を手動実行してください。`);
+                            toast('スクレイプがタイムアウト。手動で再実行してください', 'info');
                           }
                         } else {
                           setResetResult(`❌ ${resetRes.error || 'リセット失敗'}`);

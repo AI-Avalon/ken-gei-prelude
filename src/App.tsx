@@ -35,8 +35,18 @@ function NotFoundPage() {
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
+    // Scroll to top on route change AND initial page load/refresh
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   }, [pathname]);
+
+  // Also handle page refresh — browser may restore previous scroll position
+  useEffect(() => {
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, []);
+
   return null;
 }
 
