@@ -61,15 +61,45 @@ export function parsePricingFromText(
       }
     }
     // Try 'price円（label）' format (price before label)
+    // Also handle 'label1 price1円（label2 price2円）' — e.g. "一般1,500円（サラマンカメイト1,350円）"
     const priceFirstPattern = /(\d[\d,]*)\s*円\s*[（(]([^）)]+)[）)]/g;
     let pf;
     let priceFirstMatched = false;
     while ((pf = priceFirstPattern.exec(line)) !== null) {
       const amount = parseInt(pf[1].replace(/,/g, ''), 10);
-      const label = pf[2].trim();
-      if (amount <= 100000 && label.length >= 1 && label.length <= 30) {
-        items.push({ label, amount });
+      const parenContent = pf[2].trim();
+
+      // Check if parenthesized content contains its own price (e.g. "サラマンカメイト1,350円")
+      const innerPriceMatch = parenContent.match(/^(.+?)\s*(\d[\d,]*)\s*円$/);
+      if (innerPriceMatch) {
+        const innerLabel = innerPriceMatch[1].trim();
+        const innerAmount = parseInt(innerPriceMatch[2].replace(/,/g, ''), 10);
+        if (innerAmount <= 100000 && innerLabel.length >= 1 && innerLabel.length <= 30) {
+          items.push({ label: innerLabel, amount: innerAmount });
+        }
+        // Also extract the outer label (text before the outer price)
+        const fullMatch = pf[0];
+        const outerStart = pf.index;
+        const beforeOuter = line.slice(0, outerStart);
+        const outerLabelMatch = beforeOuter.match(/([^\d\s][^\d]*?)\s*$/);
+        if (outerLabelMatch) {
+          let outerLabel = outerLabelMatch[1].trim().replace(/^[（(]/, '').replace(/[）)：:]$/, '').trim();
+          // Remove seating prefix (e.g. "全席指定 一般" → "一般")
+          outerLabel = outerLabel.replace(/^全席[自指][由定]\s*/, '').trim();
+          if (outerLabel.length >= 1 && outerLabel.length <= 30 && amount <= 100000) {
+            items.push({ label: outerLabel, amount });
+          }
+        } else if (amount <= 100000) {
+          items.push({ label: '入場料', amount });
+        }
         priceFirstMatched = true;
+      } else {
+        // No inner price, just label in parens
+        const label = parenContent;
+        if (amount <= 100000 && label.length >= 1 && label.length <= 30) {
+          items.push({ label, amount });
+          priceFirstMatched = true;
+        }
       }
     }
     if (priceFirstMatched) continue;
