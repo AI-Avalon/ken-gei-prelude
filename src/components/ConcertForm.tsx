@@ -354,9 +354,9 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
         {/* Google Maps URL auto-fill */}
         <div>
           <label className="label">📍 Google Maps URL（自動入力）</label>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
-              className="input flex-1"
+              className="input flex-1 min-w-0"
               value={gmapUrl}
               onChange={(e) => parseGoogleMapsUrl(e.target.value)}
               placeholder="Google Maps URLまたは短縮URL（maps.app.goo.gl）を貼り付け"
@@ -532,7 +532,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
             <h3 className="font-bold text-lg">指導者</h3>
             {supervisors.map((name, i) => (
               <div key={i} className="flex gap-2">
-                <input className="input flex-1" value={name}
+                <input className="input flex-1 min-w-0" value={name}
                   onChange={(e) => {
                     const next = [...supervisors];
                     next[i] = e.target.value;
@@ -551,7 +551,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
             <h3 className="font-bold text-lg">ゲストアーティスト</h3>
             {guestArtists.map((name, i) => (
               <div key={i} className="flex gap-2">
-                <input className="input flex-1" value={name}
+                <input className="input flex-1 min-w-0" value={name}
                   onChange={(e) => {
                     const next = [...guestArtists];
                     next[i] = e.target.value;
@@ -718,7 +718,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
 
       {/* Submit */}
       <div className="flex justify-end gap-3">
-        <button type="submit" disabled={loading} className="btn-primary text-lg px-8">
+        <button type="submit" disabled={loading} className="btn-primary text-lg px-8 w-full sm:w-auto">
           {loading ? '送信中...' : isEdit ? '✅ 更新する' : '🎵 登録する'}
         </button>
       </div>

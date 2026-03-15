@@ -87,7 +87,7 @@ export default function ConcertEditPage() {
   }
 
   return (
-    <div className={`${isMobile ? 'px-4 py-4' : 'max-w-3xl mx-auto px-4 py-8'}`}>
+    <div className={`${isMobile ? 'px-4 py-4' : 'max-w-3xl mx-auto px-4 py-8'} overflow-hidden`}>
       {!isMobile && (
         <nav className="text-sm text-stone-500 mb-6">
           <Link to="/" className="hover:text-primary-600">ホーム</Link>
@@ -125,7 +125,7 @@ export default function ConcertEditPage() {
             この演奏会を削除すると、90日間はゴミ箱に保管されますが、その後完全に削除されます。
           </p>
           {confirmDelete ? (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button onClick={handleDelete} disabled={submitting} className="btn-danger">
                 {submitting ? '削除中...' : '本当に削除する'}
               </button>

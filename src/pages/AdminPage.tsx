@@ -65,9 +65,9 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">管理ダッシュボード</h1>
+    <div className="max-w-7xl mx-auto px-4 py-8 overflow-hidden">
+      <div className="flex items-center justify-between mb-6 gap-2">
+        <h1 className="text-xl sm:text-3xl font-bold truncate">管理ダッシュボード</h1>
         <button onClick={logout} className="text-sm text-stone-500 hover:text-red-600">
           ログアウト
         </button>
@@ -308,7 +308,7 @@ function ConcertsTab({ token }: { token: string }) {
 
   return (
     <div>
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         {(['all', 'published', 'unpublished', 'deleted'] as const).map((f) => (
           <button
             key={f}
@@ -438,7 +438,7 @@ function InquiriesTab({ token }: { token: string }) {
 
   return (
     <div>
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         {(['all', 'unread', 'read', 'replied'] as const).map((f) => {
           const icons = { all: '', unread: '🔴', read: '🟢', replied: '✅' };
           const labels = { all: 'すべて', unread: '未読', read: '既読', replied: '返信済' };
@@ -517,7 +517,7 @@ function InquiriesTab({ token }: { token: string }) {
       <Modal open={!!selected} onClose={() => setSelected(null)} title="お問い合わせ詳細">
         {selected && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-stone-500">名前</span>
                 <p className="font-medium">{selected.name || '(暗号化)'}</p>
@@ -839,15 +839,15 @@ function SettingsTab({ token }: { token: string }) {
       <div className="card p-6">
         <h2 className="font-bold text-lg mb-4">🔧 メンテナンス操作</h2>
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-stone-50 rounded-lg">
+            <div className="min-w-0">
               <p className="font-medium text-sm">🌐 大学サイトスクレイピング</p>
               <p className="text-xs text-stone-500">愛知県芸公式サイトから演奏会情報を取得（通常は毎朝6:00に自動実行）</p>
             </div>
             <button
               onClick={handleScrape}
               disabled={scraping}
-              className="btn-primary text-sm"
+              className="btn-primary text-sm flex-shrink-0"
             >
               {scraping ? '実行中...' : '手動実行'}
             </button>
@@ -856,15 +856,15 @@ function SettingsTab({ token }: { token: string }) {
             <pre className="text-xs bg-stone-100 rounded p-3 whitespace-pre-wrap">{scrapeResult}</pre>
           )}
 
-          <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-stone-50 rounded-lg">
+            <div className="min-w-0">
               <p className="font-medium text-sm">🧹 自動メンテナンス</p>
               <p className="text-xs text-stone-500">古いログ削除・物理削除・レート制限クリア（通常は毎月1日に自動実行）</p>
             </div>
             <button
               onClick={handleMaintenance}
               disabled={maintaining}
-              className="btn-primary text-sm"
+              className="btn-primary text-sm flex-shrink-0"
             >
               {maintaining ? '実行中...' : '手動実行'}
             </button>
@@ -873,20 +873,20 @@ function SettingsTab({ token }: { token: string }) {
             <pre className="text-xs bg-stone-100 rounded p-3 whitespace-pre-wrap">{maintenanceResult}</pre>
           )}
 
-          <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-stone-50 rounded-lg">
+            <div className="min-w-0">
               <p className="font-medium text-sm">データバックアップ</p>
               <p className="text-xs text-stone-500">D1データをJSON形式でエクスポート</p>
             </div>
-            <button className="btn-secondary text-sm" disabled>
+            <button className="btn-secondary text-sm flex-shrink-0" disabled>
               エクスポート（準備中）
             </button>
           </div>
 
           {/* Data reset section */}
           <div className="border-t border-stone-200 pt-3 mt-3">
-            <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-              <div>
+            <div className="flex items-center justify-between gap-3 p-3 bg-red-50 rounded-lg">
+              <div className="min-w-0">
                 <p className="font-medium text-sm text-red-800">🗑️ データ全削除＆再構築</p>
                 <p className="text-xs text-red-600/80">全演奏会データ・画像・ログを削除し、大学サイトから全ページ再スクレイプ</p>
               </div>
@@ -894,7 +894,7 @@ function SettingsTab({ token }: { token: string }) {
                 <button
                   onClick={() => setConfirmReset(true)}
                   disabled={resetting}
-                  className="btn-danger text-sm"
+                  className="btn-danger text-sm flex-shrink-0"
                 >
                   リセット
                 </button>

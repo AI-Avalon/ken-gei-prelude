@@ -34,7 +34,7 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'max-
   return (
     <dialog
       ref={dialogRef}
-      className={`${maxWidth} w-full p-0 rounded-xl shadow-2xl backdrop:bg-black/50`}
+      className={`${maxWidth} w-[calc(100%-2rem)] sm:w-full p-0 rounded-xl shadow-2xl backdrop:bg-black/50`}
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}

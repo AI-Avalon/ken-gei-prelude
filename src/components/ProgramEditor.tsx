@@ -26,21 +26,37 @@ export default function ProgramEditor({ program, onChange }: Props) {
   return (
     <div className="space-y-3">
       {program.map((item, i) => (
-        <div key={i} className="flex gap-2 items-end">
-          <div className="flex-1">
-            <label className="label">作曲者</label>
-            <input className="input" value={item.composer}
-              onChange={(e) => updateItem(i, 'composer', e.target.value)}
-              placeholder="例: L.v.Beethoven" />
-          </div>
-          <div className="flex-1">
-            <label className="label">曲名</label>
-            <input className="input" value={item.piece}
+        <div key={i} className="bg-stone-50 rounded-lg p-3 border border-stone-200">
+          {/* Mobile: stacked layout */}
+          <div className="sm:hidden space-y-2">
+            <div className="flex items-center gap-2">
+              <input className="input flex-1 min-w-0 text-sm py-1.5" value={item.composer}
+                onChange={(e) => updateItem(i, 'composer', e.target.value)}
+                placeholder="作曲者" />
+              <button type="button" onClick={() => removeItem(i)}
+                className="text-red-400 hover:text-red-600 p-1 flex-shrink-0" title="削除">✕</button>
+            </div>
+            <input className="input w-full text-sm py-1.5" value={item.piece}
               onChange={(e) => updateItem(i, 'piece', e.target.value)}
-              placeholder="例: Piano Sonata No.14" />
+              placeholder="曲名" />
           </div>
-          <button type="button" onClick={() => removeItem(i)}
-            className="text-red-500 p-2 hover:bg-red-50 rounded" title="削除">🗑</button>
+          {/* Desktop: side-by-side */}
+          <div className="hidden sm:flex gap-2 items-end">
+            <div className="flex-1 min-w-0">
+              <label className="label">作曲者</label>
+              <input className="input" value={item.composer}
+                onChange={(e) => updateItem(i, 'composer', e.target.value)}
+                placeholder="例: L.v.Beethoven" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <label className="label">曲名</label>
+              <input className="input" value={item.piece}
+                onChange={(e) => updateItem(i, 'piece', e.target.value)}
+                placeholder="例: Piano Sonata No.14" />
+            </div>
+            <button type="button" onClick={() => removeItem(i)}
+              className="text-red-500 p-2 hover:bg-red-50 rounded" title="削除">🗑</button>
+          </div>
         </div>
       ))}
 
