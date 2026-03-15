@@ -241,6 +241,8 @@ async function main() {
 
   console.log('=== Crescendo Local Scraper ===\n');
 
+  let existingConcerts = [];
+
   // Step 1: Scrape all pages to get event list
   const allEvents = [];
   for (let page = 1; page <= 20; page++) {
@@ -324,7 +326,7 @@ async function main() {
   console.log('--- Phase 2: Fetch details & update events ---\n');
 
   // First, get all existing concerts from our API to find slugs (paginate since limit=100 max)
-  let existingConcerts = [];
+  existingConcerts = [];
   try {
     let page = 1;
     const pageSize = 100;
