@@ -52,30 +52,32 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   const deleted: string[] = [];
 
-  // 1. Delete all concerts
-  await env.DB.prepare('DELETE FROM concerts').run();
-  deleted.push('concerts');
+  // 1. Delete all DB tables (batch for speed)
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM concerts'),
+    env.DB.prepare('DELETE FROM analytics'),
+    env.DB.prepare('DELETE FROM slug_redirects'),
+    env.DB.prepare('DELETE FROM maintenance_log'),
+  ]);
+  deleted.push('concerts', 'analytics', 'slug_redirects', 'maintenance_log');
 
-  // 2. Delete analytics
-  await env.DB.prepare('DELETE FROM analytics').run();
-  deleted.push('analytics');
-
-  // 3. Delete slug redirects
-  await env.DB.prepare('DELETE FROM slug_redirects').run();
-  deleted.push('slug_redirects');
-
-  // 4. Delete maintenance logs
-  await env.DB.prepare('DELETE FROM maintenance_log').run();
-  deleted.push('maintenance_log');
-
-  // 5. Clear KV flyer images (list and delete all keys with 'flyers/' prefix)
+  // 2. Clear KV flyer images — delete in parallel batches to avoid timeout
   let kvDeleted = 0;
   let cursor: string | undefined;
   do {
     const list = await env.KV.list({ prefix: 'flyers/', cursor, limit: 1000 });
-    for (const key of list.keys) {
-      await env.KV.delete(key.name);
-      kvDeleted++;
+    if (list.keys.length > 0) {
+      // Delete up to 50 at a time in parallel
+      const batch: Promise<void>[] = [];
+      for (const key of list.keys) {
+        batch.push(env.KV.delete(key.name));
+        if (batch.length >= 50) {
+          await Promise.all(batch);
+          batch.length = 0;
+        }
+      }
+      if (batch.length > 0) await Promise.all(batch);
+      kvDeleted += list.keys.length;
     }
     cursor = list.list_complete ? undefined : list.cursor;
   } while (cursor);

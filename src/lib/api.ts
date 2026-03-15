@@ -201,21 +201,42 @@ export async function triggerMaintenance(
   });
 }
 
-// Admin: Reset all data
+// Admin: Reset all data (longer timeout — KV deletion can be slow)
 export async function triggerReset(
   token: string
 ): Promise<ApiResponse<{ deleted: string[]; kvDeleted: number }>> {
-  return request('/admin/reset', {
-    method: 'POST',
-    headers: { 'X-Admin-Token': token },
-  });
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120_000); // 2 min timeout
+    const res = await fetch(`${BASE}/admin/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return await res.json();
+  } catch {
+    return { ok: false, error: 'リセットがタイムアウトしました。KV削除に時間がかかっている可能性があります。ページを更新して確認してください。' };
+  }
 }
 
-// Admin: Trigger full scrape (all 30 pages — for rebuild)
+// Admin: Trigger full scrape (all 30 pages — for rebuild, longer timeout)
 export async function triggerBulkScrape(
   token: string
 ): Promise<ApiResponse<{ found: number; added: number; errors: string[] }>> {
-  return triggerScrape(token, 'full');
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120_000);
+    const res = await fetch(`${BASE}/cron/scrape?mode=full`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return await res.json();
+  } catch {
+    return { ok: false, error: 'スクレイプがタイムアウトしました。バックグラウンドで処理中の可能性があります。' };
+  }
 }
 
 // Admin: Export all data as JSON
