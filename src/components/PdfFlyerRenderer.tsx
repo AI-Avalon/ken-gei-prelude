@@ -12,6 +12,7 @@ interface Props {
  * Lazily renders a PDF stored in KV as an image.
  * Uses pdfjs-dist (already a dependency) to render each page to canvas → WebP.
  * After rendering, POSTs the converted image to /api/upload for permanent KV storage.
+ * Skips upload if images already exist for this concert (prevents duplication on reload).
  */
 export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, startPage = 1 }: Props) {
   const [pages, setPages] = useState<string[]>([]);
@@ -36,9 +37,24 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
       const totalPages = Math.min(pdf.numPages, 4);
       const urls: string[] = [];
 
+      // Check if this concert already has WebP images (skip upload if so)
+      let alreadyUploaded = false;
+      try {
+        const checkRes = await fetch(`/api/concerts/${concertSlug}`);
+        if (checkRes.ok) {
+          const checkData = await checkRes.json() as { data?: { flyer_r2_keys?: string[] } };
+          const existingKeys = checkData.data?.flyer_r2_keys || [];
+          const webpKeys = existingKeys.filter((k: string) => k.endsWith('.webp'));
+          if (webpKeys.length > 0) {
+            alreadyUploaded = true;
+          }
+        }
+      } catch { /* ignore check error */ }
+
       for (let pageNum = startPage; pageNum <= totalPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 2.0 });
+        // Use scale 3.0 for sharper text (especially small back-page text)
+        const viewport = page.getViewport({ scale: 3.0 });
 
         const canvas = document.createElement('canvas');
         canvas.width = viewport.width;
@@ -48,20 +64,22 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
 
         await (page.render({ canvasContext: ctx, viewport, canvas } as any).promise);
 
-        // Convert to WebP blob
+        // Convert to WebP blob with higher quality for text readability
         const blob = await new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(
             (b) => b ? resolve(b) : reject(new Error('Conversion failed')),
             'image/webp',
-            0.85
+            0.92
           );
         });
 
         const url = URL.createObjectURL(blob);
         urls.push(url);
 
-        // Upload converted image to server (fire-and-forget)
-        uploadConverted(blob, concertSlug, pageNum).catch(() => {});
+        // Upload converted image to server only if not already uploaded
+        if (!alreadyUploaded) {
+          uploadConverted(blob, concertSlug, pageNum).catch(() => {});
+        }
       }
 
       setPages(urls);

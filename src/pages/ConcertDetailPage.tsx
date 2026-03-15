@@ -233,6 +233,20 @@ export default function ConcertDetailPage() {
         </FadeIn>
       )}
 
+      {/* Actions: Calendar + Share — positioned prominently for easy access */}
+      <FadeIn delay={175} mobile={isMobile}>
+        <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-2 gap-4'} mb-4`}>
+          <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-4 sm:p-5">
+            <h2 className="font-bold text-sm mb-3 text-stone-500 uppercase tracking-wider">📅 カレンダーに追加</h2>
+            <CalendarAddDropdown concert={concert} />
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-4 sm:p-5">
+            <h2 className="font-bold text-sm mb-3 text-stone-500 uppercase tracking-wider">🔗 共有</h2>
+            <ShareButtons concert={concert} />
+          </div>
+        </div>
+      </FadeIn>
+
       {/* Flyer images */}
       {concert.flyer_r2_keys?.length > 0 && (() => {
         const imageKeys = concert.flyer_r2_keys.filter(key => !key.endsWith('.pdf'));
@@ -508,20 +522,6 @@ export default function ConcertDetailPage() {
           </Section>
         </FadeIn>
       )}
-
-      {/* Actions: Calendar + Share */}
-      <FadeIn delay={650} mobile={isMobile}>
-        <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-2 gap-4'} mb-4`}>
-          <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-4 sm:p-5">
-            <h2 className="font-bold text-sm mb-3 text-stone-500 uppercase tracking-wider">📅 カレンダーに追加</h2>
-            <CalendarAddDropdown concert={concert} />
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-4 sm:p-5">
-            <h2 className="font-bold text-sm mb-3 text-stone-500 uppercase tracking-wider">🔗 共有</h2>
-            <ShareButtons concert={concert} />
-          </div>
-        </div>
-      </FadeIn>
 
       {/* Related */}
       {related.length > 0 && (

@@ -72,15 +72,20 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     // Update concert record if slug provided
     if (concertSlug) {
       const row = await env.DB.prepare(
-        'SELECT flyer_r2_keys FROM concerts WHERE slug = ?'
-      ).bind(concertSlug).first<{ flyer_r2_keys: string }>();
+        'SELECT flyer_r2_keys, flyer_thumbnail_key FROM concerts WHERE slug = ?'
+      ).bind(concertSlug).first<{ flyer_r2_keys: string; flyer_thumbnail_key: string }>();
 
       if (row) {
         const existingKeys = JSON.parse(row.flyer_r2_keys || '[]') as string[];
-        existingKeys.push(key);
+        // Only add if not already present (prevent duplication on page reload)
+        if (!existingKeys.includes(key)) {
+          existingKeys.push(key);
+        }
+        // Only update thumbnail if there isn't one already
+        const thumbToUse = row.flyer_thumbnail_key || thumbnailKey;
         await env.DB.prepare(
           "UPDATE concerts SET flyer_r2_keys = ?, flyer_thumbnail_key = ?, updated_at = datetime('now') WHERE slug = ?"
-        ).bind(JSON.stringify(existingKeys), thumbnailKey, concertSlug).run();
+        ).bind(JSON.stringify(existingKeys), thumbToUse, concertSlug).run();
       }
     }
 
