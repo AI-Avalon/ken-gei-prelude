@@ -133,7 +133,26 @@ export default function PricingEditor({ pricing, onChange, pricingNote, onNoteCh
           <div className="space-y-3">
             {pricing.map((item, i) => (
               <div key={i} className="bg-stone-50 rounded-lg p-3 border border-stone-200">
-                <div className="grid grid-cols-[1fr_5rem] sm:grid-cols-[1fr_6rem_1fr] gap-2 items-end">
+                {/* Mobile: inline row with name + amount + actions */}
+                <div className="flex items-center gap-2 sm:hidden">
+                  <input className="input flex-1 min-w-0 text-sm py-1.5" value={item.label}
+                    onChange={(e) => updateItem(i, 'label', e.target.value)}
+                    placeholder="区分名" />
+                  <div className="relative w-20 flex-shrink-0">
+                    <input type="number" className="input text-sm py-1.5 pr-6" value={item.amount}
+                      onChange={(e) => updateItem(i, 'amount', parseInt(e.target.value) || 0)}
+                      min={0} step={100} />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400">円</span>
+                  </div>
+                  <button type="button" onClick={() => removeItem(i)}
+                    className="text-red-400 hover:text-red-600 p-1 flex-shrink-0" title="削除">✕</button>
+                </div>
+                {item.amount === 0 && (
+                  <p className="text-xs text-green-600 mt-1 sm:hidden">無料</p>
+                )}
+
+                {/* Desktop: full layout with all fields */}
+                <div className="hidden sm:grid sm:grid-cols-[1fr_6rem_1fr] gap-2 items-end">
                   <div>
                     <label className="label">区分名</label>
                     <input className="input" value={item.label}
@@ -146,15 +165,15 @@ export default function PricingEditor({ pricing, onChange, pricingNote, onNoteCh
                       onChange={(e) => updateItem(i, 'amount', parseInt(e.target.value) || 0)}
                       min={0} step={100} />
                   </div>
-                  <div className="hidden sm:block">
+                  <div>
                     <label className="label">備考</label>
                     <input className="input" value={item.note || ''}
                       onChange={(e) => updateItem(i, 'note', e.target.value)}
                       placeholder="例: 要学生証" />
                   </div>
                 </div>
-                {/* Controls row */}
-                <div className="flex items-center justify-between mt-2">
+                {/* Desktop controls */}
+                <div className="hidden sm:flex items-center justify-between mt-2">
                   <div className="flex items-center gap-1">
                     {item.amount === 0 && (
                       <span className="text-xs text-green-600">無料</span>
