@@ -1,5 +1,9 @@
 // Cloudflare Pages Functions — Admin Database Reset
 // Route: POST /api/admin/reset
+//
+// Strategy: DB tables are deleted instantly via batch().
+// KV orphaned keys are NOT deleted here (too slow for Workers 30s limit).
+// They become unreachable since no DB record references them.
 
 interface Env {
   DB: D1Database;
@@ -52,7 +56,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   const deleted: string[] = [];
 
-  // 1. Delete all DB tables (batch for speed)
+  // Delete all DB tables in a single batch (instant)
   await env.DB.batch([
     env.DB.prepare('DELETE FROM concerts'),
     env.DB.prepare('DELETE FROM analytics'),
@@ -61,35 +65,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   ]);
   deleted.push('concerts', 'analytics', 'slug_redirects', 'maintenance_log');
 
-  // 2. Clear KV flyer images — delete in parallel batches to avoid timeout
-  let kvDeleted = 0;
-  let cursor: string | undefined;
-  do {
-    const list = await env.KV.list({ prefix: 'flyers/', cursor, limit: 1000 });
-    if (list.keys.length > 0) {
-      // Delete up to 50 at a time in parallel
-      const batch: Promise<void>[] = [];
-      for (const key of list.keys) {
-        batch.push(env.KV.delete(key.name));
-        if (batch.length >= 50) {
-          await Promise.all(batch);
-          batch.length = 0;
-        }
-      }
-      if (batch.length > 0) await Promise.all(batch);
-      kvDeleted += list.keys.length;
-    }
-    cursor = list.list_complete ? undefined : list.cursor;
-  } while (cursor);
-  deleted.push(`KV flyers (${kvDeleted} keys)`);
-
   // Log the reset
   await env.DB.prepare(
     "INSERT INTO maintenance_log (task, result, details) VALUES ('admin_reset', 'success', ?)"
-  ).bind(`Cleared: ${deleted.join(', ')}`).run();
+  ).bind(`Cleared: ${deleted.join(', ')}. KV orphaned keys will be overwritten on next scrape.`).run();
 
   return jsonResponse({
     ok: true,
-    data: { deleted, kvDeleted },
+    data: { deleted, kvDeleted: 0 },
   });
 };

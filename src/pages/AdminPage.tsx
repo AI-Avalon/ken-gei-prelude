@@ -930,27 +930,28 @@ function SettingsTab({ token }: { token: string }) {
                       setResetResult(null);
                       setConfirmReset(false);
                       try {
+                        // Step 1: Reset DB (fast — KV not deleted, just orphaned)
+                        setResetResult('⏳ データベース削除中...');
                         const resetRes = await triggerReset(token);
-                        if (resetRes.ok && resetRes.data) {
-                          setResetResult(`✅ 削除完了: ${resetRes.data.deleted.join(', ')}\n⏳ 全ページスクレイピング開始...\n（最大2分程度かかります）`);
-                          toast('データ削除完了。再スクレイプ中...', 'success');
-                          // Bulk scrape can take a long time — use independent try/catch
-                          try {
-                            const scrapeRes = await triggerBulkScrape(token);
-                            if (scrapeRes.ok && scrapeRes.data) {
-                              setResetResult(prev => `${prev}\n✅ ${scrapeRes.data!.found}件発見、${scrapeRes.data!.added}件追加`);
-                              toast(`再構築完了: ${scrapeRes.data.added}件追加`, 'success');
-                            } else {
-                              setResetResult(prev => `${prev}\n⚠️ スクレイプ: ${scrapeRes.error || '応答なし — バックグラウンドで処理中の可能性があります'}`);
-                              toast('スクレイプの応答がありません。数分後に手動実行してください', 'info');
-                            }
-                          } catch {
-                            setResetResult(prev => `${prev}\n⚠️ スクレイプがタイムアウトしました。バックグラウンドで処理中の可能性があります。\n数分後に「大学サイトスクレイピング」を手動実行してください。`);
-                            toast('スクレイプがタイムアウト。手動で再実行してください', 'info');
-                          }
-                        } else {
+                        if (!resetRes.ok) {
                           setResetResult(`❌ ${resetRes.error || 'リセット失敗'}`);
                           toast(resetRes.error || 'リセットに失敗しました', 'error');
+                          return;
+                        }
+                        setResetResult('✅ データベース削除完了\n⏳ 全ページスクレイピング中...');
+                        toast('データ削除完了。再スクレイプ中...', 'success');
+
+                        // Step 2: Full scrape (20 pages, stops at 404)
+                        try {
+                          const scrapeRes = await triggerBulkScrape(token);
+                          if (scrapeRes.ok && scrapeRes.data) {
+                            setResetResult(prev => `${prev}\n✅ ${scrapeRes.data!.found}件発見、${scrapeRes.data!.added}件追加\n\n💡 「自動メンテナンス実行」で詳細情報・画像を補完できます`);
+                            toast(`再構築完了: ${scrapeRes.data.added}件追加`, 'success');
+                          } else {
+                            setResetResult(prev => `${prev}\n⚠️ ${scrapeRes.error || '応答なし'}\n「手動実行」で再試行してください`);
+                          }
+                        } catch {
+                          setResetResult(prev => `${prev}\n⚠️ スクレイプがタイムアウトしました\n「手動実行」で再試行してください`);
                         }
                       } catch {
                         setResetResult('❌ 通信エラー');

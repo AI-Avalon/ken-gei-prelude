@@ -419,7 +419,7 @@ async function fixPricing(env: Env): Promise<TaskResult> {
     // Build title→detailUrl map from listing pages
     const titleMap = new Map<string, string>();
     const pagesToFetch = [BASE_URL];
-    for (let i = 2; i <= 30; i++) {
+    for (let i = 2; i <= 20; i++) {
       pagesToFetch.push(`${BASE_URL}index_${i}.html`);
     }
 

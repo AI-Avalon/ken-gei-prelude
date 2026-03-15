@@ -281,9 +281,9 @@ async function runScrape(env: Env, options?: { mode?: 'cron' | 'manual' | 'full'
   const urls: string[] = [];
   const start = options?.startPage || 1;
   if (mode === 'full') {
-    // Full rebuild: all 30 pages, skip details/images to stay under subrequest limit
+    // Full rebuild: university site has ~17 pages (as of 2026-03), check up to 20
     if (start === 1) urls.push(BASE_URL);
-    for (let i = Math.max(2, start); i <= 30; i++) {
+    for (let i = Math.max(2, start); i <= 20; i++) {
       urls.push(`${BASE_URL}index_${i}.html`);
     }
   } else if (mode === 'manual') {
@@ -311,6 +311,8 @@ async function runScrape(env: Env, options?: { mode?: 'cron' | 'manual' | 'full'
     });
 
     if (!res.ok) {
+      // 404 means we've reached the last page — stop scraping
+      if (res.status === 404) break;
       errors.push(`HTTP ${res.status} from ${TARGET_URL}`);
       continue;
     }
