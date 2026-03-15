@@ -254,6 +254,10 @@ export default function ConcertDetailPage() {
         const pdfKeys = concert.flyer_r2_keys.filter(key => key.endsWith('.pdf'));
         if (imageKeys.length === 0 && pdfKeys.length === 0) return null;
 
+        // If WebP conversions already exist, don't re-render PDFs (they'd duplicate)
+        const hasConvertedWebp = imageKeys.some(k => k.includes('flyer_p'));
+        const needsPdfRender = pdfKeys.length > 0 && imageKeys.length === 0;
+
         return (
           <FadeIn delay={180} mobile={isMobile}>
             <Section title="チラシ" icon="📄" defaultOpen={true}>
@@ -279,17 +283,34 @@ export default function ConcertDetailPage() {
                 </div>
               )}
 
-              {/* PDF flyers */}
-              {pdfKeys.length > 0 && pdfKeys.map((key, i) => (
+              {/* PDF flyers — only render if no WebP images exist yet */}
+              {needsPdfRender && pdfKeys.map((key, i) => (
                 <PdfFlyerRenderer
                   key={key}
                   pdfKey={key}
                   concertSlug={concert.slug}
-                  alt={`${concert.title} チラシ ${imageKeys.length + i + 1}`}
+                  alt={`${concert.title} チラシ ${i + 1}`}
                   onClick={(url) => setFlyerModal(url)}
-                  startPage={imageKeys.length > 0 ? 2 : 1}
+                  startPage={1}
                 />
               ))}
+
+              {/* PDF download link */}
+              {pdfKeys.length > 0 && !needsPdfRender && (
+                <div className="mt-3 flex gap-2">
+                  {pdfKeys.map((key, i) => (
+                    <a
+                      key={key}
+                      href={`/api/image/${key}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      📄 PDF{pdfKeys.length > 1 ? ` (${i + 1})` : ''}を開く
+                    </a>
+                  ))}
+                </div>
+              )}
             </Section>
           </FadeIn>
         );

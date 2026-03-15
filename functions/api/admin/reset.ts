@@ -57,13 +57,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const deleted: string[] = [];
 
   // Delete all DB tables in a single batch (instant)
-  await env.DB.batch([
-    env.DB.prepare('DELETE FROM concerts'),
-    env.DB.prepare('DELETE FROM analytics'),
-    env.DB.prepare('DELETE FROM slug_redirects'),
-    env.DB.prepare('DELETE FROM maintenance_log'),
-  ]);
-  deleted.push('concerts', 'analytics', 'slug_redirects', 'maintenance_log');
+  // Use try/catch per table to handle missing tables gracefully
+  const tables = ['concerts', 'analytics', 'slug_redirects', 'maintenance_log', 'rate_limits'];
+  for (const table of tables) {
+    try {
+      await env.DB.prepare(`DELETE FROM ${table}`).run();
+      deleted.push(table);
+    } catch {
+      // Table may not exist (e.g. slug_redirects if migration not applied)
+    }
+  }
 
   // Log the reset
   await env.DB.prepare(

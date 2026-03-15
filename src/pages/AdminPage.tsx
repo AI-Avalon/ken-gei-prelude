@@ -945,13 +945,28 @@ function SettingsTab({ token }: { token: string }) {
                         try {
                           const scrapeRes = await triggerBulkScrape(token);
                           if (scrapeRes.ok && scrapeRes.data) {
-                            setResetResult(prev => `${prev}\n✅ ${scrapeRes.data!.found}件発見、${scrapeRes.data!.added}件追加\n\n💡 「自動メンテナンス実行」で詳細情報・画像を補完できます`);
+                            setResetResult(prev => `${prev}\n✅ ${scrapeRes.data!.found}件発見、${scrapeRes.data!.added}件追加\n⏳ 詳細情報・画像を取得中...`);
                             toast(`再構築完了: ${scrapeRes.data.added}件追加`, 'success');
                           } else {
                             setResetResult(prev => `${prev}\n⚠️ ${scrapeRes.error || '応答なし'}\n「手動実行」で再試行してください`);
+                            return;
                           }
                         } catch {
                           setResetResult(prev => `${prev}\n⚠️ スクレイプがタイムアウトしました\n「手動実行」で再試行してください`);
+                          return;
+                        }
+
+                        // Step 3: Auto-run maintenance to fetch detail pages & images
+                        try {
+                          const maintRes = await triggerMaintenance(token);
+                          if (maintRes.ok && maintRes.data) {
+                            const summary = maintRes.data.filter(r => r.success).map(r => r.details).join(', ');
+                            setResetResult(prev => `${prev}\n✅ メンテナンス完了: ${summary}`);
+                          } else {
+                            setResetResult(prev => `${prev}\n⚠️ メンテナンス: ${maintRes.error || '応答なし'}`);
+                          }
+                        } catch {
+                          setResetResult(prev => `${prev}\n⚠️ メンテナンスがタイムアウトしました`);
                         }
                       } catch {
                         setResetResult('❌ 通信エラー');
