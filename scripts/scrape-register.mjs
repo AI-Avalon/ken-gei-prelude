@@ -487,7 +487,7 @@ async function main() {
     }
 
     // Skip if already has flyer images
-    if (match.flyer && match.flyer.length > 0) {
+    if (match.flyer_r2_keys && match.flyer_r2_keys.length > 0) {
       console.log('⏭ already has flyers');
       flyerSkipped++;
       continue;

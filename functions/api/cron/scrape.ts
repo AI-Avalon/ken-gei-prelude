@@ -409,8 +409,10 @@ async function runScrape(env: Env, options?: { mode?: 'cron' | 'manual' | 'full'
               flyerThumbnailKey = thumbKey;
             }
           } catch { /* image download failed */ }
+        }
 
-          // Also download all PDF flyers found on detail page (front + back pages)
+        // Download all PDF flyers found on detail page (independent of image download)
+        if (!skipImages) {
           const pdfUrls = (ev as unknown as Record<string, unknown>).pdfUrls as string[] | undefined;
           if (pdfUrls && pdfUrls.length > 0 && ev.detailUrl) {
             for (let pi = 0; pi < pdfUrls.length; pi++) {

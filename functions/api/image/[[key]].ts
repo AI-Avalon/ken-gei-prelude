@@ -35,6 +35,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     if (key.endsWith('.png')) contentType = 'image/png';
     else if (key.endsWith('.jpg') || key.endsWith('.jpeg')) contentType = 'image/jpeg';
     else if (key.endsWith('.gif')) contentType = 'image/gif';
+    else if (key.endsWith('.pdf')) contentType = 'application/pdf';
     else contentType = 'image/webp';
   }
 

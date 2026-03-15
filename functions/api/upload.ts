@@ -106,7 +106,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         if (!existingKeys.includes(key)) {
           existingKeys.push(key);
         }
-        const thumbToUse = row.flyer_thumbnail_key || thumbnailKey;
+        const thumbToUse = thumbnail ? (row.flyer_thumbnail_key || thumbnailKey) : row.flyer_thumbnail_key;
         await env.DB.prepare(
           "UPDATE concerts SET flyer_r2_keys = ?, flyer_thumbnail_key = ?, updated_at = datetime('now') WHERE slug = ?"
         ).bind(JSON.stringify(existingKeys), thumbToUse, concertSlug).run();

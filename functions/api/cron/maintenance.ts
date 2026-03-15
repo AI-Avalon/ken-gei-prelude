@@ -688,6 +688,7 @@ async function runMaintenance(env: Env): Promise<TaskResult[]> {
   results.push(await cleanOldLogs(env));
       results.push(await recategorizeConcerts(env));
       results.push(await fetchMissingImages(env));
+      results.push(await fixPricing(env));
       results.push(await deduplicateConcerts(env));
   return results;
 }
