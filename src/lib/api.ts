@@ -180,11 +180,12 @@ export async function fetchMaintenanceLogs(
   return request('/admin/maintenance', { headers: { 'X-Admin-Token': token } });
 }
 
-// Cron: Trigger scraping (admin)
+// Cron: Trigger scraping (admin) — mode: 'cron' (1 page), 'manual' (3 pages), 'full' (30 pages)
 export async function triggerScrape(
-  token: string
+  token: string,
+  mode: 'cron' | 'manual' | 'full' = 'cron'
 ): Promise<ApiResponse<{ found: number; added: number; errors: string[] }>> {
-  return request('/cron/scrape', {
+  return request(`/cron/scrape?mode=${mode}`, {
     method: 'POST',
     headers: { 'X-Admin-Token': token },
   });
@@ -210,14 +211,11 @@ export async function triggerReset(
   });
 }
 
-// Admin: Trigger bulk scrape (all pages)
+// Admin: Trigger full scrape (all 30 pages — for rebuild)
 export async function triggerBulkScrape(
   token: string
 ): Promise<ApiResponse<{ found: number; added: number; errors: string[] }>> {
-  return request('/cron/scrape?allPages=true', {
-    method: 'POST',
-    headers: { 'X-Admin-Token': token },
-  });
+  return triggerScrape(token, 'full');
 }
 
 // Admin: Export all data as JSON
