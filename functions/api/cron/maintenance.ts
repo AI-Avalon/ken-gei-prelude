@@ -234,11 +234,8 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
     // to find events that were scraped from paginated results
     if (pageUrls.size === 1 && pageUrls.has(BASE_URL)) {
       // Fetch pages 1-16 to find all events (1 subrequest each)
-      // But limit to 3 pages per run to conserve subrequests
-      // Use date-based heuristic: older events are on later pages
-      const oldestDate = rows.results[rows.results.length - 1]?.date || '';
-      // Start from page 1 and add a few more
-      for (let i = 2; i <= 4; i++) {
+      // Fetch more pages to find events on later listing pages
+      for (let i = 2; i <= 8; i++) {
         pageUrls.add(`${BASE_URL}index_${i}.html`);
       }
     }
@@ -422,7 +419,7 @@ async function fixPricing(env: Env): Promise<TaskResult> {
     // Build title→detailUrl map from listing pages
     const titleMap = new Map<string, string>();
     const pagesToFetch = [BASE_URL];
-    for (let i = 2; i <= 16; i++) {
+    for (let i = 2; i <= 30; i++) {
       pagesToFetch.push(`${BASE_URL}index_${i}.html`);
     }
 

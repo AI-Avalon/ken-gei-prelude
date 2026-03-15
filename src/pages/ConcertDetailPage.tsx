@@ -11,24 +11,24 @@ import PdfFlyerRenderer from '../components/PdfFlyerRenderer';
 import { useIsMobile } from '../hooks/useDevice';
 import type { Concert } from '../types';
 
-// Collapsible section with grid-based animation (no max-h jank)
+// Collapsible section
 function Section({ title, icon, children, defaultOpen = true }: {
   title: string; icon: string; children: React.ReactNode; defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-stone-100 mb-4 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-stone-200/60 mb-5 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-stone-50/50 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-stone-50/50 transition-colors"
       >
-        <h2 className="font-bold text-base sm:text-lg flex items-center gap-2">
-          <span>{icon}</span> {title}
+        <h2 className="font-bold text-[15px] flex items-center gap-2.5 text-stone-800">
+          <span className="text-lg">{icon}</span> {title}
         </h2>
         <svg
-          className={`w-5 h-5 text-stone-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-stone-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -39,16 +39,14 @@ function Section({ title, icon, children, defaultOpen = true }: {
         style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
       >
         <div className="overflow-hidden">
-          <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-0">
-            {children}
-          </div>
+          <div className="px-5 pb-5 pt-0">{children}</div>
         </div>
       </div>
     </div>
   );
 }
 
-// Staggered fade-in wrapper — no delays on mobile for instant rendering
+// Staggered fade-in — instant on mobile
 function FadeIn({ children, delay = 0, mobile }: { children: React.ReactNode; delay?: number; mobile?: boolean }) {
   if (mobile) return <>{children}</>;
   return (
@@ -75,7 +73,6 @@ export default function ConcertDetailPage() {
     if (!slug) return;
     setLoading(true);
     fetchConcert(slug).then((res) => {
-      // Handle slug redirect (merged/deduplicated concert)
       const redirectSlug = (res as unknown as Record<string, unknown>).redirect_slug as string | undefined;
       if (redirectSlug) {
         navigate(`/concerts/${redirectSlug}`, { replace: true });
@@ -96,17 +93,14 @@ export default function ConcertDetailPage() {
   }, [slug]);
 
   if (loading) return (
-    <div className={`${isMobile ? 'px-4 py-4' : 'max-w-4xl mx-auto px-4 py-8'} space-y-4`}>
+    <div className={`${isMobile ? 'px-4 py-6' : 'max-w-3xl mx-auto px-6 py-10'} space-y-4`}>
       <div className="skeleton h-4 w-48" />
       <div className="skeleton h-10 w-3/4" />
       <div className="skeleton h-6 w-1/3" />
-      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-5 space-y-3">
+      <div className="bg-white rounded-2xl shadow-sm border border-stone-200/60 p-6 space-y-3">
         <div className="skeleton h-4 w-full" />
         <div className="skeleton h-4 w-2/3" />
         <div className="skeleton h-4 w-1/2" />
-      </div>
-      <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-5">
-        <div className="skeleton h-64 w-full rounded-lg" />
       </div>
     </div>
   );
@@ -125,18 +119,26 @@ export default function ConcertDetailPage() {
   const daysText = daysUntil(concert.date);
   const isToday = daysText === '本日！';
   const isEnded = daysText === '終了';
+  const hasPricing = concert.pricing && concert.pricing.length > 0;
+  const isFree = hasPricing && concert.pricing.every(p => p.amount === 0);
+
+  // Clean pricing labels — remove any embedded price text from label
+  const cleanedPricing = (concert.pricing || []).map(p => ({
+    ...p,
+    label: p.label.replace(/\d[\d,]*\s*円/g, '').trim() || '入場料',
+  }));
 
   return (
-    <div className={`${isMobile ? 'px-4 py-4 pb-24' : 'max-w-4xl mx-auto px-4 py-8'}`}>
-      {/* Breadcrumb — desktop only */}
+    <div className={`${isMobile ? 'px-4 pt-5 pb-24' : 'max-w-3xl mx-auto px-6 py-10'}`}>
+      {/* Breadcrumb — desktop */}
       {!isMobile && (
         <FadeIn mobile={isMobile}>
-          <nav className="text-sm text-stone-500 mb-6 flex items-center gap-2">
+          <nav className="text-sm text-stone-400 mb-8 flex items-center gap-1.5">
             <Link to="/" className="hover:text-primary-600 transition-colors">ホーム</Link>
-            <span className="text-stone-300">/</span>
+            <span>/</span>
             <Link to="/concerts" className="hover:text-primary-600 transition-colors">演奏会一覧</Link>
-            <span className="text-stone-300">/</span>
-            <span className="text-stone-700 truncate max-w-[300px]">{concert.title}</span>
+            <span>/</span>
+            <span className="text-stone-600 truncate max-w-[300px]">{concert.title}</span>
           </nav>
         </FadeIn>
       )}
@@ -144,76 +146,82 @@ export default function ConcertDetailPage() {
       {/* Header */}
       <FadeIn delay={50} mobile={isMobile}>
         <div className="mb-6">
-          <div className="flex items-center gap-3 mb-3">
-            <Link to="/concerts" className="text-stone-400 hover:text-primary-600 transition-colors p-1 -ml-1" aria-label="戻る">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
-            <span className={`badge ${cat.color}`}>{cat.icon} {cat.label}</span>
-            <span className={`text-sm font-semibold px-2.5 py-0.5 rounded-full ${
-              isToday ? 'bg-red-100 text-red-700' : isEnded ? 'bg-stone-100 text-stone-500' : 'bg-primary-100 text-primary-700'
+          {/* Back + badges */}
+          <div className="flex items-center gap-2.5 mb-3">
+            {isMobile && (
+              <Link to="/concerts" className="text-stone-400 hover:text-primary-600 transition-colors -ml-1" aria-label="戻る">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </Link>
+            )}
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${cat.color}`}>{cat.icon} {cat.label}</span>
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+              isToday ? 'bg-red-100 text-red-700' : isEnded ? 'bg-stone-100 text-stone-500' : 'bg-primary-50 text-primary-700'
             }`}>
               {daysText}
             </span>
           </div>
 
-          <h1 className={`${isMobile ? 'text-xl' : 'text-3xl md:text-4xl'} font-serif font-bold leading-tight`}>
+          {/* Title */}
+          <h1 className={`${isMobile ? 'text-[22px] leading-tight' : 'text-3xl'} font-bold text-stone-900 tracking-tight`}>
             {concert.title}
           </h1>
           {concert.subtitle && (
-            <p className={`${isMobile ? 'text-base' : 'text-xl'} text-stone-500 mt-2`}>{concert.subtitle}</p>
+            <p className={`${isMobile ? 'text-base' : 'text-lg'} text-stone-500 mt-1.5`}>{concert.subtitle}</p>
           )}
         </div>
       </FadeIn>
 
-      {/* Quick info bar */}
+      {/* Quick info */}
       <FadeIn delay={100} mobile={isMobile}>
-        <div className={`bg-white rounded-xl border border-stone-200 shadow-sm ${isMobile ? 'p-4' : 'p-5'} mb-4`}>
-          <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-3 gap-6'}`}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-primary-700 text-lg">📅</span>
-              </div>
-              <div>
-                <div className="text-xs text-stone-500">日時</div>
-                <div className="text-sm font-medium">
-                  {formatDateLong(concert.date)}
-                  {concert.time_start && <span className="text-stone-500"> {formatTime(concert)}</span>}
-                </div>
+        <div className="bg-white rounded-2xl border border-stone-200/60 shadow-sm p-5 mb-5 space-y-4">
+          {/* Date */}
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-primary-600">📅</span>
+            </div>
+            <div>
+              <div className="text-xs text-stone-400 font-medium mb-0.5">日時</div>
+              <div className="text-sm font-semibold text-stone-800">
+                {formatDateLong(concert.date)}
+                {concert.time_start && <span className="font-normal text-stone-500 ml-1">{formatTime(concert)}</span>}
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-accent-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-accent-700 text-lg">📍</span>
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs text-stone-500">会場</div>
-                <div className="text-sm font-medium truncate">{concert.venue?.name || '未定'}</div>
-                {concert.venue?.address && (
-                  <div className="text-xs text-stone-400 truncate">{concert.venue.address}</div>
-                )}
-              </div>
+          </div>
+          {/* Venue */}
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-amber-600">📍</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-emerald-700 text-lg">🎫</span>
-              </div>
-              <div>
-                <div className="text-xs text-stone-500">入場</div>
-                <div className="text-sm font-medium">
-                  {concert.pricing && concert.pricing.length > 0 ? (
-                    concert.pricing.every(p => p.amount === 0)
-                      ? <span className="text-emerald-600">無料</span>
-                      : concert.pricing.map((p, i) => (
-                          <span key={i}>
-                            {i > 0 && ' / '}
-                            <span className="text-stone-500">{p.label}</span>{' '}
-                            {p.amount === 0 ? <span className="text-emerald-600">無料</span> : `¥${p.amount.toLocaleString()}`}
-                          </span>
-                        ))
-                  ) : <span className="text-stone-400">情報なし</span>}
-                </div>
+            <div className="min-w-0">
+              <div className="text-xs text-stone-400 font-medium mb-0.5">会場</div>
+              <div className="text-sm font-semibold text-stone-800 truncate">{concert.venue?.name || '未定'}</div>
+              {concert.venue?.address && (
+                <div className="text-xs text-stone-400">{concert.venue.address}</div>
+              )}
+            </div>
+          </div>
+          {/* Pricing inline */}
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-emerald-600">🎫</span>
+            </div>
+            <div>
+              <div className="text-xs text-stone-400 font-medium mb-0.5">入場料</div>
+              <div className="text-sm font-semibold">
+                {isFree ? (
+                  <span className="text-emerald-600">入場無料</span>
+                ) : hasPricing ? (
+                  <span className="text-stone-800">
+                    {cleanedPricing.filter(p => p.amount > 0).map((p, i) => (
+                      <span key={i}>
+                        {i > 0 && <span className="text-stone-300 mx-1">|</span>}
+                        {p.label} ¥{p.amount.toLocaleString()}
+                      </span>
+                    ))}
+                  </span>
+                ) : <span className="text-stone-400">情報なし</span>}
               </div>
             </div>
           </div>
@@ -222,9 +230,9 @@ export default function ConcertDetailPage() {
 
       {/* Ticket CTA */}
       {concert.ticket_url && (
-        <FadeIn delay={150} mobile={isMobile}>
+        <FadeIn delay={120} mobile={isMobile}>
           <a href={concert.ticket_url} target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 bg-accent-600 hover:bg-accent-700 text-white font-medium px-6 py-3.5 rounded-xl shadow-md hover:shadow-lg transition-all mb-4 w-full sm:w-auto sm:inline-flex">
+            className="flex items-center justify-center gap-2 bg-accent-600 hover:bg-accent-700 text-white font-semibold px-6 py-3.5 rounded-2xl shadow-md hover:shadow-lg transition-all mb-5 w-full">
             🎫 チケットを購入・予約する
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -233,17 +241,10 @@ export default function ConcertDetailPage() {
         </FadeIn>
       )}
 
-      {/* Actions: Calendar + Share — positioned prominently for easy access */}
-      <FadeIn delay={175} mobile={isMobile}>
-        <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-2 gap-4'} mb-4`}>
-          <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-4 sm:p-5">
-            <h2 className="font-bold text-sm mb-3 text-stone-500 uppercase tracking-wider">📅 カレンダーに追加</h2>
-            <CalendarAddDropdown concert={concert} />
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-stone-100 p-4 sm:p-5">
-            <h2 className="font-bold text-sm mb-3 text-stone-500 uppercase tracking-wider">🔗 共有</h2>
-            <ShareButtons concert={concert} />
-          </div>
+      {/* Calendar — always prominent */}
+      <FadeIn delay={140} mobile={isMobile}>
+        <div className="bg-white rounded-2xl border border-stone-200/60 shadow-sm p-5 mb-5">
+          <CalendarAddDropdown concert={concert} />
         </div>
       </FadeIn>
 
@@ -254,51 +255,31 @@ export default function ConcertDetailPage() {
         if (imageKeys.length === 0 && pdfKeys.length === 0) return null;
 
         return (
-          <FadeIn delay={200} mobile={isMobile}>
+          <FadeIn delay={180} mobile={isMobile}>
             <Section title="チラシ" icon="📄" defaultOpen={true}>
-              {/* Rendered image flyers */}
+              {/* Image flyers — consistent sizing */}
               {imageKeys.length > 0 && (
-                <>
-                  {imageKeys.length > 1 && (
-                    <p className="text-sm text-stone-500 mb-3">{imageKeys.length}ページ — タップで拡大</p>
-                  )}
-                  {isMobile ? (
-                    <div className="space-y-3">
-                      {imageKeys.map((key, i) => (
-                        <div key={i} className="relative">
-                          <img
-                            src={`/api/image/${key}`}
-                            alt={`${concert.title} チラシ ${i + 1}`}
-                            className="rounded-lg w-full cursor-pointer shadow-sm"
-                            onClick={() => setFlyerModal(`/api/image/${key}`)}
-                            loading={i === 0 ? 'eager' : 'lazy'}
-                          />
-                          {imageKeys.length > 1 && (
-                            <span className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm">
-                              {i + 1}/{imageKeys.length}
-                            </span>
-                          )}
-                        </div>
-                      ))}
+                <div className={isMobile ? 'space-y-4' : `grid gap-5 ${imageKeys.length === 1 ? 'max-w-md mx-auto' : 'grid-cols-2'}`}>
+                  {imageKeys.map((key, i) => (
+                    <div key={i} className="relative aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden">
+                      <img
+                        src={`/api/image/${key}`}
+                        alt={`${concert.title} チラシ ${i + 1}`}
+                        className="w-full h-full object-contain cursor-pointer"
+                        onClick={() => setFlyerModal(`/api/image/${key}`)}
+                        loading={i === 0 ? 'eager' : 'lazy'}
+                      />
+                      {imageKeys.length > 1 && (
+                        <span className="absolute top-2.5 right-2.5 bg-black/50 text-white text-[11px] px-2 py-0.5 rounded-full backdrop-blur-sm">
+                          {i === 0 ? '表' : '裏'}
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    <div className={`grid gap-4 ${imageKeys.length === 1 ? 'grid-cols-1 max-w-lg' : 'grid-cols-2'}`}>
-                      {imageKeys.map((key, i) => (
-                        <img
-                          key={i}
-                          src={`/api/image/${key}`}
-                          alt={`${concert.title} チラシ ${i + 1}`}
-                          className="rounded-lg cursor-pointer hover:opacity-90 hover:shadow-xl transition-all w-full"
-                          onClick={() => setFlyerModal(`/api/image/${key}`)}
-                          loading={i === 0 ? 'eager' : 'lazy'}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </>
+                  ))}
+                </div>
               )}
 
-              {/* PDF flyers — rendered client-side (skip page 1 if image keys already cover front) */}
+              {/* PDF flyers */}
               {pdfKeys.length > 0 && pdfKeys.map((key, i) => (
                 <PdfFlyerRenderer
                   key={key}
@@ -314,6 +295,14 @@ export default function ConcertDetailPage() {
         );
       })()}
 
+      {/* Share — below flyers */}
+      <FadeIn delay={220} mobile={isMobile}>
+        <div className="bg-white rounded-2xl border border-stone-200/60 shadow-sm p-5 mb-5">
+          <h2 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">共有</h2>
+          <ShareButtons concert={concert} />
+        </div>
+      </FadeIn>
+
       {/* Flyer modal */}
       {flyerModal && (() => {
         const flyerKeys = concert.flyer_r2_keys.filter(key => !key.endsWith('.pdf'));
@@ -328,7 +317,7 @@ export default function ConcertDetailPage() {
           >
             {hasPrev && (
               <button
-                className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full w-10 h-10 flex items-center justify-center transition-all z-10"
+                className="absolute left-3 md:left-8 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full w-10 h-10 flex items-center justify-center transition-all z-10"
                 onClick={(e) => { e.stopPropagation(); setFlyerModal(`/api/image/${flyerKeys[currentIndex - 1]}`); }}
               >
                 ‹
@@ -342,7 +331,7 @@ export default function ConcertDetailPage() {
             />
             {hasNext && (
               <button
-                className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full w-10 h-10 flex items-center justify-center transition-all z-10"
+                className="absolute right-3 md:right-8 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full w-10 h-10 flex items-center justify-center transition-all z-10"
                 onClick={(e) => { e.stopPropagation(); setFlyerModal(`/api/image/${flyerKeys[currentIndex + 1]}`); }}
               >
                 ›
@@ -364,25 +353,21 @@ export default function ConcertDetailPage() {
       })()}
 
       {/* Pricing — detailed */}
-      {concert.pricing && concert.pricing.length > 0 && concert.pricing.some(p => p.amount > 0 || p.note) && (
-        <FadeIn delay={250} mobile={isMobile}>
-          <Section title="料金" icon="💰" defaultOpen={true}>
-            <div className="space-y-2">
-              {concert.pricing.map((p, i) => (
-                <div key={i} className="flex items-center justify-between py-1.5 border-b border-stone-100 last:border-0">
-                  <span className="text-stone-700 text-sm">{p.label}</span>
-                  <span className={`font-semibold text-sm ${p.amount === 0 ? 'text-emerald-600' : 'text-stone-900'}`}>
+      {hasPricing && cleanedPricing.some(p => p.amount > 0 || p.note) && (
+        <FadeIn delay={260} mobile={isMobile}>
+          <Section title="料金詳細" icon="💰" defaultOpen={true}>
+            <div className="divide-y divide-stone-100">
+              {cleanedPricing.map((p, i) => (
+                <div key={i} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                  <span className="text-stone-600 text-[14px]">{p.label}</span>
+                  <span className={`font-semibold text-[14px] ${p.amount === 0 ? 'text-emerald-600' : 'text-stone-900'}`}>
                     {p.amount === 0 ? '無料' : `¥${p.amount.toLocaleString()}`}
-                    {p.note && <span className="text-xs text-stone-500 font-normal ml-1.5">{p.note}</span>}
                   </span>
                 </div>
               ))}
             </div>
             {concert.pricing_note && (
-              <p className="text-sm text-amber-700 mt-3 bg-amber-50 px-3 py-2 rounded-lg">⚠ {concert.pricing_note}</p>
-            )}
-            {concert.ticket_note && (
-              <p className="text-sm text-stone-500 mt-2">{concert.ticket_note}</p>
+              <p className="text-sm text-amber-700 mt-3 bg-amber-50/80 px-3 py-2 rounded-lg">{concert.pricing_note}</p>
             )}
           </Section>
         </FadeIn>
@@ -394,8 +379,8 @@ export default function ConcertDetailPage() {
           <Section title="プログラム" icon="🎼" defaultOpen={true}>
             <div className="space-y-3">
               {concert.program.map((p, i) => (
-                <div key={i}>
-                  <div className="text-xs text-stone-500 mb-0.5">{p.composer}</div>
+                <div key={i} className="pl-3 border-l-2 border-primary-200">
+                  <div className="text-xs text-stone-400">{p.composer}</div>
                   <div className="text-sm font-medium text-stone-800">{p.piece}</div>
                 </div>
               ))}
@@ -406,18 +391,18 @@ export default function ConcertDetailPage() {
 
       {/* Performers */}
       {concert.performers?.length > 0 && (
-        <FadeIn delay={350} mobile={isMobile}>
+        <FadeIn delay={340} mobile={isMobile}>
           <Section title="出演者" icon="🎤" defaultOpen={concert.performers.length <= 10}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {concert.performers.map((p, i) => (
-                <div key={i} className="flex items-center gap-2 py-1.5 text-sm">
-                  <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-primary-700 text-xs font-bold">{p.name.charAt(0)}</span>
+                <div key={i} className="flex items-center gap-2.5 py-1.5 text-sm">
+                  <div className="w-7 h-7 rounded-full bg-primary-50 text-primary-700 flex items-center justify-center flex-shrink-0 text-xs font-bold">
+                    {p.name.charAt(0)}
                   </div>
                   <div className="min-w-0">
                     <span className="font-medium text-stone-800">{p.name}</span>
-                    {p.instrument && <span className="text-stone-500 ml-1">({p.instrument})</span>}
-                    {p.year && <span className="text-xs text-stone-400 ml-1">{p.year}</span>}
+                    {p.instrument && <span className="text-stone-400 ml-1 text-xs">({p.instrument})</span>}
+                    {p.year && <span className="text-stone-400 ml-1 text-xs">{p.year}</span>}
                   </div>
                 </div>
               ))}
@@ -428,11 +413,11 @@ export default function ConcertDetailPage() {
 
       {/* Supervisors + Guests */}
       {(concert.supervisors?.length > 0 || concert.guest_artists?.length > 0) && (
-        <FadeIn delay={400} mobile={isMobile}>
+        <FadeIn delay={380} mobile={isMobile}>
           <Section title={concert.guest_artists?.length > 0 ? '指導者・ゲスト' : '指導者'} icon="👨‍🏫" defaultOpen={true}>
             {concert.supervisors?.length > 0 && (
               <div className="mb-3">
-                {concert.supervisors.length > 1 && <div className="text-xs text-stone-500 mb-1">指導者</div>}
+                {concert.supervisors.length > 1 && <div className="text-xs text-stone-400 mb-1">指導者</div>}
                 <ul className="space-y-1 text-sm text-stone-700">
                   {concert.supervisors.map((s, i) => <li key={i}>{s}</li>)}
                 </ul>
@@ -440,7 +425,7 @@ export default function ConcertDetailPage() {
             )}
             {concert.guest_artists?.length > 0 && (
               <div>
-                <div className="text-xs text-stone-500 mb-1">ゲスト</div>
+                <div className="text-xs text-stone-400 mb-1">ゲスト</div>
                 <ul className="space-y-1 text-sm text-stone-700">
                   {concert.guest_artists.map((g, i) => <li key={i}>{g}</li>)}
                 </ul>
@@ -452,26 +437,26 @@ export default function ConcertDetailPage() {
 
       {/* Description */}
       {concert.description && (
-        <FadeIn delay={450} mobile={isMobile}>
+        <FadeIn delay={420} mobile={isMobile}>
           <Section title="詳細" icon="📝" defaultOpen={true}>
-            <p className="text-sm text-stone-700 whitespace-pre-wrap leading-relaxed">{concert.description}</p>
+            <p className="text-sm text-stone-600 whitespace-pre-wrap leading-relaxed">{concert.description}</p>
           </Section>
         </FadeIn>
       )}
 
       {/* Seating + Departments */}
       {(concert.seating || concert.departments?.length > 0) && (
-        <FadeIn delay={500} mobile={isMobile}>
-          <Section title="その他の情報" icon="ℹ️" defaultOpen={true}>
+        <FadeIn delay={460} mobile={isMobile}>
+          <Section title="その他" icon="ℹ️" defaultOpen={true}>
             {concert.seating && (
               <div className="flex items-center gap-2 text-sm mb-2">
-                <span className="text-stone-500">座席:</span>
+                <span className="text-stone-400">座席</span>
                 <span className="font-medium">{concert.seating}</span>
               </div>
             )}
             {concert.departments?.length > 0 && (
               <div className="flex items-center gap-2 text-sm flex-wrap">
-                <span className="text-stone-500">専攻:</span>
+                <span className="text-stone-400">専攻</span>
                 {concert.departments.map((d) => {
                   const dept = DEPARTMENTS[d];
                   return dept ? <span key={d} className="badge bg-stone-100 text-stone-700">{dept.icon} {dept.label}</span> : null;
@@ -484,20 +469,20 @@ export default function ConcertDetailPage() {
 
       {/* Contact */}
       {(concert.contact_email || concert.contact_tel || concert.contact_person || concert.contact_url) && (
-        <FadeIn delay={550} mobile={isMobile}>
+        <FadeIn delay={500} mobile={isMobile}>
           <Section title="お問い合わせ先" icon="📞" defaultOpen={false}>
             <div className="space-y-2 text-sm">
-              {concert.contact_person && <p className="flex items-center gap-2"><span className="text-stone-400">👤</span>{concert.contact_person}</p>}
+              {concert.contact_person && <p className="flex items-center gap-2"><span className="text-stone-300">👤</span>{concert.contact_person}</p>}
               {concert.contact_email && (
-                <p className="flex items-center gap-2">
-                  <span className="text-stone-400">✉</span>
-                  <a href={`mailto:${concert.contact_email}`} className="text-primary-600 hover:underline">{concert.contact_email}</a>
+                <p className="flex items-center gap-2 min-w-0">
+                  <span className="text-stone-300 flex-shrink-0">✉</span>
+                  <a href={`mailto:${concert.contact_email}`} className="text-primary-600 hover:underline truncate">{concert.contact_email}</a>
                 </p>
               )}
-              {concert.contact_tel && <p className="flex items-center gap-2"><span className="text-stone-400">📞</span>{concert.contact_tel}</p>}
+              {concert.contact_tel && <p className="flex items-center gap-2"><span className="text-stone-300">📞</span>{concert.contact_tel}</p>}
               {concert.contact_url && (
-                <p className="flex items-center gap-2">
-                  <span className="text-stone-400">🔗</span>
+                <p className="flex items-center gap-2 min-w-0">
+                  <span className="text-stone-300 flex-shrink-0">🔗</span>
                   <a href={concert.contact_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline truncate">{concert.contact_url}</a>
                 </p>
               )}
@@ -508,8 +493,8 @@ export default function ConcertDetailPage() {
 
       {/* Map */}
       {concert.venue && (concert.venue.lat || concert.venue.access?.length) && (
-        <FadeIn delay={600} mobile={isMobile}>
-          <Section title="地図・アクセス" icon="🗺️" defaultOpen={true}>
+        <FadeIn delay={540} mobile={isMobile}>
+          <Section title="アクセス" icon="🗺️" defaultOpen={true}>
             {concert.venue.access && concert.venue.access.length > 0 && (
               <ul className="text-sm text-stone-600 mb-4 space-y-1">
                 {concert.venue.access.map((a, i) => <li key={i}>🚃 {a}</li>)}
@@ -525,10 +510,10 @@ export default function ConcertDetailPage() {
 
       {/* Related */}
       {related.length > 0 && (
-        <FadeIn delay={700} mobile={isMobile}>
+        <FadeIn delay={580} mobile={isMobile}>
           <div className="mb-6">
-            <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <span>🎵</span> 関連する演奏会
+            <h2 className="font-bold text-base mb-4 flex items-center gap-2 text-stone-800">
+              🎵 関連する演奏会
             </h2>
             <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-3'}`}>
               {related.map((c) => (
@@ -539,11 +524,11 @@ export default function ConcertDetailPage() {
         </FadeIn>
       )}
 
-      {/* Footer info */}
-      <FadeIn delay={750} mobile={isMobile}>
-        <div className="flex items-center justify-between text-sm text-stone-400 pt-4 border-t border-stone-200">
+      {/* Footer */}
+      <FadeIn delay={620} mobile={isMobile}>
+        <div className="flex items-center justify-between text-xs text-stone-400 pt-4 border-t border-stone-200/60">
           <span>👁 {concert.views.toLocaleString()} 回閲覧</span>
-          <Link to={`/concerts/${concert.slug}/edit`} className="text-primary-600 hover:text-primary-700 transition-colors flex items-center gap-1">
+          <Link to={`/concerts/${concert.slug}/edit`} className="text-primary-600 hover:text-primary-700 transition-colors flex items-center gap-1 text-xs">
             ✏️ 編集する
           </Link>
         </div>

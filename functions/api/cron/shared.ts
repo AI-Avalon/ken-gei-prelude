@@ -77,8 +77,10 @@ export function parsePricingFromText(
     const inlinePattern = /([^\d\n]{2,}?)\s*(\d[\d,]*)\s*円/g;
     let m;
     while ((m = inlinePattern.exec(line)) !== null) {
-      const label = m[1].trim().replace(/^[（(]/, '').replace(/[）)：:]$/, '').trim();
+      let label = m[1].trim().replace(/^[（(]/, '').replace(/[）)：:]$/, '').trim();
       if (/^\d+月|^\d+時|^※|^【/.test(label)) continue;
+      // Strip any embedded price from label (e.g. "メイト1,350円" residue)
+      label = label.replace(/\d[\d,]*\s*円/g, '').trim();
       if (label.length < 1 || label.length > 30) continue;
       const amount = parseInt(m[2].replace(/,/g, ''), 10);
       if (amount > 100000) continue;

@@ -279,8 +279,9 @@ async function runScrape(env: Env, options?: { allPages?: boolean; fromYear?: nu
   const urls: string[] = [];
   if (options?.allPages) {
     const start = options.startPage || 1;
+    // Fetch up to 30 pages to cover all historical data
     if (start === 1) urls.push(BASE_URL);
-    for (let i = Math.max(2, start); i <= 16; i++) {
+    for (let i = Math.max(2, start); i <= 30; i++) {
       urls.push(`${BASE_URL}index_${i}.html`);
     }
   } else {
