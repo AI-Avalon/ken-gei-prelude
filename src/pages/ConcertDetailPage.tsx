@@ -254,17 +254,36 @@ export default function ConcertDetailPage() {
         const pdfKeys = concert.flyer_r2_keys.filter(key => key.endsWith('.pdf'));
         if (imageKeys.length === 0 && pdfKeys.length === 0) return null;
 
-        // If WebP conversions already exist, don't re-render PDFs (they'd duplicate)
-        const hasConvertedWebp = imageKeys.some(k => k.includes('flyer_p'));
-        const needsPdfRender = pdfKeys.length > 0 && imageKeys.length === 0;
+        // Scraped images are the original listing images (not converted from PDF)
+        // Converted WebP keys contain 'flyer_p' in the name
+        const scrapedImages = imageKeys.filter(k => !k.includes('flyer_p'));
+        const convertedImages = imageKeys.filter(k => k.includes('flyer_p'));
+        const hasAllPagesConverted = convertedImages.length > 0;
 
         return (
           <FadeIn delay={180} mobile={isMobile}>
             <Section title="チラシ" icon="📄" defaultOpen={true}>
-              {/* Image flyers — consistent sizing */}
-              {imageKeys.length > 0 && (
-                <div className={isMobile ? 'space-y-4' : `grid gap-5 ${imageKeys.length === 1 ? 'max-w-md mx-auto' : 'grid-cols-2'}`}>
-                  {imageKeys.map((key, i) => (
+              {/* Scraped image (listing page thumbnail) */}
+              {scrapedImages.length > 0 && !hasAllPagesConverted && (
+                <div className={isMobile ? 'space-y-4' : 'max-w-md mx-auto'}>
+                  {scrapedImages.map((key, i) => (
+                    <div key={i} className="relative aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden">
+                      <img
+                        src={`/api/image/${key}`}
+                        alt={`${concert.title} チラシ`}
+                        className="w-full h-full object-contain cursor-pointer"
+                        onClick={() => setFlyerModal(`/api/image/${key}`)}
+                        loading="eager"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Converted WebP images (all PDF pages already converted) */}
+              {hasAllPagesConverted && (
+                <div className={isMobile ? 'space-y-4' : `grid gap-5 ${convertedImages.length === 1 ? 'max-w-md mx-auto' : 'grid-cols-2'}`}>
+                  {convertedImages.map((key, i) => (
                     <div key={i} className="relative aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden">
                       <img
                         src={`/api/image/${key}`}
@@ -273,7 +292,7 @@ export default function ConcertDetailPage() {
                         onClick={() => setFlyerModal(`/api/image/${key}`)}
                         loading={i === 0 ? 'eager' : 'lazy'}
                       />
-                      {imageKeys.length > 1 && (
+                      {convertedImages.length > 1 && (
                         <span className="absolute top-2.5 right-2.5 bg-black/50 text-white text-[11px] px-2 py-0.5 rounded-full backdrop-blur-sm">
                           {i === 0 ? '表' : '裏'}
                         </span>
@@ -283,8 +302,8 @@ export default function ConcertDetailPage() {
                 </div>
               )}
 
-              {/* PDF flyers — only render if no WebP images exist yet */}
-              {needsPdfRender && pdfKeys.map((key, i) => (
+              {/* PDF flyers — render all pages if not yet converted to WebP */}
+              {pdfKeys.length > 0 && !hasAllPagesConverted && pdfKeys.map((key, i) => (
                 <PdfFlyerRenderer
                   key={key}
                   pdfKey={key}
@@ -296,7 +315,7 @@ export default function ConcertDetailPage() {
               ))}
 
               {/* PDF download link */}
-              {pdfKeys.length > 0 && !needsPdfRender && (
+              {pdfKeys.length > 0 && (
                 <div className="mt-3 flex gap-2">
                   {pdfKeys.map((key, i) => (
                     <a

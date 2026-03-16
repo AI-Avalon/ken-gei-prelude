@@ -29,18 +29,25 @@ export default function ConcertCard({ concert, highlight }: Props) {
       >
         {/* Thumbnail — left side */}
         <div className="w-24 min-h-[96px] flex-shrink-0 bg-stone-100 relative">
-          {concert.flyer_thumbnail_key && !concert.flyer_thumbnail_key.endsWith('.pdf') ? (
-            <img
-              src={`/api/image/${concert.flyer_thumbnail_key}`}
-              alt={concert.title}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
-              <span className="text-primary-400/60 text-xl">♪</span>
-            </div>
-          )}
+          {(() => {
+            const thumbSrc = concert.flyer_thumbnail_key && !concert.flyer_thumbnail_key.endsWith('.pdf')
+              ? `/api/image/${concert.flyer_thumbnail_key}`
+              : concert.flyer_r2_keys?.find(k => !k.endsWith('.pdf'))
+                ? `/api/image/${concert.flyer_r2_keys.find(k => !k.endsWith('.pdf'))}`
+                : null;
+            return thumbSrc ? (
+              <img
+                src={thumbSrc}
+                alt={concert.title}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
+                <span className="text-primary-400/60 text-xl">♪</span>
+              </div>
+            );
+          })()}
           {isToday && (
             <div className="absolute top-0 left-0 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-br-lg">
               TODAY
@@ -82,21 +89,28 @@ export default function ConcertCard({ concert, highlight }: Props) {
     >
       {/* Thumbnail */}
       <div className="aspect-[4/3] bg-stone-100 overflow-hidden relative">
-        {concert.flyer_thumbnail_key && !concert.flyer_thumbnail_key.endsWith('.pdf') ? (
-          <img
-            src={`/api/image/${concert.flyer_thumbnail_key}`}
-            alt={concert.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
-            <div className="text-center">
-              <span className="text-primary-400/60 text-3xl font-display tracking-widest">♪</span>
-              <p className="text-stone-600 text-xs mt-2">{cat.label}</p>
+        {(() => {
+          const thumbSrc = concert.flyer_thumbnail_key && !concert.flyer_thumbnail_key.endsWith('.pdf')
+            ? `/api/image/${concert.flyer_thumbnail_key}`
+            : concert.flyer_r2_keys?.find(k => !k.endsWith('.pdf'))
+              ? `/api/image/${concert.flyer_r2_keys.find(k => !k.endsWith('.pdf'))}`
+              : null;
+          return thumbSrc ? (
+            <img
+              src={thumbSrc}
+              alt={concert.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
+              <div className="text-center">
+                <span className="text-primary-400/60 text-3xl font-display tracking-widest">♪</span>
+                <p className="text-stone-600 text-xs mt-2">{cat.label}</p>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         {/* Status badge overlay */}
         {isToday && (
           <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
