@@ -33,7 +33,15 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
       const arrayBuffer = await res.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const cdnBase = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}`;
+      const pdf = await pdfjsLib.getDocument({
+        data: arrayBuffer,
+        // CJKを含む未埋め込みフォントPDFの文字欠落対策
+        cMapUrl: `${cdnBase}/cmaps/`,
+        cMapPacked: true,
+        standardFontDataUrl: `${cdnBase}/standard_fonts/`,
+        useWorkerFetch: true,
+      }).promise;
       const totalPages = Math.min(pdf.numPages, 4);
       const urls: string[] = [];
 
