@@ -3,6 +3,7 @@
 // Spec: Chapter 13 — 自動メンテナンス機構
 
 import { classifyCategory, parsePricingFromText } from './shared';
+import { normalizeFlyerKeys } from '../../lib/flyers';
 
 interface Env {
   DB: D1Database;
@@ -678,6 +679,54 @@ async function deduplicateConcerts(env: Env): Promise<TaskResult> {
   }
 }
 
+// ============================================================
+// Task 10: チラシキー順序とサムネイルの正規化
+// ============================================================
+async function normalizeFlyerRecords(env: Env): Promise<TaskResult> {
+  try {
+    const rows = await env.DB.prepare(
+      `SELECT id, slug, flyer_r2_keys, flyer_thumbnail_key FROM concerts
+       WHERE is_deleted = 0 AND flyer_r2_keys IS NOT NULL AND flyer_r2_keys != '[]'`
+    ).all<{ id: string; slug: string; flyer_r2_keys: string; flyer_thumbnail_key: string }>();
+
+    let updated = 0;
+    for (const row of rows.results || []) {
+      let parsedKeys: string[] = [];
+      try {
+        parsedKeys = JSON.parse(row.flyer_r2_keys || '[]');
+      } catch {
+        parsedKeys = [];
+      }
+
+      const normalized = normalizeFlyerKeys(parsedKeys, {
+        currentThumbnailKey: row.flyer_thumbnail_key,
+      });
+
+      if (
+        JSON.stringify(normalized.keys) !== JSON.stringify(parsedKeys)
+        || normalized.thumbnailKey !== (row.flyer_thumbnail_key || '')
+      ) {
+        await env.DB.prepare(
+          "UPDATE concerts SET flyer_r2_keys = ?, flyer_thumbnail_key = ?, updated_at = datetime('now') WHERE id = ?"
+        ).bind(JSON.stringify(normalized.keys), normalized.thumbnailKey, row.id).run();
+        updated++;
+      }
+    }
+
+    const details = `${rows.results?.length || 0} 件中 ${updated} 件のチラシデータを正規化しました`;
+    await env.DB.prepare(
+      "INSERT INTO maintenance_log (task, result, details) VALUES ('normalize_flyers', 'success', ?)"
+    ).bind(details).run();
+    return { task: 'normalize_flyers', success: true, details };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await env.DB.prepare(
+      "INSERT INTO maintenance_log (task, result, details) VALUES ('normalize_flyers', 'error', ?)"
+    ).bind(msg).run();
+    return { task: 'normalize_flyers', success: false, details: msg };
+  }
+}
+
 // Run all maintenance tasks
 async function runMaintenance(env: Env): Promise<TaskResult[]> {
   const results: TaskResult[] = [];
@@ -690,6 +739,7 @@ async function runMaintenance(env: Env): Promise<TaskResult[]> {
       results.push(await fetchMissingImages(env));
       results.push(await fixPricing(env));
       results.push(await deduplicateConcerts(env));
+      results.push(await normalizeFlyerRecords(env));
   return results;
 }
 
@@ -753,6 +803,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           break;
         case 'deduplicate':
           results = [await deduplicateConcerts(env)];
+          break;
+        case 'normalize_flyers':
+          results = [await normalizeFlyerRecords(env)];
           break;
         default:
           return jsonResponse({ ok: false, error: `不明なタスク: ${taskName}` }, 400);

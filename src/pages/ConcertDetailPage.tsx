@@ -9,6 +9,7 @@ import MapSection from '../components/MapSection';
 import ConcertCard from '../components/ConcertCard';
 import PdfFlyerRenderer from '../components/PdfFlyerRenderer';
 import { useIsMobile } from '../hooks/useDevice';
+import { analyzeConcertFlyers } from '../lib/flyers';
 import type { Concert } from '../types';
 
 // Collapsible section
@@ -250,40 +251,17 @@ export default function ConcertDetailPage() {
 
       {/* Flyer images */}
       {concert.flyer_r2_keys?.length > 0 && (() => {
-        const imageKeys = concert.flyer_r2_keys.filter(key => !key.endsWith('.pdf'));
-        const pdfKeys = concert.flyer_r2_keys.filter(key => key.endsWith('.pdf'));
-        if (imageKeys.length === 0 && pdfKeys.length === 0) return null;
-
-        // Scraped images are the original listing images (not converted from PDF)
-        // Converted WebP keys contain 'flyer_p' in the name
-        const scrapedImages = imageKeys.filter(k => !k.includes('flyer_p'));
-        const convertedImages = imageKeys.filter(k => k.includes('flyer_p'));
-        const hasAllPagesConverted = convertedImages.length > 0;
+        const flyerAnalysis = analyzeConcertFlyers(concert.flyer_r2_keys);
+        const displayKeys = flyerAnalysis.displayKeys;
+        const pdfKeys = flyerAnalysis.pdfKeys;
+        if (displayKeys.length === 0 && pdfKeys.length === 0) return null;
 
         return (
           <FadeIn delay={180} mobile={isMobile}>
             <Section title="チラシ" icon="📄" defaultOpen={true}>
-              {/* Scraped image (listing page thumbnail) */}
-              {scrapedImages.length > 0 && !hasAllPagesConverted && (
-                <div className={isMobile ? 'space-y-4' : 'max-w-md mx-auto'}>
-                  {scrapedImages.map((key, i) => (
-                    <div key={i} className="relative aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden">
-                      <img
-                        src={`/api/image/${key}`}
-                        alt={`${concert.title} チラシ`}
-                        className="w-full h-full object-contain cursor-pointer"
-                        onClick={() => setFlyerModal(`/api/image/${key}`)}
-                        loading="eager"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Converted WebP images (all PDF pages already converted) */}
-              {hasAllPagesConverted && (
-                <div className={isMobile ? 'space-y-4' : `grid gap-5 ${convertedImages.length === 1 ? 'max-w-md mx-auto' : 'grid-cols-2'}`}>
-                  {convertedImages.map((key, i) => (
+              {displayKeys.length > 0 && (
+                <div className={isMobile ? 'space-y-4' : `grid gap-5 ${displayKeys.length === 1 ? 'max-w-md mx-auto' : 'grid-cols-2'}`}>
+                  {displayKeys.map((key, i) => (
                     <div key={i} className="relative aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden">
                       <img
                         src={`/api/image/${key}`}
@@ -292,7 +270,7 @@ export default function ConcertDetailPage() {
                         onClick={() => setFlyerModal(`/api/image/${key}`)}
                         loading={i === 0 ? 'eager' : 'lazy'}
                       />
-                      {convertedImages.length > 1 && (
+                      {displayKeys.length > 1 && (
                         <span className="absolute top-2.5 right-2.5 bg-black/50 text-white text-[11px] px-2 py-0.5 rounded-full backdrop-blur-sm">
                           {i === 0 ? '表' : '裏'}
                         </span>
@@ -302,8 +280,7 @@ export default function ConcertDetailPage() {
                 </div>
               )}
 
-              {/* PDF flyers — render all pages if not yet converted to WebP */}
-              {pdfKeys.length > 0 && !hasAllPagesConverted && pdfKeys.map((key, i) => (
+              {pdfKeys.length > 0 && pdfKeys.map((key, i) => (
                 <PdfFlyerRenderer
                   key={key}
                   pdfKey={key}
@@ -345,7 +322,7 @@ export default function ConcertDetailPage() {
 
       {/* Flyer modal */}
       {flyerModal && (() => {
-        const flyerKeys = concert.flyer_r2_keys.filter(key => !key.endsWith('.pdf'));
+        const flyerKeys = analyzeConcertFlyers(concert.flyer_r2_keys).modalKeys;
         const currentIndex = flyerKeys.findIndex(k => `/api/image/${k}` === flyerModal);
         const hasPrev = currentIndex > 0;
         const hasNext = currentIndex < flyerKeys.length - 1;

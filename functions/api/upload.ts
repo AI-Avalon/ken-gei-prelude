@@ -1,6 +1,13 @@
 // Cloudflare Pages Functions — Flyer Upload
 // Route: POST /api/upload
 
+import {
+  buildFlyerStorageKey,
+  buildFlyerThumbnailStorageKey,
+  isPdfFlyerKey,
+  normalizeFlyerKeys,
+} from '../lib/flyers';
+
 interface Env {
   DB: D1Database;
   KV: KVNamespace;
@@ -37,6 +44,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const file = formData.get('file') as File | null;
     const thumbnail = formData.get('thumbnail') as File | null;
     const concertSlug = formData.get('concert_slug') as string | null;
+    const groupId = String(formData.get('group_id') || '').trim().toLowerCase();
+    const pageIndex = Number.parseInt(String(formData.get('page_index') || '0'), 10);
+    const pageTotal = Number.parseInt(String(formData.get('page_total') || '1'), 10);
+    const sortIndex = Number.parseInt(String(formData.get('sort_index') || '0'), 10);
+    const setThumbnail = String(formData.get('set_thumbnail') || '') === '1';
+    const sourcePdfKey = String(formData.get('source_pdf_key') || '').trim();
 
     // Rate limit: max 10 uploads per hour per IP (skip for admin or batch upload)
     const batchPassword = formData.get('batch_password') as string | null;
@@ -82,8 +95,17 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const timestamp = Date.now();
     const slug = concertSlug || 'unattached';
     const ext = file.type === 'application/pdf' ? 'pdf' : 'webp';
-    const key = `flyers/${slug}/${timestamp}.${ext}`;
-    const thumbnailKey = `flyers/${slug}/${timestamp}_thumb.webp`;
+    const hasStructuredPageInfo = ext === 'webp'
+      && groupId
+      && Number.isFinite(pageIndex)
+      && Number.isFinite(pageTotal)
+      && Number.isFinite(sortIndex);
+    const key = hasStructuredPageInfo
+      ? buildFlyerStorageKey(slug, timestamp, groupId, sortIndex, pageIndex, pageTotal)
+      : `flyers/${slug}/${timestamp}.${ext}`;
+    const thumbnailKey = hasStructuredPageInfo
+      ? buildFlyerThumbnailStorageKey(slug, timestamp, groupId, sortIndex, pageIndex, pageTotal)
+      : `flyers/${slug}/${timestamp}_thumb.webp`;
 
     await env.KV.put(key, await file.arrayBuffer(), {
       metadata: { contentType: file.type },
@@ -106,16 +128,21 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         if (!existingKeys.includes(key)) {
           existingKeys.push(key);
         }
-        const thumbToUse = thumbnail ? (row.flyer_thumbnail_key || thumbnailKey) : row.flyer_thumbnail_key;
+        const normalized = normalizeFlyerKeys(existingKeys, {
+          currentThumbnailKey: row.flyer_thumbnail_key,
+          nextThumbnailKey: thumbnail && setThumbnail ? thumbnailKey : undefined,
+          keepCurrentThumbnail: Boolean(row.flyer_thumbnail_key && !setThumbnail && !isPdfFlyerKey(row.flyer_thumbnail_key)),
+          sourcePdfKey,
+        });
         await env.DB.prepare(
           "UPDATE concerts SET flyer_r2_keys = ?, flyer_thumbnail_key = ?, updated_at = datetime('now') WHERE slug = ?"
-        ).bind(JSON.stringify(existingKeys), thumbToUse, concertSlug).run();
+        ).bind(JSON.stringify(normalized.keys), normalized.thumbnailKey, concertSlug).run();
       }
     }
 
     return jsonResponse({
       ok: true,
-      data: { key, thumbnail_key: thumbnailKey },
+      data: { key, thumbnail_key: thumbnail ? thumbnailKey : '' },
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Upload failed';

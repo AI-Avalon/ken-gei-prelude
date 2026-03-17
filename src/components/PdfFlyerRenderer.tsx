@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { analyzeConcertFlyers, buildFlyerThumbnailName, buildFlyerUploadName } from '../lib/flyers';
 
 interface Props {
   pdfKey: string;
@@ -42,8 +43,9 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
         standardFontDataUrl: `${cdnBase}/standard_fonts/`,
         useWorkerFetch: true,
       }).promise;
-      const totalPages = Math.min(pdf.numPages, 4);
+      const totalPages = pdf.numPages;
       const urls: string[] = [];
+      const groupId = crypto.randomUUID();
 
       // Check if this concert already has WebP images (skip upload if so)
       let alreadyUploaded = false;
@@ -52,8 +54,7 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
         if (checkRes.ok) {
           const checkData = await checkRes.json() as { data?: { flyer_r2_keys?: string[] } };
           const existingKeys = checkData.data?.flyer_r2_keys || [];
-          const webpKeys = existingKeys.filter((k: string) => k.endsWith('.webp'));
-          if (webpKeys.length > 0) {
+          if (analyzeConcertFlyers(existingKeys).hasCompleteConvertedPages) {
             alreadyUploaded = true;
           }
         }
@@ -69,6 +70,9 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
         canvas.height = viewport.height;
         const ctx = canvas.getContext('2d');
         if (!ctx) continue;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         await (page.render({ canvasContext: ctx, viewport, canvas } as any).promise);
 
@@ -86,7 +90,15 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
 
         // Upload converted image to server only if not already uploaded
         if (!alreadyUploaded) {
-          uploadConverted(blob, concertSlug, pageNum).catch(() => {});
+          await uploadConverted(
+            blob,
+            concertSlug,
+            pageNum - 1,
+            totalPages,
+            groupId,
+            pageNum - 1,
+            pdfKey
+          ).catch(() => {});
         }
       }
 
@@ -147,7 +159,15 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
   );
 }
 
-async function uploadConverted(blob: Blob, concertSlug: string, pageNum: number): Promise<void> {
+async function uploadConverted(
+  blob: Blob,
+  concertSlug: string,
+  pageIndex: number,
+  pageTotal: number,
+  groupId: string,
+  sortIndex: number,
+  sourcePdfKey: string
+): Promise<void> {
   // Create a small thumbnail
   const img = new Image();
   await new Promise<void>((resolve, reject) => {
@@ -181,9 +201,15 @@ async function uploadConverted(blob: Blob, concertSlug: string, pageNum: number)
   URL.revokeObjectURL(img.src);
 
   const formData = new FormData();
-  formData.append('file', blob, `flyer_p${pageNum}.webp`);
-  formData.append('thumbnail', thumbnail, `thumb_p${pageNum}.webp`);
+  formData.append('file', blob, buildFlyerUploadName(groupId, sortIndex, pageIndex, pageTotal));
+  formData.append('thumbnail', thumbnail, buildFlyerThumbnailName(groupId, sortIndex, pageIndex, pageTotal));
   formData.append('concert_slug', concertSlug);
+  formData.append('group_id', groupId);
+  formData.append('page_index', String(pageIndex));
+  formData.append('page_total', String(pageTotal));
+  formData.append('sort_index', String(sortIndex));
+  formData.append('set_thumbnail', pageIndex === 0 ? '1' : '0');
+  formData.append('source_pdf_key', sourcePdfKey);
 
   await fetch('/api/upload', { method: 'POST', body: formData });
 }

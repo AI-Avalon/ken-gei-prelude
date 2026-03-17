@@ -1,11 +1,11 @@
 import { useState, useRef, useCallback } from 'react';
 import { uploadFlyer } from '../lib/api';
-
-export interface FlyerFile {
-  blob: Blob;
-  thumbnail: Blob;
-  previewUrl: string;
-}
+import {
+  analyzeConcertFlyers,
+  buildFlyerThumbnailName,
+  buildFlyerUploadName,
+  type FlyerFile,
+} from '../lib/flyers';
 
 interface Props {
   concertSlug?: string;
@@ -70,13 +70,14 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
         const blob = await imageToWebP(img, 2000, 0.85);
         const thumbnail = await imageToWebP(img, 400, 0.7);
         const previewUrl = URL.createObjectURL(blob);
+        const groupId = crypto.randomUUID();
 
         if (onFilesReady) {
           // Staging mode — store locally
-          addFile({ blob, thumbnail, previewUrl });
+          addFile({ blob, thumbnail, previewUrl, groupId, pageIndex: 0, pageTotal: 1 });
         } else {
           // Direct upload mode
-          await uploadToServer(blob, thumbnail);
+          await uploadToServer(blob, thumbnail, groupId);
         }
       }
     } catch {
@@ -94,13 +95,21 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const totalPages = Math.min(pdf.numPages, 4);
+    const cdnBase = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}`;
+    const pdf = await pdfjsLib.getDocument({
+      data: arrayBuffer,
+      cMapUrl: `${cdnBase}/cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `${cdnBase}/standard_fonts/`,
+      useWorkerFetch: true,
+    }).promise;
+    const totalPages = pdf.numPages;
+    const groupId = crypto.randomUUID();
 
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
       setPdfProgress(`ページ ${pageNum}/${totalPages} を変換中...`);
       const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 2.0 });
+      const viewport = page.getViewport({ scale: 3.0 });
 
       const canvas = document.createElement('canvas');
       canvas.width = viewport.width;
@@ -108,34 +117,42 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas not supported');
 
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
       await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
 
-      const tempImg = new Image();
-      await new Promise<void>((resolve, reject) => {
-        tempImg.onload = () => resolve();
-        tempImg.onerror = reject;
-        tempImg.src = canvas.toDataURL('image/png');
-      });
-
-      const blob = await imageToWebP(tempImg, 2000, 0.85);
-      const thumbnail = await imageToWebP(tempImg, 400, 0.7);
+      const blob = await canvasToWebP(canvas, 0.96);
+      const thumbnail = await createThumbnailFromCanvas(canvas, 560, 0.9);
       const previewUrl = URL.createObjectURL(blob);
 
       if (onFilesReady) {
-        addFile({ blob, thumbnail, previewUrl });
+        addFile({
+          blob,
+          thumbnail,
+          previewUrl,
+          groupId,
+          pageIndex: pageNum - 1,
+          pageTotal: totalPages,
+        });
       } else {
-        await uploadToServer(blob, thumbnail);
+        await uploadToServer(blob, thumbnail, groupId, pageNum - 1, totalPages);
       }
     }
 
     setPdfProgress(`${totalPages}ページの変換完了！`);
   };
 
-  const uploadToServer = async (blob: Blob, thumbnail: Blob) => {
+  const uploadToServer = async (blob: Blob, thumbnail: Blob, groupId: string, pageIndex = 0, pageTotal = 1) => {
     const formData = new FormData();
-    formData.append('file', blob, 'flyer.webp');
-    formData.append('thumbnail', thumbnail, 'thumb.webp');
+    formData.append('file', blob, buildFlyerUploadName(groupId, pageIndex, pageIndex, pageTotal));
+    formData.append('thumbnail', thumbnail, buildFlyerThumbnailName(groupId, pageIndex, pageIndex, pageTotal));
     if (concertSlug) formData.append('concert_slug', concertSlug);
+    formData.append('group_id', groupId);
+    formData.append('page_index', String(pageIndex));
+    formData.append('page_total', String(pageTotal));
+    formData.append('sort_index', String(pageIndex));
+    formData.append('set_thumbnail', pageIndex === 0 ? '1' : '0');
 
     const res = await uploadFlyer(formData);
     if (res.ok && res.data) {
@@ -157,13 +174,14 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
   };
 
   const allPreviews = files.map((f) => f.previewUrl);
+  const existingPreviewKeys = analyzeConcertFlyers(existingKeys).displayKeys;
 
   return (
     <div>
       {/* Existing server images */}
-      {existingKeys.length > 0 && (
+      {existingPreviewKeys.length > 0 && (
         <div className="flex gap-2 mb-4 flex-wrap">
-          {existingKeys.map((key) => (
+          {existingPreviewKeys.map((key) => (
             <img key={key} src={`/api/image/${key}`} alt="チラシ"
               className="w-24 h-32 object-cover rounded border" />
           ))}
@@ -205,6 +223,7 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
         <input
           ref={fileRef}
           type="file"
+          aria-label="チラシファイルを選択"
           accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
           onChange={handleChange}
           className="hidden"
@@ -214,7 +233,7 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
         ) : (
           <>
             <p className="text-stone-500">📎 クリックまたはドラッグ&ドロップ</p>
-            <p className="text-xs text-stone-400 mt-1">JPEG, PNG, WebP, GIF (5MB以下) / PDF (10MB以下, 最大4ページ)</p>
+            <p className="text-xs text-stone-400 mt-1">JPEG, PNG, WebP, GIF (5MB以下) / PDF (10MB以下, 全ページ変換)</p>
             {allPreviews.length > 0 && (
               <p className="text-xs text-primary-500 mt-1">追加の画像をアップロードできます</p>
             )}
@@ -254,6 +273,47 @@ function imageToWebP(img: HTMLImageElement, maxSize: number, quality: number): P
     ctx.drawImage(img, 0, 0, width, height);
     canvas.toBlob(
       (blob) => blob ? resolve(blob) : reject(new Error('Conversion failed')),
+      'image/webp',
+      quality
+    );
+  });
+}
+
+function canvasToWebP(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => blob ? resolve(blob) : reject(new Error('Conversion failed')),
+      'image/webp',
+      quality
+    );
+  });
+}
+
+function createThumbnailFromCanvas(canvas: HTMLCanvasElement, maxSize: number, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const thumbCanvas = document.createElement('canvas');
+    let width = canvas.width;
+    let height = canvas.height;
+
+    if (Math.max(width, height) > maxSize) {
+      const ratio = maxSize / Math.max(width, height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+
+    thumbCanvas.width = width;
+    thumbCanvas.height = height;
+    const ctx = thumbCanvas.getContext('2d');
+    if (!ctx) {
+      reject(new Error('Canvas not supported'));
+      return;
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(canvas, 0, 0, width, height);
+    thumbCanvas.toBlob(
+      (blob) => blob ? resolve(blob) : reject(new Error('Thumbnail failed')),
       'image/webp',
       quality
     );

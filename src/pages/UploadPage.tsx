@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ConcertForm from '../components/ConcertForm';
 import FlyerUploader from '../components/FlyerUploader';
-import type { FlyerFile } from '../components/FlyerUploader';
 import { createConcert, uploadFlyer } from '../lib/api';
+import { buildFlyerThumbnailName, buildFlyerUploadName, type FlyerFile } from '../lib/flyers';
 import { toast } from '../components/Toast';
 import { useIsMobile } from '../hooks/useDevice';
 
@@ -28,11 +28,16 @@ export default function UploadPage() {
       // Upload all flyer files
       if (flyerFiles.length > 0) {
         let uploadCount = 0;
-        for (const flyer of flyerFiles) {
+        for (const [index, flyer] of flyerFiles.entries()) {
           const fd = new FormData();
-          fd.append('file', flyer.blob, 'flyer.webp');
-          fd.append('thumbnail', flyer.thumbnail, 'thumb.webp');
+          fd.append('file', flyer.blob, buildFlyerUploadName(flyer.groupId, index, flyer.pageIndex, flyer.pageTotal));
+          fd.append('thumbnail', flyer.thumbnail, buildFlyerThumbnailName(flyer.groupId, index, flyer.pageIndex, flyer.pageTotal));
           fd.append('concert_slug', concert.slug);
+          fd.append('group_id', flyer.groupId);
+          fd.append('page_index', String(flyer.pageIndex));
+          fd.append('page_total', String(flyer.pageTotal));
+          fd.append('sort_index', String(index));
+          fd.append('set_thumbnail', index === 0 ? '1' : '0');
           const uploadRes = await uploadFlyer(fd);
           if (uploadRes.ok) {
             uploadCount++;
