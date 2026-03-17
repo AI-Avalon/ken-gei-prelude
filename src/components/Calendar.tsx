@@ -120,7 +120,11 @@ export default function Calendar({ year, month, concerts, onDateClick, onMonthCh
                     {cell.concerts.slice(0, 2).map((c) => (
                       <div
                         key={c.id}
-                        className="text-[10px] sm:text-xs truncate px-1 py-0.5 rounded bg-primary-100 text-primary-800"
+                        className={`text-[10px] sm:text-xs truncate px-1 py-0.5 rounded ${
+                          c.source === 'auto_scrape'
+                            ? 'bg-sky-100 text-sky-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}
                         title={c.title}
                       >
                         {c.title}
@@ -137,6 +141,18 @@ export default function Calendar({ year, month, concerts, onDateClick, onMonthCh
             </div>
           );
         })}
+      </div>
+
+      {/* Legend */}
+      <div className="px-4 py-2 border-t bg-stone-50 flex items-center gap-4 text-[10px] text-stone-500">
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded bg-sky-100 border border-sky-200" />
+          自動取得
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded bg-emerald-100 border border-emerald-200" />
+          ユーザー登録
+        </span>
       </div>
     </div>
   );

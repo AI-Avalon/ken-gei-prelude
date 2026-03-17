@@ -13,14 +13,17 @@ interface Props {
   onUpload?: (key: string, thumbnailKey: string) => void;
   /** Called with ALL accumulated files whenever a new file is processed (for pre-upload staging) */
   onFilesReady?: (files: FlyerFile[]) => void;
+  /** Called when the user changes the thumbnail selection index (staging mode only) */
+  onThumbnailChange?: (index: number) => void;
 }
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_PDF_SIZE = 10 * 1024 * 1024;
 
-export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload, onFilesReady }: Props) {
+export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload, onFilesReady, onThumbnailChange }: Props) {
   const [files, setFiles] = useState<FlyerFile[]>([]);
+  const [thumbnailIndex, setThumbnailIndex] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [pdfProgress, setPdfProgress] = useState('');
@@ -41,7 +44,12 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
       onFilesReady?.(next);
       return next;
     });
-  }, [onFilesReady]);
+    setThumbnailIndex((prev) => {
+      const next = prev === index ? 0 : prev > index ? prev - 1 : prev;
+      onThumbnailChange?.(next);
+      return next;
+    });
+  }, [onFilesReady, onThumbnailChange]);
 
   const processFile = useCallback(async (file: File) => {
     setError('');
@@ -76,8 +84,8 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
           // Staging mode — store locally
           addFile({ blob, thumbnail, previewUrl, groupId, pageIndex: 0, pageTotal: 1 });
         } else {
-          // Direct upload mode
-          await uploadToServer(blob, thumbnail, groupId);
+          // Direct upload mode: first image is thumbnail by default
+          await uploadToServer(blob, thumbnail, groupId, 0, 1, true);
         }
       }
     } catch {
@@ -136,14 +144,14 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
           pageTotal: totalPages,
         });
       } else {
-        await uploadToServer(blob, thumbnail, groupId, pageNum - 1, totalPages);
+        await uploadToServer(blob, thumbnail, groupId, pageNum - 1, totalPages, pageNum === 1);
       }
     }
 
     setPdfProgress(`${totalPages}ページの変換完了！`);
   };
 
-  const uploadToServer = async (blob: Blob, thumbnail: Blob, groupId: string, pageIndex = 0, pageTotal = 1) => {
+  const uploadToServer = async (blob: Blob, thumbnail: Blob, groupId: string, pageIndex = 0, pageTotal = 1, isThumb = false) => {
     const formData = new FormData();
     formData.append('file', blob, buildFlyerUploadName(groupId, pageIndex, pageIndex, pageTotal));
     formData.append('thumbnail', thumbnail, buildFlyerThumbnailName(groupId, pageIndex, pageIndex, pageTotal));
@@ -152,7 +160,7 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
     formData.append('page_index', String(pageIndex));
     formData.append('page_total', String(pageTotal));
     formData.append('sort_index', String(pageIndex));
-    formData.append('set_thumbnail', pageIndex === 0 ? '1' : '0');
+    formData.append('set_thumbnail', isThumb ? '1' : '0');
 
     const res = await uploadFlyer(formData);
     if (res.ok && res.data) {
@@ -188,25 +196,42 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
         </div>
       )}
 
-      {/* Local previews with remove button */}
+      {/* Local previews with thumbnail selection */}
       {allPreviews.length > 0 && (
         <div className="flex gap-2 mb-4 flex-wrap">
           {allPreviews.map((url, i) => (
-            <div key={i} className="relative group">
+            <div
+              key={i}
+              className={`relative group cursor-pointer rounded border-2 transition-all ${
+                i === thumbnailIndex
+                  ? 'border-primary-500 shadow-md'
+                  : 'border-stone-200 hover:border-primary-300'
+              }`}
+              onClick={() => {
+                if (onFilesReady) {
+                  setThumbnailIndex(i);
+                  onThumbnailChange?.(i);
+                }
+              }}
+            >
               <img src={url} alt={`プレビュー ${i + 1}`}
-                className="w-24 h-32 object-cover rounded border" />
+                className="w-24 h-32 object-cover rounded" />
               <button
                 type="button"
-                onClick={() => removeFile(i)}
-                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
               >
                 ×
               </button>
-              {i === 0 && (
-                <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center py-0.5">
-                  サムネイル
+              {i === thumbnailIndex ? (
+                <span className="absolute bottom-0 left-0 right-0 bg-primary-600/80 text-white text-[9px] text-center py-0.5 font-medium rounded-b">
+                  ⭐ サムネイル
                 </span>
-              )}
+              ) : onFilesReady ? (
+                <span className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] text-center py-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-b">
+                  タップして設定
+                </span>
+              ) : null}
             </div>
           ))}
         </div>

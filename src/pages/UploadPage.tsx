@@ -11,6 +11,7 @@ export default function UploadPage() {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [flyerFiles, setFlyerFiles] = useState<FlyerFile[]>([]);
+  const [flyerThumbnailIndex, setFlyerThumbnailIndex] = useState(0);
   const isMobile = useIsMobile();
 
   const handleSubmit = async (data: Record<string, unknown>) => {
@@ -37,7 +38,7 @@ export default function UploadPage() {
           fd.append('page_index', String(flyer.pageIndex));
           fd.append('page_total', String(flyer.pageTotal));
           fd.append('sort_index', String(index));
-          fd.append('set_thumbnail', index === 0 ? '1' : '0');
+          fd.append('set_thumbnail', index === flyerThumbnailIndex ? '1' : '0');
           const uploadRes = await uploadFlyer(fd);
           if (uploadRes.ok) {
             uploadCount++;
@@ -70,6 +71,7 @@ export default function UploadPage() {
         <h2 className="text-lg font-bold">チラシ画像（任意）</h2>
         <FlyerUploader
           onFilesReady={(files) => setFlyerFiles(files)}
+          onThumbnailChange={(i) => setFlyerThumbnailIndex(i)}
         />
       </div>
     </div>

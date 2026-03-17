@@ -154,25 +154,43 @@ export default function CalendarPage() {
                 <Link
                   key={c.id}
                   to={`/concerts/${c.slug}`}
-                  className="block bg-white rounded-xl shadow-sm border border-stone-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 active:scale-[0.98]"
+                  className="block bg-white rounded-xl shadow-sm border border-stone-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 active:scale-[0.98] overflow-hidden"
                 >
-                  <div className="flex items-start gap-3">
-                    {c.flyer_thumbnail_key && !c.flyer_thumbnail_key.endsWith('.pdf') && (
+                  <div className="flex items-stretch gap-0">
+                    {/* Thumbnail */}
+                    {c.flyer_thumbnail_key && !c.flyer_thumbnail_key.endsWith('.pdf') ? (
                       <img
                         src={`/api/image/${c.flyer_thumbnail_key}`}
                         alt=""
-                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        className="w-20 sm:w-24 flex-shrink-0 object-cover"
                         loading="lazy"
                       />
+                    ) : (
+                      <div className="w-20 sm:w-24 flex-shrink-0 bg-stone-100 flex items-center justify-center text-2xl">
+                        🎵
+                      </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-stone-900 line-clamp-2">{c.title}</p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-stone-500">
+                    <div className="flex-1 min-w-0 p-3 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                            c.source === 'auto_scrape'
+                              ? 'bg-sky-100 text-sky-700'
+                              : 'bg-emerald-100 text-emerald-700'
+                          }`}>
+                            {c.source === 'auto_scrape' ? '自動取得' : 'ユーザー登録'}
+                          </span>
+                        </div>
+                        <p className="font-semibold text-sm text-stone-900 line-clamp-2 leading-snug">{c.title}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-2 text-xs text-stone-500">
                         {c.time_start && <span>🕐 {c.time_start}〜</span>}
                         {c.venue?.name && <span className="truncate">📍 {c.venue.name}</span>}
                       </div>
                     </div>
-                    <span className="text-primary-600 text-lg flex-shrink-0">›</span>
+                    <div className="flex items-center pr-3 text-stone-400">
+                      <span className="text-lg">›</span>
+                    </div>
                   </div>
                 </Link>
               ))}

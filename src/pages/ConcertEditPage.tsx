@@ -17,6 +17,7 @@ export default function ConcertEditPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [flyerFiles, setFlyerFiles] = useState<FlyerFile[]>([]);
+  const [flyerThumbnailIndex, setFlyerThumbnailIndex] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const isMobile = useIsMobile();
 
@@ -49,7 +50,7 @@ export default function ConcertEditPage() {
         fd.append('page_index', String(flyer.pageIndex));
         fd.append('page_total', String(flyer.pageTotal));
         fd.append('sort_index', String(index));
-        fd.append('set_thumbnail', index === 0 ? '1' : '0');
+        fd.append('set_thumbnail', index === flyerThumbnailIndex ? '1' : '0');
         await uploadFlyer(fd);
       }
 
@@ -119,6 +120,7 @@ export default function ConcertEditPage() {
           <h2 className="text-lg font-bold">チラシ画像を変更</h2>
           <FlyerUploader
             onFilesReady={(files) => setFlyerFiles(files)}
+            onThumbnailChange={(i) => setFlyerThumbnailIndex(i)}
             existingKeys={concert.flyer_r2_keys}
           />
         </div>
