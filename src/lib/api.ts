@@ -201,6 +201,16 @@ export async function triggerMaintenance(
   });
 }
 
+export async function triggerMaintenanceTask(
+  token: string,
+  task: 'fetch_images' | 'normalize_flyers' | 'fix_pricing' | 'deduplicate' | 'recategorize' | 'clean_analytics' | 'purge_deleted' | 'clean_rate_limits' | 'clean_old_logs'
+): Promise<ApiResponse<{ task: string; success: boolean; details: string }[]>> {
+  return request(`/cron/maintenance?task=${task}`, {
+    method: 'POST',
+    headers: { 'X-Admin-Token': token },
+  });
+}
+
 // Admin: Reset all data (longer timeout — KV deletion can be slow)
 export async function triggerReset(
   token: string

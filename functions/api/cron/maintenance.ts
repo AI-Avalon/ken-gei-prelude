@@ -209,15 +209,31 @@ function parseAllEventBlocks(html: string, baseUrl: string): Map<string, { image
 
 async function fetchMissingImages(env: Env): Promise<TaskResult> {
   try {
+    const missingBefore = await env.DB.prepare(
+      `SELECT COUNT(*) AS count FROM concerts
+       WHERE source = 'auto_scrape' AND is_deleted = 0
+       AND (
+         flyer_thumbnail_key IS NULL OR flyer_thumbnail_key = ''
+         OR flyer_r2_keys IS NULL OR flyer_r2_keys = '[]'
+       )`
+    ).first<{ count: number }>();
+
+    if (!missingBefore || missingBefore.count === 0) {
+      return { task: 'fetch_images', success: true, details: '画像取得が必要なイベントはありません（残り 0 件）' };
+    }
+
     const rows = await env.DB.prepare(
       `SELECT slug, title, date, source_url FROM concerts 
        WHERE source = 'auto_scrape' AND is_deleted = 0 
-       AND (flyer_thumbnail_key IS NULL OR flyer_thumbnail_key = '')
-       ORDER BY date DESC LIMIT 6`
+       AND (
+         flyer_thumbnail_key IS NULL OR flyer_thumbnail_key = ''
+         OR flyer_r2_keys IS NULL OR flyer_r2_keys = '[]'
+       )
+       ORDER BY date DESC LIMIT 30`
     ).all<{ slug: string; title: string; date: string; source_url: string }>();
 
     if (!rows.results?.length) {
-      return { task: 'fetch_images', success: true, details: '画像取得が必要なイベントはありません' };
+      return { task: 'fetch_images', success: true, details: '画像取得が必要なイベントはありません（残り 0 件）' };
     }
 
     let fetched = 0;
@@ -226,19 +242,9 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
     // Fetch listing pages and build title→{imageUrl, detailUrl} map
     const titleMap = new Map<string, { imageUrl: string; detailUrl: string }>();
     const pageUrls = new Set<string>();
-    for (const row of rows.results) {
-      const src = row.source_url || BASE_URL;
-      pageUrls.add(src);
-    }
-
-    // If all sources are the base listing URL, also fetch additional pages
-    // to find events that were scraped from paginated results
-    if (pageUrls.size === 1 && pageUrls.has(BASE_URL)) {
-      // Fetch pages 1-16 to find all events (1 subrequest each)
-      // Fetch more pages to find events on later listing pages
-      for (let i = 2; i <= 8; i++) {
-        pageUrls.add(`${BASE_URL}index_${i}.html`);
-      }
+    pageUrls.add(BASE_URL);
+    for (let i = 2; i <= 20; i++) {
+      pageUrls.add(`${BASE_URL}index_${i}.html`);
     }
 
     for (const pageUrl of pageUrls) {
@@ -362,7 +368,16 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
       } catch { /* skip individual failures */ }
     }
 
-    const details = `${rows.results.length} 件中 ${fetched} 件の画像を取得しました`;
+    const missingAfter = await env.DB.prepare(
+      `SELECT COUNT(*) AS count FROM concerts
+       WHERE source = 'auto_scrape' AND is_deleted = 0
+       AND (
+         flyer_thumbnail_key IS NULL OR flyer_thumbnail_key = ''
+         OR flyer_r2_keys IS NULL OR flyer_r2_keys = '[]'
+       )`
+    ).first<{ count: number }>();
+
+    const details = `${rows.results.length} 件中 ${fetched} 件の画像を取得しました（残り ${missingAfter?.count || 0} 件）`;
     await env.DB.prepare(
       "INSERT INTO maintenance_log (task, result, details) VALUES ('fetch_images', 'success', ?)"
     ).bind(details).run();

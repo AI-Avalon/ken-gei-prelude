@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   adminAuth, adminFetchConcerts, adminUpdateConcert, adminDeleteConcert,
   fetchStats, fetchInquiries, updateInquiry, fetchMaintenanceLogs,
-  triggerScrape, triggerMaintenance, triggerReset, triggerBulkScrape, exportData,
+  triggerScrape, triggerMaintenance, triggerMaintenanceTask, triggerReset, triggerBulkScrape, exportData,
 } from '../lib/api';
 import { CATEGORIES } from '../lib/constants';
 import { formatDateShort } from '../lib/utils';
@@ -956,8 +956,28 @@ function SettingsTab({ token }: { token: string }) {
                           return;
                         }
 
-                        // Step 3: Auto-run maintenance to fetch detail pages & images
+                        // Step 3: Fetch missing images in batches until done
                         try {
+                          let imageDone = false;
+                          let imageLoop = 0;
+                          while (!imageDone && imageLoop < 10) {
+                            imageLoop++;
+                            const fetchRes = await triggerMaintenanceTask(token, 'fetch_images');
+                            if (!fetchRes.ok || !fetchRes.data || fetchRes.data.length === 0) {
+                              setResetResult(prev => `${prev}\n⚠️ 画像取得バッチ${imageLoop}: ${fetchRes.error || '応答なし'}`);
+                              break;
+                            }
+                            const detail = fetchRes.data[0].details;
+                            setResetResult(prev => `${prev}\n🔄 画像取得バッチ${imageLoop}: ${detail}`);
+                            if (detail.includes('残り 0 件') || detail.includes('画像取得が必要なイベントはありません')) {
+                              imageDone = true;
+                            }
+                            if (detail.includes('中 0 件の画像を取得')) {
+                              // No progress in this batch; avoid infinite retries
+                              break;
+                            }
+                          }
+
                           const maintRes = await triggerMaintenance(token);
                           if (maintRes.ok && maintRes.data) {
                             const summary = maintRes.data.filter(r => r.success).map(r => r.details).join(', ');
