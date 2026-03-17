@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { path: '/upload', label: '演奏会登録' },
   { path: '/contact', label: 'お問い合わせ' },
   { path: '/docs', label: '使い方' },
+  { path: '/about', label: 'About' },
 ];
 
 export default function NavBar() {

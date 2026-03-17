@@ -6,8 +6,13 @@ export const SITE_URL = 'https://ken-gei-prelude.pages.dev';
 export const SITE_DESCRIPTION = '愛知県立芸術大学 演奏会情報ポータル';
 export const SITE_TAGLINE = '若き音楽家たちの響きを、あなたの手のひらに。';
 export const CREATOR_NAME = 'Crescendo Team';
-// Creator display name is loaded at runtime to avoid exposure in source code
-export const CREATOR_DISPLAY_NAME = atob('5qKF55Sw5bm45Y+y5pyX');
+// Creator display name is loaded at runtime to avoid exposing plain text in source.
+function decodeUtf8Base64(value: string): string {
+  const bytes = Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+export const CREATOR_DISPLAY_NAME = decodeUtf8Base64('5qKF55Sw5bm45Y+y5pyX');
 export const CREATOR_HANDLE = '';
 export const CREATOR_EMAIL = '';
 
