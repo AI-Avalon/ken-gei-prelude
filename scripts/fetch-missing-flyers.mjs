@@ -132,9 +132,8 @@ async function main() {
       const ext = match.imageUrl.match(/\.(webp|png|jpg|jpeg|gif)$/i)?.[1]?.toLowerCase() || 'jpg';
       const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
       const imgKey = `flyers/${row.slug}/${timestamp}.${ext}`;
-      thumbKey = `flyers/${row.slug}/${timestamp}_thumb.${ext}`;
+      thumbKey = imgKey;
       await kvPutFromBuffer(imgKey, imgBuffer, contentType);
-      await kvPutFromBuffer(thumbKey, imgBuffer, contentType);
       flyerKeys.push(imgKey);
     }
 

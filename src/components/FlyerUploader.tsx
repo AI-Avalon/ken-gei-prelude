@@ -154,7 +154,9 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
   const uploadToServer = async (blob: Blob, thumbnail: Blob, groupId: string, pageIndex = 0, pageTotal = 1, isThumb = false) => {
     const formData = new FormData();
     formData.append('file', blob, buildFlyerUploadName(groupId, pageIndex, pageIndex, pageTotal));
-    formData.append('thumbnail', thumbnail, buildFlyerThumbnailName(groupId, pageIndex, pageIndex, pageTotal));
+    if (isThumb) {
+      formData.append('thumbnail', thumbnail, buildFlyerThumbnailName(groupId, pageIndex, pageIndex, pageTotal));
+    }
     if (concertSlug) formData.append('concert_slug', concertSlug);
     formData.append('group_id', groupId);
     formData.append('page_index', String(pageIndex));

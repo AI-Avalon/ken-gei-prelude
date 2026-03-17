@@ -317,9 +317,8 @@ async function fetchMissingImages(env: Env): Promise<TaskResult> {
           const ext = match.imageUrl.match(/\.(webp|png|jpg|jpeg|gif)$/i)?.[1]?.toLowerCase() || 'jpg';
           const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
           const imgKey = `flyers/${row.slug}/${timestamp}.${ext}`;
-          thumbKey = `flyers/${row.slug}/${timestamp}_thumb.${ext}`;
+          thumbKey = imgKey;
           await env.KV.put(imgKey, imgBuffer, { metadata: { contentType } });
-          await env.KV.put(thumbKey, imgBuffer, { metadata: { contentType } });
           flyerKeys.push(imgKey);
         }
 

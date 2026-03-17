@@ -44,7 +44,9 @@ export default function ConcertEditPage() {
       for (const [index, flyer] of flyerFiles.entries()) {
         const fd = new FormData();
         fd.append('file', flyer.blob, buildFlyerUploadName(flyer.groupId, index, flyer.pageIndex, flyer.pageTotal));
-        fd.append('thumbnail', flyer.thumbnail, buildFlyerThumbnailName(flyer.groupId, index, flyer.pageIndex, flyer.pageTotal));
+        if (index === flyerThumbnailIndex) {
+          fd.append('thumbnail', flyer.thumbnail, buildFlyerThumbnailName(flyer.groupId, index, flyer.pageIndex, flyer.pageTotal));
+        }
         fd.append('concert_slug', slug);
         fd.append('group_id', flyer.groupId);
         fd.append('page_index', String(flyer.pageIndex));

@@ -111,9 +111,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       metadata: { contentType: file.type },
     });
 
-    if (thumbnail) {
-      await env.KV.put(thumbnailKey, await thumbnail.arrayBuffer(), {
-        metadata: { contentType: thumbnail.type || 'image/webp' },
+    const thumbnailFile = thumbnail;
+    const shouldUploadThumbnail = Boolean(thumbnailFile && setThumbnail);
+    if (thumbnailFile && shouldUploadThumbnail) {
+      await env.KV.put(thumbnailKey, await thumbnailFile.arrayBuffer(), {
+        metadata: { contentType: thumbnailFile.type || 'image/webp' },
       });
     }
 
@@ -130,7 +132,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         }
         const normalized = normalizeFlyerKeys(existingKeys, {
           currentThumbnailKey: row.flyer_thumbnail_key,
-          nextThumbnailKey: thumbnail && setThumbnail ? thumbnailKey : undefined,
+          nextThumbnailKey: setThumbnail
+            ? (shouldUploadThumbnail ? thumbnailKey : key)
+            : undefined,
           keepCurrentThumbnail: Boolean(row.flyer_thumbnail_key && !setThumbnail && !isPdfFlyerKey(row.flyer_thumbnail_key)),
           sourcePdfKey,
         });
@@ -142,7 +146,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     return jsonResponse({
       ok: true,
-      data: { key, thumbnail_key: thumbnail ? thumbnailKey : '' },
+      data: {
+        key,
+        thumbnail_key: setThumbnail
+          ? (shouldUploadThumbnail ? thumbnailKey : key)
+          : '',
+      },
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Upload failed';
