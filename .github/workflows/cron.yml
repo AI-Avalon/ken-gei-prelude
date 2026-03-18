@@ -10,6 +10,7 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -65,4 +66,8 @@ jobs:
       - name: Backfill PDF flyers
         run: |
           echo "🖼️ Backfilling PDF flyers..."
-          npm run backfill:pdf-flyers -- --limit=200
+          if npm run backfill:pdf-flyers -- --limit=200; then
+            echo "✅ PDF backfill completed"
+          else
+            echo "::warning::PDF backfill failed (likely Cloudflare auth/scope mismatch). Continuing scheduled maintenance."
+          fi
