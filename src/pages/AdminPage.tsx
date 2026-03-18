@@ -124,16 +124,27 @@ export default function AdminPage() {
   return (
     <div className={isMobile ? 'pb-24' : 'max-w-7xl mx-auto px-4 py-6'}>
       {/* ヘッダー */}
-      <div className={`flex items-center justify-between gap-2 ${isMobile ? 'px-4 pt-5 pb-3' : 'mb-6'}`}>
-        <div>
-          <h1 className={`font-bold ${isMobile ? 'text-lg' : 'text-2xl'}`}>管理ダッシュボード</h1>
-          {!isMobile && <p className="text-xs text-stone-400 mt-0.5">Crescendo 管理画面</p>}
+      {isMobile ? (
+        <div className="bg-navy-900/95 sticky top-0 z-30 px-4 h-12 flex items-center justify-between border-b border-primary-800/20">
+          <Link to="/" className="text-primary-400 text-sm font-display font-semibold tracking-widest">← Crescendo</Link>
+          <span className="text-white text-sm font-bold">管理ダッシュボード</span>
+          <button type="button" onClick={logout}
+            className="text-xs text-stone-400 hover:text-red-400 px-2 py-1 rounded transition-colors">
+            🚪 ログアウト
+          </button>
         </div>
-        <button type="button" onClick={logout}
-          className="text-xs text-stone-500 hover:text-red-600 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-red-50 transition-colors">
-          🚪 {isMobile ? '' : 'ログアウト'}ログアウト
-        </button>
-      </div>
+      ) : (
+        <div className="flex items-center justify-between gap-2 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">管理ダッシュボード</h1>
+            <p className="text-xs text-stone-400 mt-0.5">Crescendo 管理画面</p>
+          </div>
+          <button type="button" onClick={logout}
+            className="text-xs text-stone-500 hover:text-red-600 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-red-50 transition-colors">
+            🚪 ログアウト
+          </button>
+        </div>
+      )}
 
       {/* タブナビゲーション — モバイルはアイコン、PCは全ラベル */}
       {isMobile ? (

@@ -5,7 +5,7 @@ const MAIN_TABS = [
   { path: '/', label: 'ホーム', icon: '🏠' },
   { path: '/concerts', label: '一覧', icon: '🎵' },
   { path: '/calendar', label: 'カレンダー', icon: '📅' },
-  { path: '/archive', label: '検索', icon: '🔍' },
+  { path: '/archive', label: 'アーカイブ', icon: '📁' },
   { path: '/about', label: 'About', icon: 'ℹ️' },
 ];
 

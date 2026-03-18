@@ -74,17 +74,21 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const isMobile = useIsMobile();
+  const location = useLocation();
+  const isAdminPage = location.pathname.startsWith('/admin');
 
   return (
-    <div className={`min-h-screen flex flex-col ${isMobile ? 'pb-14' : ''}`}>
+    <div className={`min-h-screen flex flex-col ${isMobile && !isAdminPage ? 'pb-14' : ''}`}>
       <ScrollToTop />
       {/* Desktop: top navbar, Mobile: simplified top bar + bottom tabs */}
       {isMobile ? (
-        <header className="bg-navy-900/95 border-b border-primary-800/20 sticky top-0 z-50 backdrop-blur-xl h-12 flex items-center justify-center">
-          <Link to="/" className="text-primary-400 text-lg tracking-widest font-display font-semibold">
-            Crescendo
-          </Link>
-        </header>
+        !isAdminPage && (
+          <header className="bg-navy-900/95 border-b border-primary-800/20 sticky top-0 z-50 backdrop-blur-xl h-12 flex items-center justify-center">
+            <Link to="/" className="text-primary-400 text-lg tracking-widest font-display font-semibold">
+              Crescendo
+            </Link>
+          </header>
+        )
       ) : (
         <NavBar />
       )}
@@ -125,7 +129,7 @@ export default function App() {
           </PageTransition>
         )}
       </main>
-      {isMobile ? <MobileTabBar /> : <Footer />}
+      {isMobile ? (!isAdminPage && <MobileTabBar />) : <Footer />}
       <ToastContainer />
     </div>
   );
