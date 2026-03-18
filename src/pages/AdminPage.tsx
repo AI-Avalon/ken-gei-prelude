@@ -7,7 +7,7 @@ import {
 } from '../lib/api';
 import { CATEGORIES } from '../lib/constants';
 import { formatDateShort } from '../lib/utils';
-import { analyzeConcertFlyers } from '../lib/flyers';
+import { analyzeConcertFlyers, buildFlyerUploadName, buildFlyerThumbnailName } from '../lib/flyers';
 import Modal from '../components/Modal';
 import { toast } from '../components/Toast';
 import { useIsMobile } from '../hooks/useDevice';
@@ -928,6 +928,92 @@ function AnalyticsTab({ token, isMobile }: { token: string; isMobile: boolean })
 // ============================================================
 // 設定タブ
 // ============================================================
+// ── PDF → WebP 一括変換ユーティリティ ────────────────────────
+async function convertPdfToImages(
+  pdfUrl: string,
+  concertSlug: string,
+  onProgress: (msg: string) => void
+): Promise<{ success: boolean; pages: number }> {
+  try {
+    const res = await fetch(pdfUrl);
+    if (!res.ok) return { success: false, pages: 0 };
+
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+    const arrayBuffer = await res.arrayBuffer();
+    const cdnBase = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}`;
+    const pdf = await pdfjsLib.getDocument({
+      data: arrayBuffer,
+      cMapUrl: `${cdnBase}/cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `${cdnBase}/standard_fonts/`,
+      useWorkerFetch: true,
+    }).promise;
+
+    const totalPages = pdf.numPages;
+    const groupId = crypto.randomUUID();
+
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      onProgress(`ページ ${pageNum}/${totalPages} を変換中...`);
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 3.0 });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await (page.render({ canvasContext: ctx, viewport, canvas } as Parameters<typeof page.render>[0]).promise);
+
+      const pageIndex = pageNum - 1;
+
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => b ? resolve(b) : reject(new Error('blob')), 'image/webp', 0.92)
+      );
+
+      // サムネイル生成
+      const thumbCanvas = document.createElement('canvas');
+      const maxThumb = 400;
+      let tw = canvas.width, th = canvas.height;
+      if (Math.max(tw, th) > maxThumb) {
+        const r = maxThumb / Math.max(tw, th);
+        tw = Math.round(tw * r); th = Math.round(th * r);
+      }
+      thumbCanvas.width = tw; thumbCanvas.height = th;
+      const tctx = thumbCanvas.getContext('2d');
+      if (tctx) {
+        tctx.fillStyle = '#ffffff';
+        tctx.fillRect(0, 0, tw, th);
+        tctx.drawImage(canvas, 0, 0, tw, th);
+      }
+      const thumbnail = await new Promise<Blob>((resolve, reject) =>
+        thumbCanvas.toBlob((b) => b ? resolve(b) : reject(new Error('thumb')), 'image/webp', 0.7)
+      );
+
+      // KV にアップロード
+      const fd = new FormData();
+      fd.append('file', blob, buildFlyerUploadName(groupId, pageIndex, pageIndex, totalPages));
+      fd.append('thumbnail', thumbnail, buildFlyerThumbnailName(groupId, pageIndex, pageIndex, totalPages));
+      fd.append('concert_slug', concertSlug);
+      fd.append('group_id', groupId);
+      fd.append('page_index', String(pageIndex));
+      fd.append('page_total', String(totalPages));
+      fd.append('sort_index', String(pageIndex));
+      fd.append('set_thumbnail', pageIndex === 0 ? '1' : '0');
+      await fetch('/api/upload', { method: 'POST', body: fd });
+    }
+
+    return { success: true, pages: totalPages };
+  } catch {
+    return { success: false, pages: 0 };
+  }
+}
+
 function SettingsTab({ token }: { token: string }) {
   const [scraping, setScraping] = useState(false);
   const [maintaining, setMaintaining] = useState(false);
@@ -936,6 +1022,75 @@ function SettingsTab({ token }: { token: string }) {
   const [scrapeResult, setScrapeResult] = useState<string | null>(null);
   const [maintenanceResult, setMaintenanceResult] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<string | null>(null);
+
+  // PDF 一括事前変換
+  const [converting, setConverting] = useState(false);
+  const [convertProgress, setConvertProgress] = useState<string | null>(null);
+  const [convertResult, setConvertResult] = useState<string | null>(null);
+
+  const handleBatchConvert = async () => {
+    setConverting(true);
+    setConvertProgress('対象の演奏会を確認中...');
+    setConvertResult(null);
+    try {
+      // 全演奏会を取得
+      const res = await adminFetchConcerts(token);
+      if (!res.ok || !res.data) {
+        setConvertResult('❌ 演奏会データの取得に失敗しました');
+        return;
+      }
+
+      // PDF のみ（未変換）の演奏会を抽出
+      const pending = res.data.filter((c) => {
+        if (!c.flyer_r2_keys || c.flyer_r2_keys.length === 0) return false;
+        const analysis = analyzeConcertFlyers(c.flyer_r2_keys);
+        // 変換済みページがなく、かつ PDF キーがある場合のみ対象
+        return !analysis.hasCompleteConvertedPages && analysis.pdfKeys.length > 0;
+      });
+
+      if (pending.length === 0) {
+        setConvertResult('✅ 変換が必要なPDFチラシはありません（すべて変換済み）');
+        setConvertProgress(null);
+        return;
+      }
+
+      setConvertProgress(`${pending.length}件のPDFチラシを変換します...`);
+
+      let done = 0;
+      let errors = 0;
+      const log: string[] = [];
+
+      for (const concert of pending) {
+        const analysis = analyzeConcertFlyers(concert.flyer_r2_keys);
+        for (const pdfKey of analysis.pdfKeys) {
+          setConvertProgress(`[${done + 1}/${pending.length}] ${concert.title} を変換中...`);
+          const result = await convertPdfToImages(
+            `/api/image/${pdfKey}`,
+            concert.slug,
+            (msg) => setConvertProgress(`[${done + 1}/${pending.length}] ${concert.title}: ${msg}`)
+          );
+          if (result.success) {
+            done++;
+            log.push(`✅ ${concert.title} (${result.pages}ページ)`);
+          } else {
+            errors++;
+            log.push(`❌ ${concert.title} — 変換失敗`);
+          }
+        }
+      }
+
+      setConvertResult(
+        `変換完了: ${done}件成功${errors > 0 ? ` / ${errors}件失敗` : ''}\n\n${log.join('\n')}`
+      );
+      setConvertProgress(null);
+      toast(`PDF変換完了: ${done}件`, done > 0 ? 'success' : 'error');
+    } catch (err) {
+      setConvertResult('❌ 処理中にエラーが発生しました');
+      setConvertProgress(null);
+    } finally {
+      setConverting(false);
+    }
+  };
 
   const handleScrape = async () => {
     setScraping(true);
@@ -992,6 +1147,31 @@ function SettingsTab({ token }: { token: string }) {
             aria-label="スクレイピング対象URL"
           />
         </div>
+      </div>
+
+      {/* PDF 一括事前変換 */}
+      <div className="bg-white rounded-2xl shadow-sm border border-stone-200/60 p-5">
+        <h2 className="font-bold text-sm mb-1">📄 PDFチラシの事前変換</h2>
+        <p className="text-xs text-stone-500 mb-4">
+          自動取得されたPDFチラシは通常、最初の訪問者がページを開いた際にブラウザ内で変換されます。
+          このボタンを実行すると未変換のPDFを今すぐ一括処理し、以降の訪問者には即座に画像が表示されます。
+        </p>
+        <div className="flex items-center justify-between gap-3 p-4 bg-primary-50 border border-primary-100 rounded-xl">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-sm text-primary-900">🔄 PDF → 画像 一括変換</p>
+            <p className="text-xs text-primary-700 mt-0.5">未変換のPDFチラシをすべて今すぐ画像に変換してKVに保存します</p>
+            {convertProgress && (
+              <p className="text-xs text-primary-600 mt-1 font-medium animate-pulse">{convertProgress}</p>
+            )}
+          </div>
+          <button type="button" onClick={handleBatchConvert} disabled={converting}
+            className="btn-primary text-sm flex-shrink-0">
+            {converting ? '⏳ 変換中...' : '今すぐ変換'}
+          </button>
+        </div>
+        {convertResult && (
+          <pre className="text-xs bg-stone-100 rounded-xl p-3 whitespace-pre-wrap overflow-x-auto mt-3">{convertResult}</pre>
+        )}
       </div>
 
       {/* メンテナンス操作 */}
