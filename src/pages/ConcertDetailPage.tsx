@@ -261,9 +261,12 @@ export default function ConcertDetailPage() {
       {/* Flyer images */}
       {concert.flyer_r2_keys?.length > 0 && (() => {
         const flyerAnalysis = analyzeConcertFlyers(concert.flyer_r2_keys);
-        const displayKeys = flyerAnalysis.displayKeys;
-        const pdfKeys = flyerAnalysis.pdfKeys;
+        const { displayKeys, pdfKeys, allPdfKeys } = flyerAnalysis;
         if (displayKeys.length === 0 && pdfKeys.length === 0) return null;
+
+        // Label helper: 2枚 → 表/裏, 3枚以上 → ページ番号
+        const pageLabel = (i: number, total: number) =>
+          total === 2 ? (i === 0 ? '表' : '裏') : `${i + 1}`;
 
         return (
           <FadeIn delay={180} mobile={isMobile}>
@@ -307,7 +310,7 @@ export default function ConcertDetailPage() {
                               loading={i === 0 ? 'eager' : 'lazy'}
                             />
                             <span className="absolute top-2 right-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm">
-                              {i === 0 ? '表' : '裏'}
+                              {pageLabel(i, displayKeys.length)}
                             </span>
                             <div className="absolute bottom-2 right-2 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm">
                               🔍 拡大
@@ -335,7 +338,7 @@ export default function ConcertDetailPage() {
                         />
                         {displayKeys.length > 1 && (
                           <span className="absolute top-2.5 right-2.5 bg-black/50 text-white text-[11px] px-2 py-0.5 rounded-full backdrop-blur-sm">
-                            {i === 0 ? '表' : '裏'}
+                            {pageLabel(i, displayKeys.length)}
                           </span>
                         )}
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100">
@@ -347,7 +350,8 @@ export default function ConcertDetailPage() {
                 )
               )}
 
-              {pdfKeys.length > 0 && pdfKeys.map((key, i) => (
+              {/* PdfFlyerRenderer: displayKeys が空のときのみ（重複防止） */}
+              {displayKeys.length === 0 && pdfKeys.length > 0 && pdfKeys.map((key, i) => (
                 <PdfFlyerRenderer
                   key={key}
                   pdfKey={key}
@@ -358,18 +362,18 @@ export default function ConcertDetailPage() {
                 />
               ))}
 
-              {/* PDF download link */}
-              {pdfKeys.length > 0 && (
-                <div className="mt-3 flex gap-2">
-                  {pdfKeys.map((key, i) => (
+              {/* PDF download link — allPdfKeys を使い変換済みでも表示 */}
+              {allPdfKeys.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {allPdfKeys.map((key, i) => (
                     <a
                       key={key}
                       href={`/api/image/${key}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800"
+                      className="inline-flex items-center gap-1.5 text-sm text-stone-400 hover:text-primary-600 transition-colors"
                     >
-                      📄 PDF{pdfKeys.length > 1 ? ` (${i + 1})` : ''}を開く
+                      📄 PDF{allPdfKeys.length > 1 ? `（${i + 1}）` : ''}をダウンロード
                     </a>
                   ))}
                 </div>

@@ -152,7 +152,17 @@ export function analyzeConcertFlyers(keys: string[]) {
       .map((key, originalIndex) => parseFlyerKey(key, originalIndex))
   );
   const completeGroups = getCompleteConvertedGroups(parsedKeys);
-  const convertedPageKeys = completeGroups.flatMap((group) => group.pageKeys);
+
+  // Deduplicate: if multiple groups share the same sortIndex (same PDF converted twice),
+  // keep only the first complete group per sortIndex.
+  const seenSortIndexes = new Set<number>();
+  const dedupedGroups = completeGroups.filter((group) => {
+    if (seenSortIndexes.has(group.sortIndex)) return false;
+    seenSortIndexes.add(group.sortIndex);
+    return true;
+  });
+
+  const convertedPageKeys = dedupedGroups.flatMap((group) => group.pageKeys);
   const fallbackImageKeys = parsedKeys
     .filter((parsed) => parsed.kind === 'image')
     .map((parsed) => parsed.key);
@@ -161,10 +171,17 @@ export function analyzeConcertFlyers(keys: string[]) {
     .map((parsed) => parsed.key);
   const hasCompleteConvertedPages = convertedPageKeys.length > 0;
 
+  // displayKeys: converted WebP pages take priority; fallback to raw images only if no converted pages
+  // When displayKeys has any content, PDFs should NOT be re-rendered (they are the same content)
+  const displayKeys = hasCompleteConvertedPages ? convertedPageKeys : fallbackImageKeys;
+
   return {
     hasCompleteConvertedPages,
-    displayKeys: hasCompleteConvertedPages ? convertedPageKeys : fallbackImageKeys,
-    modalKeys: hasCompleteConvertedPages ? convertedPageKeys : fallbackImageKeys,
-    pdfKeys: hasCompleteConvertedPages ? [] : pdfKeys,
+    displayKeys,
+    modalKeys: displayKeys,
+    // pdfKeys: only non-empty when there are NO displayable images at all (nothing to show)
+    pdfKeys: displayKeys.length === 0 ? pdfKeys : [],
+    // allPdfKeys: always includes raw PDF keys (for download links)
+    allPdfKeys: pdfKeys,
   };
 }

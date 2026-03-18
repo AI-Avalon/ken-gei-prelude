@@ -8,17 +8,21 @@ import type { Concert } from '../types';
 
 /** チラシキー一覧から最適なサムネイルURLを返す。存在しなければ null */
 function getFlyerThumbSrc(concert: Concert): string | null {
-  // 1. flyer_thumbnail_key が有効なら最優先
+  // 1. flyer_thumbnail_key が有効なら最優先（_thumb.webp や変換済みWebPを含む）
   if (concert.flyer_thumbnail_key && !concert.flyer_thumbnail_key.endsWith('.pdf')) {
     return `/api/image/${concert.flyer_thumbnail_key}`;
   }
-  // 2. flyer_r2_keys から変換済みページの先頭 or 画像キーを探す
+  // 2. flyer_r2_keys から最適な表示キーを取得
   if (concert.flyer_r2_keys && concert.flyer_r2_keys.length > 0) {
     const analysis = analyzeConcertFlyers(concert.flyer_r2_keys);
+    // 変換済みWebP or 直接画像の先頭
     if (analysis.displayKeys.length > 0) {
       return `/api/image/${analysis.displayKeys[0]}`;
     }
-    // 3. PDF以外のキーをフォールバック
+    // 3. _thumb.webp キーを優先フォールバック
+    const thumb = concert.flyer_r2_keys.find((k) => k.includes('_thumb.'));
+    if (thumb) return `/api/image/${thumb}`;
+    // 4. PDF以外の任意キー
     const fallback = concert.flyer_r2_keys.find((k) => !k.endsWith('.pdf'));
     if (fallback) return `/api/image/${fallback}`;
   }
