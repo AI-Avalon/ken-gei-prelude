@@ -1,8 +1,42 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CATEGORIES } from '../lib/constants';
 import { formatDateShort, daysUntil, formatPricing } from '../lib/utils';
+import { analyzeConcertFlyers } from '../lib/flyers';
 import { useIsMobile } from '../hooks/useDevice';
 import type { Concert } from '../types';
+
+/** チラシキー一覧から最適なサムネイルURLを返す。存在しなければ null */
+function getFlyerThumbSrc(concert: Concert): string | null {
+  // 1. flyer_thumbnail_key が有効なら最優先
+  if (concert.flyer_thumbnail_key && !concert.flyer_thumbnail_key.endsWith('.pdf')) {
+    return `/api/image/${concert.flyer_thumbnail_key}`;
+  }
+  // 2. flyer_r2_keys から変換済みページの先頭 or 画像キーを探す
+  if (concert.flyer_r2_keys && concert.flyer_r2_keys.length > 0) {
+    const analysis = analyzeConcertFlyers(concert.flyer_r2_keys);
+    if (analysis.displayKeys.length > 0) {
+      return `/api/image/${analysis.displayKeys[0]}`;
+    }
+    // 3. PDF以外のキーをフォールバック
+    const fallback = concert.flyer_r2_keys.find((k) => !k.endsWith('.pdf'));
+    if (fallback) return `/api/image/${fallback}`;
+  }
+  return null;
+}
+
+/** onError 用: 画像読み込み失敗時にプレースホルダーへ差し替え */
+function handleImgError(e: React.SyntheticEvent<HTMLImageElement>) {
+  const img = e.currentTarget;
+  img.style.display = 'none';
+  const parent = img.parentElement;
+  if (parent && !parent.querySelector('.thumb-placeholder')) {
+    const ph = document.createElement('div');
+    ph.className = 'thumb-placeholder w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center absolute inset-0';
+    ph.innerHTML = '<span class="text-primary-400/60 text-xl">♪</span>';
+    parent.appendChild(ph);
+  }
+}
 
 interface Props {
   concert: Concert;
@@ -10,6 +44,7 @@ interface Props {
 }
 
 export default function ConcertCard({ concert, highlight }: Props) {
+  const [imgError, setImgError] = useState(false);
   const cat = CATEGORIES[concert.category] || CATEGORIES.other;
   const status = daysUntil(concert.date);
   const isToday = status === '本日！';
@@ -17,6 +52,7 @@ export default function ConcertCard({ concert, highlight }: Props) {
   const isMobile = useIsMobile();
   const pricing = formatPricing(concert.pricing);
   const isFree = pricing === '無料';
+  const thumbSrc = getFlyerThumbSrc(concert);
 
   /* ===== Mobile: horizontal card ===== */
   if (isMobile) {
@@ -28,26 +64,20 @@ export default function ConcertCard({ concert, highlight }: Props) {
         } ${isEnded ? 'opacity-75' : ''}`}
       >
         {/* Thumbnail — left side */}
-        <div className="w-[72px] self-stretch flex-shrink-0 bg-stone-100 relative">
-          {(() => {
-            const thumbSrc = concert.flyer_thumbnail_key && !concert.flyer_thumbnail_key.endsWith('.pdf')
-              ? `/api/image/${concert.flyer_thumbnail_key}`
-              : concert.flyer_r2_keys?.find(k => !k.endsWith('.pdf'))
-                ? `/api/image/${concert.flyer_r2_keys.find(k => !k.endsWith('.pdf'))}`
-                : null;
-            return thumbSrc ? (
-              <img
-                src={thumbSrc}
-                alt={concert.title}
-                className="absolute inset-0 w-full h-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
-                <span className="text-primary-400/60 text-xl">♪</span>
-              </div>
-            );
-          })()}
+        <div className="w-[72px] self-stretch flex-shrink-0 bg-stone-100 relative overflow-hidden">
+          {thumbSrc && !imgError ? (
+            <img
+              src={thumbSrc}
+              alt={concert.title}
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
+              <span className="text-primary-400/60 text-xl">♪</span>
+            </div>
+          )}
           {isToday && (
             <div className="absolute top-0 left-0 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-br-lg">
               TODAY
@@ -89,28 +119,22 @@ export default function ConcertCard({ concert, highlight }: Props) {
     >
       {/* Thumbnail */}
       <div className="aspect-[4/3] bg-stone-100 overflow-hidden relative">
-        {(() => {
-          const thumbSrc = concert.flyer_thumbnail_key && !concert.flyer_thumbnail_key.endsWith('.pdf')
-            ? `/api/image/${concert.flyer_thumbnail_key}`
-            : concert.flyer_r2_keys?.find(k => !k.endsWith('.pdf'))
-              ? `/api/image/${concert.flyer_r2_keys.find(k => !k.endsWith('.pdf'))}`
-              : null;
-          return thumbSrc ? (
-            <img
-              src={thumbSrc}
-              alt={concert.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
-              <div className="text-center">
-                <span className="text-primary-400/60 text-3xl font-display tracking-widest">♪</span>
-                <p className="text-stone-600 text-xs mt-2">{cat.label}</p>
-              </div>
+        {thumbSrc && !imgError ? (
+          <img
+            src={thumbSrc}
+            alt={concert.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
+            <div className="text-center">
+              <span className="text-primary-400/60 text-3xl font-display tracking-widest">♪</span>
+              <p className="text-stone-600 text-xs mt-2">{cat.label}</p>
             </div>
-          );
-        })()}
+          </div>
+        )}
         {/* Status badge overlay */}
         {isToday && (
           <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">

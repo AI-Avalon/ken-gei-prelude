@@ -75,7 +75,7 @@ export async function adminAuth(password: string): Promise<ApiResponse<{ token: 
 }
 
 export async function adminFetchConcerts(token: string): Promise<ApiResponse<Concert[]>> {
-  return request('/concerts?includeUnpublished=1&includeDeleted=1', {
+  return request('/concerts?includeUnpublished=1&includeDeleted=1&limit=500', {
     headers: { 'X-Admin-Token': token },
   });
 }

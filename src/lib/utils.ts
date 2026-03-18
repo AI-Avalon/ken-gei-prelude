@@ -191,11 +191,15 @@ export function downloadICS(concert: Concert): void {
 export function shareUrls(concert: Concert) {
   const url = `${SITE_URL}/concerts/${concert.slug}`;
   const text = `${concert.title} ${formatDateShort(concert.date)} @${concert.venue?.name || ''} #愛知県芸 #演奏会`;
+  const textWithUrl = `${text} ${url}`;
   return {
     twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
     line: `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+    threads: `https://threads.net/intent/post?text=${encodeURIComponent(textWithUrl)}`,
+    bluesky: `https://bsky.app/intent/compose?text=${encodeURIComponent(textWithUrl)}`,
     url,
+    text,
   };
 }
 

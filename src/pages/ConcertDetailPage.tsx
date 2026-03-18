@@ -171,6 +171,15 @@ export default function ConcertDetailPage() {
           {concert.subtitle && (
             <p className={`${isMobile ? 'text-base' : 'text-lg'} text-stone-500 mt-1.5`}>{concert.subtitle}</p>
           )}
+          {/* 編集リンク（登録者向け） */}
+          <div className="mt-2">
+            <Link
+              to={`/concerts/${concert.slug}/edit`}
+              className="inline-flex items-center gap-1 text-xs text-stone-400 hover:text-primary-600 transition-colors"
+            >
+              ✏️ この演奏会を編集する（登録時のパスワードが必要）
+            </Link>
+          </div>
         </div>
       </FadeIn>
 
@@ -605,8 +614,11 @@ export default function ConcertDetailPage() {
       {/* Footer */}
       <FadeIn delay={620} mobile={isMobile}>
         <div className="flex items-center justify-between text-xs text-stone-400 pt-4 border-t border-stone-200/60">
-          <span>👁 {concert.views.toLocaleString()} 回閲覧</span>
-          <Link to={`/concerts/${concert.slug}/edit`} className="text-primary-600 hover:text-primary-700 transition-colors flex items-center gap-1 text-xs">
+          <span className="flex items-center gap-1">👁 {concert.views.toLocaleString()} 回閲覧</span>
+          <Link
+            to={`/concerts/${concert.slug}/edit`}
+            className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-primary-600 bg-stone-100 hover:bg-primary-50 px-3 py-1.5 rounded-lg transition-colors"
+          >
             ✏️ 編集する
           </Link>
         </div>
