@@ -190,11 +190,16 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
     <div>
       {/* Existing server images */}
       {existingPreviewKeys.length > 0 && (
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {existingPreviewKeys.map((key) => (
-            <img key={key} src={`/api/image/${key}`} alt="チラシ"
-              className="w-24 h-32 object-cover rounded border" />
-          ))}
+        <div className="mb-4">
+          <p className="text-xs text-stone-500 mb-2">現在のチラシ</p>
+          <div className="flex gap-3 flex-wrap">
+            {existingPreviewKeys.map((key) => (
+              <div key={key} className="relative">
+                <img src={`/api/image/${key}`} alt="チラシ"
+                  className="w-28 h-40 object-contain rounded-lg border border-stone-200 bg-stone-50" />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -28,7 +28,7 @@ export default function ConcertCard({ concert, highlight }: Props) {
         } ${isEnded ? 'opacity-75' : ''}`}
       >
         {/* Thumbnail — left side */}
-        <div className="w-24 min-h-[96px] flex-shrink-0 bg-stone-100 relative">
+        <div className="w-[72px] self-stretch flex-shrink-0 bg-stone-100 relative">
           {(() => {
             const thumbSrc = concert.flyer_thumbnail_key && !concert.flyer_thumbnail_key.endsWith('.pdf')
               ? `/api/image/${concert.flyer_thumbnail_key}`
@@ -39,7 +39,7 @@ export default function ConcertCard({ concert, highlight }: Props) {
               <img
                 src={thumbSrc}
                 alt={concert.title}
-                className="w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover"
                 loading="lazy"
               />
             ) : (

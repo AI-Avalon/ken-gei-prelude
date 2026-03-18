@@ -260,24 +260,82 @@ export default function ConcertDetailPage() {
           <FadeIn delay={180} mobile={isMobile}>
             <Section title="チラシ" icon="📄" defaultOpen={true}>
               {displayKeys.length > 0 && (
-                <div className={isMobile ? 'space-y-4' : `grid gap-5 ${displayKeys.length === 1 ? 'max-w-md mx-auto' : 'grid-cols-2'}`}>
-                  {displayKeys.map((key, i) => (
-                    <div key={i} className="relative aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden">
-                      <img
-                        src={`/api/image/${key}`}
-                        alt={`${concert.title} チラシ ${i + 1}`}
-                        className="w-full h-full object-contain cursor-pointer"
-                        onClick={() => setFlyerModal(`/api/image/${key}`)}
-                        loading={i === 0 ? 'eager' : 'lazy'}
-                      />
-                      {displayKeys.length > 1 && (
-                        <span className="absolute top-2.5 right-2.5 bg-black/50 text-white text-[11px] px-2 py-0.5 rounded-full backdrop-blur-sm">
-                          {i === 0 ? '表' : '裏'}
-                        </span>
-                      )}
+                isMobile ? (
+                  /* モバイル: 複数枚は横スクロール、1枚は中央寄せ */
+                  displayKeys.length === 1 ? (
+                    <div className="flex justify-center">
+                      <div
+                        className="relative w-full max-w-[260px] aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden shadow-sm cursor-pointer group"
+                        onClick={() => setFlyerModal(`/api/image/${displayKeys[0]}`)}
+                      >
+                        <img
+                          src={`/api/image/${displayKeys[0]}`}
+                          alt={`${concert.title} チラシ`}
+                          className="w-full h-full object-contain"
+                          loading="eager"
+                        />
+                        <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 group-active:opacity-100 transition-opacity bg-black/10">
+                          <span className="bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">タップで拡大</span>
+                        </div>
+                        <div className="absolute bottom-2 right-2 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm">
+                          🔍 拡大
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  ) : (
+                    <div className="-mx-5 px-5">
+                      <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
+                        {displayKeys.map((key, i) => (
+                          <div
+                            key={i}
+                            className="relative flex-shrink-0 w-[200px] aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden shadow-sm cursor-pointer snap-start"
+                            onClick={() => setFlyerModal(`/api/image/${key}`)}
+                          >
+                            <img
+                              src={`/api/image/${key}`}
+                              alt={`${concert.title} チラシ ${i + 1}`}
+                              className="w-full h-full object-contain"
+                              loading={i === 0 ? 'eager' : 'lazy'}
+                            />
+                            <span className="absolute top-2 right-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm">
+                              {i === 0 ? '表' : '裏'}
+                            </span>
+                            <div className="absolute bottom-2 right-2 bg-black/40 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm">
+                              🔍 拡大
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-stone-400 mt-1.5 text-center">← スワイプで複数枚確認 →</p>
+                    </div>
+                  )
+                ) : (
+                  /* デスクトップ: グリッド表示 */
+                  <div className={`grid gap-5 ${displayKeys.length === 1 ? 'max-w-sm mx-auto' : 'grid-cols-2'}`}>
+                    {displayKeys.map((key, i) => (
+                      <div
+                        key={i}
+                        className="relative aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden shadow-sm cursor-pointer group"
+                        onClick={() => setFlyerModal(`/api/image/${key}`)}
+                      >
+                        <img
+                          src={`/api/image/${key}`}
+                          alt={`${concert.title} チラシ ${i + 1}`}
+                          className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-300"
+                          loading={i === 0 ? 'eager' : 'lazy'}
+                        />
+                        {displayKeys.length > 1 && (
+                          <span className="absolute top-2.5 right-2.5 bg-black/50 text-white text-[11px] px-2 py-0.5 rounded-full backdrop-blur-sm">
+                            {i === 0 ? '表' : '裏'}
+                          </span>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100">
+                          <span className="bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">クリックで拡大</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
 
               {pdfKeys.length > 0 && pdfKeys.map((key, i) => (
@@ -334,6 +392,7 @@ export default function ConcertDetailPage() {
           >
             {hasPrev && (
               <button
+                type="button"
                 className="absolute left-3 md:left-8 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full w-10 h-10 flex items-center justify-center transition-all z-10"
                 onClick={(e) => { e.stopPropagation(); setFlyerModal(`/api/image/${flyerKeys[currentIndex - 1]}`); }}
               >
@@ -348,6 +407,7 @@ export default function ConcertDetailPage() {
             />
             {hasNext && (
               <button
+                type="button"
                 className="absolute right-3 md:right-8 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full w-10 h-10 flex items-center justify-center transition-all z-10"
                 onClick={(e) => { e.stopPropagation(); setFlyerModal(`/api/image/${flyerKeys[currentIndex + 1]}`); }}
               >
@@ -360,6 +420,7 @@ export default function ConcertDetailPage() {
               </div>
             )}
             <button
+              type="button"
               className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full w-10 h-10 flex items-center justify-center transition-all"
               onClick={() => setFlyerModal(null)}
             >
