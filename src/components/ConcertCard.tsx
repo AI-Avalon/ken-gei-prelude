@@ -6,41 +6,45 @@ import { analyzeConcertFlyers } from '../lib/flyers';
 import { useIsMobile } from '../hooks/useDevice';
 import type { Concert } from '../types';
 
-/** チラシキー一覧から最適なサムネイルURLを返す。存在しなければ null */
-function getFlyerThumbSrc(concert: Concert): string | null {
-  // 1. flyer_thumbnail_key が有効なら最優先（_thumb.webp や変換済みWebPを含む）
-  if (concert.flyer_thumbnail_key && !concert.flyer_thumbnail_key.endsWith('.pdf')) {
-    return `/api/image/${concert.flyer_thumbnail_key}`;
+/** チラシキーから試行すべきサムネイルURLを優先順に返す（失敗時にフォールバック） */
+function getFlyerThumbSrcs(concert: Concert): string[] {
+  const srcs: string[] = [];
+  const add = (url: string) => { if (!srcs.includes(url)) srcs.push(url); };
+
+  const analysis = concert.flyer_r2_keys?.length > 0
+    ? analyzeConcertFlyers(concert.flyer_r2_keys)
+    : null;
+
+  const thumbKey = concert.flyer_thumbnail_key;
+  // _g{uuid}_o パターンを含む = 変換済みWebPページから明示的にアップロードされた小サムネ
+  const isExplicitThumb = Boolean(thumbKey && !thumbKey.endsWith('.pdf') && /_g[a-z0-9-]+_o\d+/i.test(thumbKey));
+
+  // 1. 明示的アップロード済みサムネ（小サイズで確実に存在）
+  if (isExplicitThumb && thumbKey) {
+    add(`/api/image/${thumbKey}`);
   }
-  // 2. flyer_r2_keys から最適な表示キーを取得
-  if (concert.flyer_r2_keys && concert.flyer_r2_keys.length > 0) {
-    const analysis = analyzeConcertFlyers(concert.flyer_r2_keys);
-    // 変換済みWebP or 直接画像の先頭
-    if (analysis.displayKeys.length > 0) {
-      return `/api/image/${analysis.displayKeys[0]}`;
-    }
-    // 3. _thumb.webp キーを優先フォールバック
-    const thumb = concert.flyer_r2_keys.find((k) => k.includes('_thumb.'));
-    if (thumb) return `/api/image/${thumb}`;
-    // 4. PDF以外の任意キー
-    const fallback = concert.flyer_r2_keys.find((k) => !k.endsWith('.pdf'));
-    if (fallback) return `/api/image/${fallback}`;
+
+  // 2. 変換済みWebP or 直接画像（JPG等）の先頭（KVに確実に存在）
+  if (analysis?.displayKeys.length) {
+    add(`/api/image/${analysis.displayKeys[0]}`);
   }
-  return null;
+
+  // 3. 派生サムネイルキー（存在しない可能性あり、フォールバック）
+  if (thumbKey && !thumbKey.endsWith('.pdf') && !isExplicitThumb) {
+    add(`/api/image/${thumbKey}`);
+  }
+
+  // 4. _thumb. を含むキー
+  const thumb = concert.flyer_r2_keys?.find((k) => k.includes('_thumb.'));
+  if (thumb) add(`/api/image/${thumb}`);
+
+  // 5. PDF以外の任意キー
+  const fallback = concert.flyer_r2_keys?.find((k) => !k.endsWith('.pdf'));
+  if (fallback) add(`/api/image/${fallback}`);
+
+  return srcs;
 }
 
-/** onError 用: 画像読み込み失敗時にプレースホルダーへ差し替え */
-function handleImgError(e: React.SyntheticEvent<HTMLImageElement>) {
-  const img = e.currentTarget;
-  img.style.display = 'none';
-  const parent = img.parentElement;
-  if (parent && !parent.querySelector('.thumb-placeholder')) {
-    const ph = document.createElement('div');
-    ph.className = 'thumb-placeholder w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center absolute inset-0';
-    ph.innerHTML = '<span class="text-primary-400/60 text-xl">♪</span>';
-    parent.appendChild(ph);
-  }
-}
 
 interface Props {
   concert: Concert;
@@ -48,7 +52,7 @@ interface Props {
 }
 
 export default function ConcertCard({ concert, highlight }: Props) {
-  const [imgError, setImgError] = useState(false);
+  const [thumbSrcIdx, setThumbSrcIdx] = useState(0);
   const cat = CATEGORIES[concert.category] || CATEGORIES.other;
   const status = daysUntil(concert.date);
   const isToday = status === '本日！';
@@ -56,7 +60,9 @@ export default function ConcertCard({ concert, highlight }: Props) {
   const isMobile = useIsMobile();
   const pricing = formatPricing(concert.pricing);
   const isFree = pricing === '無料';
-  const thumbSrc = getFlyerThumbSrc(concert);
+  const thumbSrcs = getFlyerThumbSrcs(concert);
+  const thumbSrc = thumbSrcs[thumbSrcIdx] ?? null;
+  const handleThumbError = () => setThumbSrcIdx((i) => i + 1);
 
   /* ===== Mobile: horizontal card ===== */
   if (isMobile) {
@@ -69,13 +75,13 @@ export default function ConcertCard({ concert, highlight }: Props) {
       >
         {/* Thumbnail — left side */}
         <div className="w-[72px] self-stretch flex-shrink-0 bg-stone-100 relative overflow-hidden">
-          {thumbSrc && !imgError ? (
+          {thumbSrc ? (
             <img
               src={thumbSrc}
               alt={concert.title}
               className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"
-              onError={() => setImgError(true)}
+              onError={handleThumbError}
             />
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
@@ -123,13 +129,13 @@ export default function ConcertCard({ concert, highlight }: Props) {
     >
       {/* Thumbnail */}
       <div className="aspect-[4/3] bg-stone-100 overflow-hidden relative">
-        {thumbSrc && !imgError ? (
+        {thumbSrc ? (
           <img
             src={thumbSrc}
             alt={concert.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
-            onError={() => setImgError(true)}
+            onError={handleThumbError}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">

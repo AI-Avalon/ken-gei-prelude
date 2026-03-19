@@ -141,8 +141,13 @@ export function normalizeFlyerKeys(keys: string[], options: NormalizeOptions = {
   const preferredThumbnail = options.keepCurrentThumbnail
     ? options.currentThumbnailKey || ''
     : options.nextThumbnailKey || '';
+  // _thumb.webp は変換済みWebPページ（_g{uuid}_o..パターン）にのみ派生させる。
+  // 通常のJPG/PNG等の画像は _thumb.webp をKVにアップロードしていないためそのまま使う。
+  const isConvertedPage = CONVERTED_PAGE_PATTERN.test(firstRenderableKey);
   const derivedThumbnail = firstRenderableKey
-    ? firstRenderableKey.replace(/\.(webp|png|jpe?g|gif)$/i, '_thumb.webp')
+    ? (isConvertedPage
+        ? firstRenderableKey.replace(/\.(webp|png|jpe?g|gif)$/i, '_thumb.webp')
+        : firstRenderableKey)
     : '';
 
   return {
