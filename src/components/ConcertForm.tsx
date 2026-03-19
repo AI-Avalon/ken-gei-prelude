@@ -106,6 +106,16 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
   const [gmapUrl, setGmapUrl] = useState('');
   const [gmapStatus, setGmapStatus] = useState<'idle' | 'parsing' | 'ok' | 'error'>('idle');
 
+  // Google internal feature identifiers are base64url-encoded binary blobs (no human-readable text)
+  // e.g. "EgSsRT-lGLPt8M0GIi1dV2uE..." — must not be used as a venue name
+  const isGoogleInternalId = (name: string): boolean => {
+    if (name.length < 20) return false;
+    // Only base64url chars, no spaces, no CJK/kana/latin word separators
+    const isBase64Like = /^[A-Za-z0-9+/=_-]+$/.test(name);
+    const hasReadableText = /[\s\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3400-\u4DBF]/.test(name);
+    return isBase64Like && !hasReadableText;
+  };
+
   // Extract venue data from a full Google Maps URL
   const extractFromGoogleMapsUrl = useCallback((fullUrl: string): boolean => {
     try {
@@ -115,7 +125,11 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
       // Pattern 1: /maps/place/PlaceName/@lat,lng,zoom
       const placeMatch = u.pathname.match(/\/place\/([^/@]+)(?:\/@(-?\d+\.?\d*),(-?\d+\.?\d*))?/);
       if (placeMatch) {
-        placeName = decodeURIComponent(placeMatch[1]).replace(/\+/g, ' ');
+        const rawName = decodeURIComponent(placeMatch[1]).replace(/\+/g, ' ');
+        // Skip Google internal binary identifiers (base64url blobs like "EgSsRT-lGLP...")
+        if (!isGoogleInternalId(rawName)) {
+          placeName = rawName;
+        }
         if (placeMatch[2] && placeMatch[3]) {
           lat = parseFloat(placeMatch[2]);
           lng = parseFloat(placeMatch[3]);
@@ -367,7 +381,8 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
               type="url"
             />
             {gmapStatus === 'parsing' && <span className="self-center text-stone-400 text-sm animate-pulse">解析中...</span>}
-            {gmapStatus === 'ok' && <span className="self-center text-green-600 text-sm font-medium">✓ 取得済</span>}
+            {gmapStatus === 'ok' && venueName && <span className="self-center text-green-600 text-sm font-medium">✓ 取得済</span>}
+            {gmapStatus === 'ok' && !venueName && <span className="self-center text-amber-600 text-xs">座標のみ取得（会場名を入力してください）</span>}
             {gmapStatus === 'error' && <span className="self-center text-red-500 text-xs">URL解析不可</span>}
           </div>
           <p className="text-xs text-stone-500 mt-1">Google Mapsで会場を検索 → 「共有」→ URLをコピーして貼り付け（短縮URLも対応）</p>

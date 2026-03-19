@@ -144,8 +144,9 @@ export default function UploadPage() {
 
       toast('演奏会を登録しました！', 'success');
       navigate(`/concerts/${concert.slug}`);
-    } catch {
-      toast('エラーが発生しました', 'error');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '';
+      toast(msg ? `通信エラー: ${msg}` : '通信エラーが発生しました。ネットワークを確認して再度お試しください。', 'error');
     } finally {
       setSubmitting(false);
     }
