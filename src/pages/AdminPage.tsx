@@ -944,7 +944,7 @@ async function convertPdfToImages(
   pdfUrl: string,
   concertSlug: string,
   pdfSortIndex: number,
-  sourcePdfKey: string,
+  token: string,
   onProgress: (msg: string) => void
 ): Promise<{ success: boolean; pages: number }> {
   try {
@@ -1018,8 +1018,11 @@ async function convertPdfToImages(
       fd.append('page_total', String(totalPages));
       fd.append('sort_index', String(pdfSortIndex));
       fd.append('set_thumbnail', pageIndex === 0 ? '1' : '0');
-      fd.append('source_pdf_key', sourcePdfKey);
-      await fetch('/api/upload', { method: 'POST', body: fd });
+      await fetch('/api/upload', {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-Admin-Token': token },
+      });
     }
 
     return { success: true, pages: totalPages };
@@ -1083,7 +1086,7 @@ function SettingsTab({ token }: { token: string }) {
             `/api/image/${pdfKey}`,
             concert.slug,
             pdfKeyIndex,
-            pdfKey,
+            token,
             (msg) => setConvertProgress(`[${done + 1}/${pending.length}] ${concert.title}: ${msg}`)
           );
           if (result.success) {

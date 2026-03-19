@@ -97,8 +97,7 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
             pageNum - 1,
             totalPages,
             groupId,
-            sortIndex,
-            pdfKey
+            sortIndex
           ).catch(() => {});
         }
       }
@@ -166,8 +165,7 @@ async function uploadConverted(
   pageIndex: number,
   pageTotal: number,
   groupId: string,
-  sortIndex: number,
-  sourcePdfKey: string
+  sortIndex: number
 ): Promise<void> {
   // Create a small thumbnail
   const img = new Image();
@@ -210,7 +208,7 @@ async function uploadConverted(
   formData.append('page_total', String(pageTotal));
   formData.append('sort_index', String(sortIndex));
   formData.append('set_thumbnail', pageIndex === 0 ? '1' : '0');
-  formData.append('source_pdf_key', sourcePdfKey);
+  // source_pdf_key は送らない（変換後もPDFキーをDBに保持してダウンロードリンクを維持）
 
   await fetch('/api/upload', { method: 'POST', body: formData });
 }
