@@ -93,6 +93,11 @@ export interface Concert {
   created_at: string;
   updated_at: string;
   created_by: string;
+
+  submitter_name?: string;
+  submitter_email?: string;
+  submitter_lat?: number | null;
+  submitter_lng?: number | null;
 }
 
 export interface ConcertRow {

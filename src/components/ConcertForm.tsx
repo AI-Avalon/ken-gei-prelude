@@ -56,6 +56,8 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
   const [contactPerson, setContactPerson] = useState(initialData?.contact_person || '');
   const [contactUrl, setContactUrl] = useState(initialData?.contact_url || '');
   const [editPassword, setEditPassword] = useState('');
+  const [submitterName, setSubmitterName] = useState('');
+  const [submitterEmail, setSubmitterEmail] = useState('');
   const [flyerKeys, setFlyerKeys] = useState<string[]>(initialData?.flyer_r2_keys || []);
   const [flyerThumb, setFlyerThumb] = useState(initialData?.flyer_thumbnail_key || '');
 
@@ -270,6 +272,8 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
 
     if (!isEdit) {
       data.edit_password = editPassword;
+      if (submitterName) data.submitter_name = submitterName;
+      if (submitterEmail) data.submitter_email = submitterEmail;
     }
 
     try {
@@ -611,6 +615,38 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
               setFlyerThumb(thumbKey);
             }}
           />
+        </div>
+      )}
+
+      {/* Submitter info (new registrations only) */}
+      {!isEdit && (
+        <div className="bg-white rounded-xl border p-4 sm:p-6 space-y-4">
+          <h3 className="font-bold text-lg">👤 登録者情報（任意）</h3>
+          <p className="text-sm text-stone-500">管理者のみ閲覧できます。公開されません。</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">お名前</label>
+              <input
+                type="text"
+                className="input"
+                value={submitterName}
+                onChange={(e) => setSubmitterName(e.target.value)}
+                placeholder="山田 太郎"
+                autoComplete="name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">メールアドレス</label>
+              <input
+                type="email"
+                className="input"
+                value={submitterEmail}
+                onChange={(e) => setSubmitterEmail(e.target.value)}
+                placeholder="example@example.com"
+                autoComplete="email"
+              />
+            </div>
+          </div>
         </div>
       )}
 

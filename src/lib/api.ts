@@ -249,6 +249,43 @@ export async function triggerBulkScrape(
   }
 }
 
+// Site Settings (public)
+export async function fetchSiteSettings(): Promise<ApiResponse<{
+  location_restriction_enabled: boolean;
+  location_restriction_radius_km: number;
+  location_restriction_lat: number;
+  location_restriction_lng: number;
+}>> {
+  return request('/settings');
+}
+
+// Admin Settings
+export async function fetchAdminSettings(token: string): Promise<ApiResponse<{
+  location_restriction_enabled: boolean;
+  location_restriction_radius_km: number;
+  location_restriction_lat: number;
+  location_restriction_lng: number;
+}>> {
+  return request('/admin/settings', { headers: { 'X-Admin-Token': token } });
+}
+
+export async function updateAdminSettings(
+  token: string,
+  data: {
+    location_restriction_enabled?: boolean;
+    location_restriction_radius_km?: number;
+  }
+): Promise<ApiResponse<{
+  location_restriction_enabled: boolean;
+  location_restriction_radius_km: number;
+}>> {
+  return request('/admin/settings', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+    headers: { 'X-Admin-Token': token },
+  });
+}
+
 // Admin: Export all data as JSON
 export async function exportData(token: string): Promise<Blob | null> {
   try {

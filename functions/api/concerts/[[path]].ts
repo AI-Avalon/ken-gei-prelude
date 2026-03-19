@@ -10,6 +10,42 @@ interface Env {
   CONTACT_ENCRYPTION_KEY: string;
 }
 
+interface SiteSettings {
+  location_restriction_enabled: boolean;
+  location_restriction_radius_km: number;
+  location_restriction_lat: number;
+  location_restriction_lng: number;
+}
+
+const DEFAULT_SETTINGS: SiteSettings = {
+  location_restriction_enabled: false,
+  location_restriction_radius_km: 50,
+  location_restriction_lat: 35.1789,
+  location_restriction_lng: 137.0506,
+};
+
+async function getSiteSettings(kv: KVNamespace): Promise<SiteSettings> {
+  try {
+    const raw = await kv.get('settings:site');
+    if (!raw) return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+// Haversine distance in km
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 interface ConcertRow {
   [key: string]: unknown;
 }
@@ -269,6 +305,23 @@ async function handleCreate(request: Request, env: Env): Promise<Response> {
     return jsonResponse({ ok: false, error: '編集用パスワードは4文字以上必要です' }, 400);
   }
 
+  // Location restriction check (skip for admin)
+  const adminMode = await isAdmin(request, env);
+  if (!adminMode) {
+    const settings = await getSiteSettings(env.KV);
+    if (settings.location_restriction_enabled) {
+      const lat = typeof body.submitter_lat === 'number' ? body.submitter_lat : parseFloat(String(body.submitter_lat || ''));
+      const lng = typeof body.submitter_lng === 'number' ? body.submitter_lng : parseFloat(String(body.submitter_lng || ''));
+      if (isNaN(lat) || isNaN(lng)) {
+        return jsonResponse({ ok: false, error: '位置情報が必要です。ブラウザの位置情報を許可して再度お試しください。', code: 'LOCATION_REQUIRED' }, 403);
+      }
+      const dist = haversineKm(lat, lng, settings.location_restriction_lat, settings.location_restriction_lng);
+      if (dist > settings.location_restriction_radius_km) {
+        return jsonResponse({ ok: false, error: `愛知県立芸術大学付近（${settings.location_restriction_radius_km}km以内）からのみ演奏会を登録できます。現在地との距離: ${Math.round(dist)}km`, code: 'LOCATION_TOO_FAR' }, 403);
+      }
+    }
+  }
+
   const fingerprint = await generateFingerprint(date, venueName, title);
 
   // Duplicate check
@@ -295,6 +348,9 @@ async function handleCreate(request: Request, env: Env): Promise<Response> {
   const venueJson = JSON.stringify(body.venue || { name: venueName });
   const source = body.mode === 'quick' ? 'quick' : 'manual';
 
+  const submitterLat = typeof body.submitter_lat === 'number' ? body.submitter_lat : (parseFloat(String(body.submitter_lat || '')) || null);
+  const submitterLng = typeof body.submitter_lng === 'number' ? body.submitter_lng : (parseFloat(String(body.submitter_lng || '')) || null);
+
   await env.DB.prepare(`
     INSERT INTO concerts (
       id, slug, fingerprint, title, subtitle, description,
@@ -305,7 +361,8 @@ async function handleCreate(request: Request, env: Env): Promise<Response> {
       contact_email, contact_tel, contact_person, contact_url,
       flyer_r2_keys, flyer_thumbnail_key,
       source, source_url, is_published,
-      edit_password_hash, created_at, updated_at
+      edit_password_hash, created_at, updated_at,
+      submitter_name, submitter_email, submitter_lat, submitter_lng
     ) VALUES (
       ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?,
@@ -315,7 +372,8 @@ async function handleCreate(request: Request, env: Env): Promise<Response> {
       ?, ?, ?, ?,
       ?, ?,
       ?, ?, 1,
-      ?, datetime('now'), datetime('now')
+      ?, datetime('now'), datetime('now'),
+      ?, ?, ?, ?
     )
   `).bind(
     id, slug, fingerprint,
@@ -348,7 +406,11 @@ async function handleCreate(request: Request, env: Env): Promise<Response> {
     String(body.flyer_thumbnail_key || ''),
     source,
     String(body.source_url || ''),
-    editPasswordHash
+    editPasswordHash,
+    String(body.submitter_name || ''),
+    String(body.submitter_email || ''),
+    submitterLat,
+    submitterLng
   ).run();
 
   // Save venue to master if new

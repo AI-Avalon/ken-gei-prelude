@@ -4,6 +4,7 @@ import {
   adminAuth, adminFetchConcerts, adminUpdateConcert, adminDeleteConcert,
   fetchStats, fetchInquiries, updateInquiry, fetchMaintenanceLogs,
   triggerScrape, triggerMaintenance, triggerMaintenanceTask, triggerReset, triggerBulkScrape, exportData,
+  fetchAdminSettings, updateAdminSettings,
 } from '../lib/api';
 import { CATEGORIES } from '../lib/constants';
 import { formatDateShort } from '../lib/utils';
@@ -13,7 +14,7 @@ import { toast } from '../components/Toast';
 import { useIsMobile } from '../hooks/useDevice';
 import type { Concert, Inquiry, MaintenanceLogEntry } from '../types';
 
-type Tab = 'overview' | 'concerts' | 'inquiries' | 'flyers' | 'analytics' | 'settings' | 'logs';
+type Tab = 'overview' | 'concerts' | 'inquiries' | 'flyers' | 'analytics' | 'users' | 'settings' | 'logs';
 
 const TAB_LIST: [Tab, string, string][] = [
   ['overview',  '📊 概要',      '概要'],
@@ -21,6 +22,7 @@ const TAB_LIST: [Tab, string, string][] = [
   ['inquiries', '📩 問合せ',    'お問い合わせ'],
   ['flyers',    '🖼️ チラシ',   'チラシ管理'],
   ['analytics', '📈 分析',      '分析'],
+  ['users',     '👤 登録者',    '登録者情報'],
   ['settings',  '⚙️ 設定',      '設定'],
   ['logs',      '📋 ログ',      'メンテナンスログ'],
 ];
@@ -189,6 +191,7 @@ export default function AdminPage() {
         {tab === 'inquiries' && <InquiriesTab token={token} isMobile={isMobile} />}
         {tab === 'flyers'    && <FlyersTab token={token} isMobile={isMobile} />}
         {tab === 'analytics' && <AnalyticsTab token={token} isMobile={isMobile} />}
+        {tab === 'users'     && <UsersTab token={token} isMobile={isMobile} />}
         {tab === 'settings'  && <SettingsTab token={token} />}
         {tab === 'logs'      && <LogsTab token={token} isMobile={isMobile} />}
       </div>
@@ -1031,6 +1034,157 @@ async function convertPdfToImages(
   }
 }
 
+// ============================================================
+// 登録者情報タブ
+// ============================================================
+function UsersTab({ token, isMobile }: { token: string; isMobile: boolean }) {
+  const [concerts, setConcerts] = useState<Concert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    adminFetchConcerts(token).then((res) => {
+      if (res.ok && res.data) setConcerts(res.data);
+      setLoading(false);
+    });
+  }, [token]);
+
+  if (loading) return <Spinner />;
+
+  // Show only concerts submitted via public form (source = manual or quick) with some submitter info
+  const registrants = concerts.filter((c) => {
+    const hasSubmitter = c.submitter_name || c.submitter_email || c.contact_person || c.contact_email;
+    return !c.is_deleted && c.source !== 'auto_scrape' && hasSubmitter;
+  });
+
+  const filtered = registrants.filter((c) => {
+    if (!search) return true;
+    const sub = c;
+    const name = String(sub.submitter_name || c.contact_person || '');
+    const email = String(sub.submitter_email || c.contact_email || '');
+    return c.title.includes(search) || name.includes(search) || email.includes(search);
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-bold text-sm">👤 演奏会登録者一覧</h2>
+          <p className="text-xs text-stone-400 mt-0.5">手動登録された演奏会の登録者情報</p>
+        </div>
+        <span className="text-xs text-stone-400">{filtered.length} 件</span>
+      </div>
+
+      <input
+        type="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="名前・メール・演奏会名で絞り込み..."
+        className="input w-full"
+      />
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-stone-400">
+          <p className="text-3xl mb-2">👤</p>
+          <p className="text-sm">登録者情報がありません</p>
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-3">
+          {filtered.map((c) => {
+            const sub = c;
+            const name = String(sub.submitter_name || c.contact_person || '—');
+            const email = String(sub.submitter_email || c.contact_email || '—');
+            const tel = String(c.contact_tel || '—');
+            const lat = sub.submitter_lat as number | null;
+            const lng = sub.submitter_lng as number | null;
+            return (
+              <div key={c.id} className="bg-white rounded-xl border shadow-sm p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-stone-800 line-clamp-1">{c.title}</p>
+                    <p className="text-xs text-stone-400">{formatDateShort(c.date)}</p>
+                  </div>
+                  {c.is_published ? (
+                    <span className="text-[10px] text-emerald-600 flex-shrink-0">🟢 公開</span>
+                  ) : (
+                    <span className="text-[10px] text-amber-600 flex-shrink-0">🟡 非公開</span>
+                  )}
+                </div>
+                <div className="text-xs space-y-1 text-stone-600 border-t border-stone-100 pt-2">
+                  <div className="flex gap-2"><span className="text-stone-400 w-16 flex-shrink-0">登録者名</span><span className="break-all">{name}</span></div>
+                  <div className="flex gap-2"><span className="text-stone-400 w-16 flex-shrink-0">メール</span><span className="break-all">{email !== '—' ? <a href={`mailto:${email}`} className="text-primary-600 underline">{email}</a> : '—'}</span></div>
+                  <div className="flex gap-2"><span className="text-stone-400 w-16 flex-shrink-0">電話</span><span>{tel}</span></div>
+                  {lat != null && lng != null && (
+                    <div className="flex gap-2"><span className="text-stone-400 w-16 flex-shrink-0">登録位置</span><span className="text-stone-500">{lat.toFixed(4)}, {lng.toFixed(4)}</span></div>
+                  )}
+                  <div className="flex gap-2"><span className="text-stone-400 w-16 flex-shrink-0">登録日時</span><span>{c.created_at}</span></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-stone-200/60 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-stone-100 bg-stone-50 text-left text-stone-500 text-xs">
+                  <th className="py-3 px-4 font-medium">演奏会</th>
+                  <th className="py-3 px-4 font-medium whitespace-nowrap">日付</th>
+                  <th className="py-3 px-4 font-medium">登録者名</th>
+                  <th className="py-3 px-4 font-medium">メールアドレス</th>
+                  <th className="py-3 px-4 font-medium">電話</th>
+                  <th className="py-3 px-4 font-medium">登録位置</th>
+                  <th className="py-3 px-4 font-medium whitespace-nowrap">登録日時</th>
+                  <th className="py-3 px-4 font-medium">状態</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-50">
+                {filtered.map((c) => {
+                  const sub = c;
+                  const name = String(sub.submitter_name || c.contact_person || '—');
+                  const email = String(sub.submitter_email || c.contact_email || '—');
+                  const tel = String(c.contact_tel || '—');
+                  const lat = sub.submitter_lat as number | null;
+                  const lng = sub.submitter_lng as number | null;
+                  return (
+                    <tr key={c.id} className="hover:bg-stone-50/50 transition-colors">
+                      <td className="py-3 px-4 max-w-[200px]">
+                        <Link to={`/concerts/${c.slug}`} className="hover:text-primary-600 font-medium line-clamp-1 block text-xs">
+                          {c.title}
+                        </Link>
+                      </td>
+                      <td className="py-3 px-4 text-stone-500 whitespace-nowrap text-xs">{formatDateShort(c.date)}</td>
+                      <td className="py-3 px-4 text-xs">{name}</td>
+                      <td className="py-3 px-4 text-xs">
+                        {email !== '—' ? (
+                          <a href={`mailto:${email}`} className="text-primary-600 hover:underline">{email}</a>
+                        ) : '—'}
+                      </td>
+                      <td className="py-3 px-4 text-xs text-stone-500">{tel}</td>
+                      <td className="py-3 px-4 text-xs text-stone-400">
+                        {lat != null && lng != null ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : '—'}
+                      </td>
+                      <td className="py-3 px-4 text-xs text-stone-400 whitespace-nowrap">{c.created_at}</td>
+                      <td className="py-3 px-4">
+                        {c.is_published ? (
+                          <span className="text-xs text-emerald-600">🟢 公開</span>
+                        ) : (
+                          <span className="text-xs text-amber-600">🟡 非公開</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsTab({ token }: { token: string }) {
   const [scraping, setScraping] = useState(false);
   const [maintaining, setMaintaining] = useState(false);
@@ -1039,6 +1193,45 @@ function SettingsTab({ token }: { token: string }) {
   const [scrapeResult, setScrapeResult] = useState<string | null>(null);
   const [maintenanceResult, setMaintenanceResult] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<string | null>(null);
+
+  // Location restriction settings
+  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [radiusKm, setRadiusKm] = useState(50);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  useEffect(() => {
+    fetchAdminSettings(token).then((res) => {
+      if (res.ok && res.data) {
+        setLocationEnabled(res.data.location_restriction_enabled);
+        setRadiusKm(res.data.location_restriction_radius_km);
+      }
+      setSettingsLoading(false);
+    });
+  }, [token]);
+
+  const handleLocationToggle = async (enabled: boolean) => {
+    setSettingsSaving(true);
+    const res = await updateAdminSettings(token, { location_restriction_enabled: enabled });
+    if (res.ok) {
+      setLocationEnabled(enabled);
+      toast(enabled ? '位置情報制限をONにしました' : '位置情報制限をOFFにしました', 'success');
+    } else {
+      toast(res.error || '設定の保存に失敗しました', 'error');
+    }
+    setSettingsSaving(false);
+  };
+
+  const handleRadiusSave = async () => {
+    setSettingsSaving(true);
+    const res = await updateAdminSettings(token, { location_restriction_radius_km: radiusKm });
+    if (res.ok) {
+      toast(`半径を${radiusKm}kmに設定しました`, 'success');
+    } else {
+      toast(res.error || '設定の保存に失敗しました', 'error');
+    }
+    setSettingsSaving(false);
+  };
 
   // PDF 一括事前変換
   const [converting, setConverting] = useState(false);
@@ -1154,6 +1347,79 @@ function SettingsTab({ token }: { token: string }) {
 
   return (
     <div className="space-y-5">
+      {/* 位置情報制限設定 */}
+      <div className="bg-white rounded-2xl shadow-sm border border-stone-200/60 p-5">
+        <h2 className="font-bold text-sm mb-1">📍 演奏会登録の位置情報制限</h2>
+        <p className="text-xs text-stone-500 mb-4">
+          ONにすると、愛知県立芸術大学付近にいるユーザーのみ演奏会を登録できます。
+        </p>
+        {settingsLoading ? (
+          <div className="flex items-center gap-2 py-2">
+            <div className="w-5 h-5 border-2 border-stone-300 border-t-primary-500 rounded-full animate-spin" />
+            <span className="text-xs text-stone-400">設定を読み込み中...</span>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* ON/OFF スイッチ */}
+            <div className="flex items-center justify-between gap-4 p-4 bg-stone-50 rounded-xl">
+              <div>
+                <p className="font-medium text-sm">位置情報制限</p>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  {locationEnabled
+                    ? '🔒 現在 ON — 付近からのみ登録可能'
+                    : '🔓 現在 OFF — 誰でも登録可能'}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={settingsSaving}
+                onClick={() => handleLocationToggle(!locationEnabled)}
+                title={locationEnabled ? '位置情報制限をOFFにする' : '位置情報制限をONにする'}
+                className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  locationEnabled ? 'bg-primary-600' : 'bg-stone-300'
+                } ${settingsSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                role="switch"
+                aria-checked={locationEnabled ? 'true' : 'false'}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    locationEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* 半径設定 */}
+            <div className="p-4 bg-stone-50 rounded-xl space-y-3">
+              <p className="font-medium text-sm">許可範囲（半径）</p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={radiusKm}
+                  onChange={(e) => setRadiusKm(Number(e.target.value))}
+                  className="input w-24 text-sm text-center"
+                  aria-label="半径（km）"
+                />
+                <span className="text-sm text-stone-600">km 以内</span>
+                <button
+                  type="button"
+                  onClick={handleRadiusSave}
+                  disabled={settingsSaving}
+                  className="btn-primary text-xs"
+                >
+                  保存
+                </button>
+              </div>
+              <p className="text-xs text-stone-400">
+                基準地点: 愛知県立芸術大学（愛知県長久手市）
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* スクレイピング設定 */}
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200/60 p-5">
         <h2 className="font-bold text-sm mb-4">⚙️ サイト設定</h2>
