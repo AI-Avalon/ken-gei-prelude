@@ -21,7 +21,7 @@ interface SiteSettings {
 
 const DEFAULT_SETTINGS: SiteSettings = {
   location_restriction_enabled: false,
-  location_restriction_radius_km: 50,
+  location_restriction_radius_km: 5,
   location_restriction_lat: 35.1789,
   location_restriction_lng: 137.0506,
 };

@@ -41,7 +41,7 @@ interface SiteSettings {
 
 const DEFAULT_SETTINGS: SiteSettings = {
   location_restriction_enabled: false,
-  location_restriction_radius_km: 50,
+  location_restriction_radius_km: 5,
   // 愛知県立芸術大学 (Aichi Prefectural University of the Arts)
   // 愛知県長久手市岩作三ケ峯1-114
   location_restriction_lat: 35.1789,
