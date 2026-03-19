@@ -7,6 +7,7 @@ interface Props {
   alt: string;
   onClick?: (url: string) => void;
   startPage?: number;
+  sortIndex?: number;
 }
 
 /**
@@ -15,7 +16,7 @@ interface Props {
  * After rendering, POSTs the converted image to /api/upload for permanent KV storage.
  * Skips upload if images already exist for this concert (prevents duplication on reload).
  */
-export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, startPage = 1 }: Props) {
+export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, startPage = 1, sortIndex = 0 }: Props) {
   const [pages, setPages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -96,7 +97,7 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
             pageNum - 1,
             totalPages,
             groupId,
-            pageNum - 1,
+            sortIndex,
             pdfKey
           ).catch(() => {});
         }
@@ -108,7 +109,7 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
     } finally {
       setLoading(false);
     }
-  }, [pdfKey, concertSlug, startPage]);
+  }, [pdfKey, concertSlug, startPage, sortIndex]);
 
   useEffect(() => {
     convertPdf();

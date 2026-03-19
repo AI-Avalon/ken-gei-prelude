@@ -33,7 +33,7 @@ export default function HomePage() {
         setUpcoming(upcomingRes.data.filter((c) => c.date !== today));
       }
       setLoading(false);
-    });
+    }).catch(() => { setLoading(false); });
   }, []);
 
   /* ===== Mobile Layout ===== */

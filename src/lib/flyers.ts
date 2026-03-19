@@ -153,16 +153,9 @@ export function analyzeConcertFlyers(keys: string[]) {
   );
   const completeGroups = getCompleteConvertedGroups(parsedKeys);
 
-  // Deduplicate: if multiple groups share the same sortIndex (same PDF converted twice),
-  // keep only the first complete group per sortIndex.
-  const seenSortIndexes = new Set<number>();
-  const dedupedGroups = completeGroups.filter((group) => {
-    if (seenSortIndexes.has(group.sortIndex)) return false;
-    seenSortIndexes.add(group.sortIndex);
-    return true;
-  });
-
-  const convertedPageKeys = dedupedGroups.flatMap((group) => group.pageKeys);
+  // All complete groups are shown; deduplication by sortIndex was removed because it caused
+  // legitimate second PDFs (front/back) to be dropped when both had sortIndex=1.
+  const convertedPageKeys = completeGroups.flatMap((group) => group.pageKeys);
   const fallbackImageKeys = parsedKeys
     .filter((parsed) => parsed.kind === 'image')
     .map((parsed) => parsed.key);

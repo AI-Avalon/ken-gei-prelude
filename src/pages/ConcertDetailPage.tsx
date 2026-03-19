@@ -359,6 +359,7 @@ export default function ConcertDetailPage() {
                   alt={`${concert.title} チラシ ${i + 1}`}
                   onClick={(url) => setFlyerModal(url)}
                   startPage={1}
+                  sortIndex={i}
                 />
               ))}
 

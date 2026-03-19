@@ -943,6 +943,8 @@ function AnalyticsTab({ token, isMobile }: { token: string; isMobile: boolean })
 async function convertPdfToImages(
   pdfUrl: string,
   concertSlug: string,
+  pdfSortIndex: number,
+  sourcePdfKey: string,
   onProgress: (msg: string) => void
 ): Promise<{ success: boolean; pages: number }> {
   try {
@@ -1008,14 +1010,15 @@ async function convertPdfToImages(
 
       // KV にアップロード
       const fd = new FormData();
-      fd.append('file', blob, buildFlyerUploadName(groupId, pageIndex, pageIndex, totalPages));
-      fd.append('thumbnail', thumbnail, buildFlyerThumbnailName(groupId, pageIndex, pageIndex, totalPages));
+      fd.append('file', blob, buildFlyerUploadName(groupId, pdfSortIndex, pageIndex, totalPages));
+      fd.append('thumbnail', thumbnail, buildFlyerThumbnailName(groupId, pdfSortIndex, pageIndex, totalPages));
       fd.append('concert_slug', concertSlug);
       fd.append('group_id', groupId);
       fd.append('page_index', String(pageIndex));
       fd.append('page_total', String(totalPages));
-      fd.append('sort_index', String(pageIndex));
+      fd.append('sort_index', String(pdfSortIndex));
       fd.append('set_thumbnail', pageIndex === 0 ? '1' : '0');
+      fd.append('source_pdf_key', sourcePdfKey);
       await fetch('/api/upload', { method: 'POST', body: fd });
     }
 
@@ -1056,7 +1059,7 @@ function SettingsTab({ token }: { token: string }) {
         if (!c.flyer_r2_keys || c.flyer_r2_keys.length === 0) return false;
         const analysis = analyzeConcertFlyers(c.flyer_r2_keys);
         // 変換済みページがなく、かつ PDF キーがある場合のみ対象
-        return !analysis.hasCompleteConvertedPages && analysis.pdfKeys.length > 0;
+        return !analysis.hasCompleteConvertedPages && analysis.allPdfKeys.length > 0;
       });
 
       if (pending.length === 0) {
@@ -1073,11 +1076,14 @@ function SettingsTab({ token }: { token: string }) {
 
       for (const concert of pending) {
         const analysis = analyzeConcertFlyers(concert.flyer_r2_keys);
-        for (const pdfKey of analysis.pdfKeys) {
+        for (let pdfKeyIndex = 0; pdfKeyIndex < analysis.allPdfKeys.length; pdfKeyIndex++) {
+          const pdfKey = analysis.allPdfKeys[pdfKeyIndex];
           setConvertProgress(`[${done + 1}/${pending.length}] ${concert.title} を変換中...`);
           const result = await convertPdfToImages(
             `/api/image/${pdfKey}`,
             concert.slug,
+            pdfKeyIndex,
+            pdfKey,
             (msg) => setConvertProgress(`[${done + 1}/${pending.length}] ${concert.title}: ${msg}`)
           );
           if (result.success) {
