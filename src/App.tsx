@@ -1,5 +1,5 @@
-import { Routes, Route, useLocation, Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Routes, Route, useLocation, Link, useNavigationType } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
 import NavBar from './components/NavBar';
 import MobileTabBar from './components/MobileTabBar';
 import Footer from './components/Footer';
@@ -34,12 +34,18 @@ function NotFoundPage() {
 
 function ScrollToTop() {
   const { pathname } = useLocation();
-  useEffect(() => {
-    // Scroll to top on route change AND initial page load/refresh
-    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-  }, [pathname]);
+  const navigationType = useNavigationType();
+  const navTypeRef = useRef(navigationType);
+  navTypeRef.current = navigationType;
 
-  // Also handle page refresh — browser may restore previous scroll position
+  useEffect(() => {
+    // Skip scroll-to-top on back/forward navigation — page will restore its own scroll
+    if (navTypeRef.current !== 'POP') {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Disable browser native scroll restoration (we handle it manually)
   useEffect(() => {
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual';

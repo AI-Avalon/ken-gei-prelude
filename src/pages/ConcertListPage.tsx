@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import { useSearchParams, useNavigationType } from 'react-router-dom';
 import Fuse from 'fuse.js';
 import { fetchConcerts } from '../lib/api';
 import { CATEGORIES } from '../lib/constants';
@@ -14,13 +14,39 @@ const fuseOptions = {
   ignoreLocation: true,
 };
 
+const SCROLL_STORAGE_KEY = 'concert_list_state';
+
 export default function ConcertListPage() {
   const [searchParams] = useSearchParams();
-  const [concerts, setConcerts] = useState<Concert[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const navigationType = useNavigationType();
   const isMobile = useIsMobile();
+
+  // On back navigation, restore previously saved state
+  const [concerts, setConcerts] = useState<Concert[]>(() => {
+    if (navigationType !== 'POP') return [];
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(SCROLL_STORAGE_KEY) || '{}');
+      return Array.isArray(saved.concerts) ? saved.concerts : [];
+    } catch { return []; }
+  });
+  const [page, setPage] = useState(() => {
+    if (navigationType !== 'POP') return 1;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(SCROLL_STORAGE_KEY) || '{}');
+      return typeof saved.page === 'number' ? saved.page : 1;
+    } catch { return 1; }
+  });
+  const [hasMore, setHasMore] = useState(() => {
+    if (navigationType !== 'POP') return false;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(SCROLL_STORAGE_KEY) || '{}');
+      return Boolean(saved.hasMore);
+    } catch { return false; }
+  });
+
+  // True when we successfully restored a non-empty list from sessionStorage
+  const wasRestoredRef = useRef(navigationType === 'POP' && concerts.length > 0);
+  const [loading, setLoading] = useState(!wasRestoredRef.current);
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
     const c = searchParams.get('category');
@@ -28,6 +54,41 @@ export default function ConcertListPage() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date_asc');
+
+  // Keep refs up-to-date for the unmount cleanup
+  const concertsRef = useRef(concerts);
+  const pageRef = useRef(page);
+  const hasMoreRef = useRef(hasMore);
+  useEffect(() => { concertsRef.current = concerts; }, [concerts]);
+  useEffect(() => { pageRef.current = page; }, [page]);
+  useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
+
+  // Save state to sessionStorage when navigating away
+  useEffect(() => {
+    return () => {
+      try {
+        sessionStorage.setItem(SCROLL_STORAGE_KEY, JSON.stringify({
+          concerts: concertsRef.current,
+          page: pageRef.current,
+          hasMore: hasMoreRef.current,
+          scrollY: window.scrollY,
+        }));
+      } catch { /* ignore quota errors */ }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Restore scroll position after the list re-renders on back navigation
+  useEffect(() => {
+    if (!wasRestoredRef.current) return;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(SCROLL_STORAGE_KEY) || '{}');
+      if (typeof saved.scrollY === 'number' && saved.scrollY > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: saved.scrollY, behavior: 'instant' as ScrollBehavior });
+        });
+      }
+    } catch { /* ignore */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const today = useMemo(() => {
     const d = new Date();
@@ -52,9 +113,14 @@ export default function ConcertListPage() {
   };
 
   useEffect(() => {
+    // Skip initial fetch if we restored state from back navigation
+    if (wasRestoredRef.current) {
+      wasRestoredRef.current = false; // allow subsequent filter changes to reload
+      return;
+    }
     setPage(1);
     loadConcerts(1, false);
-  }, [selectedCategories, sortBy, searchQuery]);
+  }, [selectedCategories, sortBy, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = () => {
     const next = page + 1;

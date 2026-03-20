@@ -112,6 +112,16 @@ function sortParsedKeys(parsedKeys: ParsedFlyerKey[]): ParsedFlyerKey[] {
   });
 }
 
+function getMaxTimestamp(group: ConvertedGroup): number {
+  let max = 0;
+  for (const key of group.pageKeys) {
+    const basename = key.split('/').pop() || key;
+    const m = basename.match(/^(\d+)_/);
+    if (m) max = Math.max(max, Number.parseInt(m[1], 10));
+  }
+  return max;
+}
+
 function getCompleteConvertedGroups(parsedKeys: ParsedFlyerKey[]): ConvertedGroup[] {
   const groups = new Map<string, ConvertedGroup>();
 
@@ -132,8 +142,21 @@ function getCompleteConvertedGroups(parsedKeys: ParsedFlyerKey[]): ConvertedGrou
     });
   }
 
-  return [...groups.values()]
-    .filter((group) => group.pageKeys.length >= group.pageTotal && group.pageTotal > 0)
+  const completeGroups = [...groups.values()].filter(
+    (group) => group.pageKeys.length >= group.pageTotal && group.pageTotal > 0
+  );
+
+  // Deduplicate: if multiple groups share the same minimum sortIndex (same PDF converted
+  // more than once), keep only the group with the highest max timestamp (most recent conversion).
+  const byMinSort = new Map<number, ConvertedGroup>();
+  for (const group of completeGroups) {
+    const existing = byMinSort.get(group.sortIndex);
+    if (!existing || getMaxTimestamp(group) > getMaxTimestamp(existing)) {
+      byMinSort.set(group.sortIndex, group);
+    }
+  }
+
+  return [...byMinSort.values()]
     .sort((left, right) => left.sortIndex - right.sortIndex)
     .map((group) => ({
       ...group,
