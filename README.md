@@ -33,15 +33,15 @@
 │  React 18 + TypeScript + Tailwind CSS + React Router │
 │  ┌──────────┐ ┌───────────┐ ┌──────────────────────┐ │
 │  │ HomePage │ │ ConcertLst│ │ ConcertForm          │ │
-│  │ (Hero +  │ │ (検索+ﾌｨﾙﾀ)│ │ (GoogleMaps URL自動) │ │
-│  │ Upcoming)│ │           │ │ (料金プリセット)      │ │
+│  │ (Hero +  │ │ (検索+ﾌｨﾙﾀ)│ │ (GoogleMaps URL自動)  │ │
+│  │ Upcoming)│ │           │ │ (料金プリセット)        │ │
 │  └──────────┘ └───────────┘ └──────────────────────┘ │
 └────────────────────┬────────────────────────────────┘
                      │ HTTPS (REST API)
 ┌────────────────────▼────────────────────────────────┐
-│          Cloudflare Pages Functions (Edge)            │
-│  ┌────────────────┐  ┌────────────────────────────┐  │
-│  │ /api/concerts/* │  │ /api/cron/scrape           │  │
+│          Cloudflare Pages Functions (Edge)          │
+│  ┌────────────────┐  ┌────────────────────────────┐ │
+│  │ /api/concerts/*│  │ /api/cron/scrape          │ │
 │  │ CRUD + 検索     │  │ 大学サイト自動取得         │  │
 │  │ バリデーション   │  │ ページネーション対応       │  │
 │  │ フィンガープリント│  │ 詳細ページパース          │  │
