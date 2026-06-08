@@ -45,6 +45,10 @@ function pickImageKey(row: ConcertMetaRow): string {
     || '';
 }
 
+function encodeImageKey(key: string): string {
+  return key.split('/').map(encodeURIComponent).join('/');
+}
+
 function formatDescription(row: ConcertMetaRow): string {
   const venue = safeJsonParse<{ name?: string }>(row.venue_json, {});
   const parts = [
@@ -70,7 +74,7 @@ function injectMeta(html: string, meta: Record<string, string>): string {
 
   return html
     .replace(/<title>.*?<\/title>/is, `<title>${escapeHtml(meta.title)}</title>`)
-    .replace(/<meta\s+(?:name|property)="(?:description|og:title|og:description|og:type|og:url|og:image|og:locale|twitter:card|twitter:title|twitter:description|twitter:image)"[^>]*>\s*/gi, '')
+    .replace(/<meta\s+(?:name|property)="(?:description|og:title|og:description|og:type|og:url|og:site_name|og:image|og:image:secure_url|og:image:type|og:image:width|og:image:height|og:image:alt|og:locale|twitter:card|twitter:title|twitter:description|twitter:image|twitter:image:alt)"[^>]*>\s*/gi, '')
     .replace('</head>', `    ${tags}\n  </head>`);
 }
 
@@ -97,7 +101,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params, request })
   const url = new URL(request.url);
   const canonicalUrl = `${url.origin}/concerts/${slug}`;
   const imageKey = pickImageKey(row);
-  const imageUrl = imageKey ? `${url.origin}/api/image/${imageKey}` : `${url.origin}/icon-512.png`;
+  const imageUrl = imageKey ? `${url.origin}/api/image/${encodeImageKey(imageKey)}` : `${url.origin}/icon-512.png`;
   const description = formatDescription(row) || '愛知県立芸術大学の演奏会情報';
   const title = `${row.title} | Crescendo`;
 
@@ -109,12 +113,19 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params, request })
     'og:description': description,
     'og:type': 'article',
     'og:url': canonicalUrl,
+    'og:site_name': 'Crescendo',
     'og:image': imageUrl,
+    'og:image:secure_url': imageUrl,
+    'og:image:type': imageKey ? 'image/webp' : 'image/png',
+    'og:image:width': imageKey ? '1200' : '512',
+    'og:image:height': imageKey ? '1600' : '512',
+    'og:image:alt': `${row.title} チラシ`,
     'og:locale': 'ja_JP',
     'twitter:card': imageKey ? 'summary_large_image' : 'summary',
     'twitter:title': title,
     'twitter:description': description,
     'twitter:image': imageUrl,
+    'twitter:image:alt': `${row.title} チラシ`,
   });
 
   return new Response(nextHtml, {

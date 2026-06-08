@@ -19,6 +19,7 @@ const ContactPage = lazy(() => import('./pages/ContactPage'));
 const DocsPage = lazy(() => import('./pages/DocsPage'));
 const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
+const DainagonPage = lazy(() => import('./pages/DainagonPage'));
 
 function NotFoundPage() {
   return (
@@ -64,6 +65,7 @@ function AppRoutes() {
         <Route path="/docs" element={<DocsPage />} />
         <Route path="/docs/api" element={<ApiDocsPage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/dainagon" element={<DainagonPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>

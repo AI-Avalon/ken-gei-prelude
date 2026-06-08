@@ -161,7 +161,7 @@ export default function UploadPage() {
   }
 
   const s = settingsRef.current;
-  const radiusKm = s?.location_restriction_radius_km ?? 5;
+  const radiusKm = s?.location_restriction_radius_km ?? 3;
 
   const renderLocationBanner = () => {
     if (!locationRequired) return null;
@@ -172,7 +172,7 @@ export default function UploadPage() {
           <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
           <div>
             <p className="font-medium text-sm text-amber-800">位置情報を確認しています...</p>
-            <p className="text-xs text-amber-600 mt-0.5">愛知県立芸術大学から{radiusKm}km以内からのみ登録できます</p>
+            <p className="text-xs text-amber-600 mt-0.5">室内楽ホールから{radiusKm}km以内からのみ登録できます</p>
           </div>
         </div>
       );
@@ -185,7 +185,7 @@ export default function UploadPage() {
           <div>
             <p className="font-medium text-sm text-emerald-800">位置情報を確認しました</p>
             <p className="text-xs text-emerald-600 mt-0.5">
-              愛知県立芸術大学から約{locationState.distanceKm < 0.1 ? '0.1' : locationState.distanceKm.toFixed(1)}km地点からアクセスしています
+              室内楽ホールから約{locationState.distanceKm < 0.1 ? '0.1' : locationState.distanceKm.toFixed(1)}km地点からアクセスしています
             </p>
           </div>
         </div>
@@ -200,7 +200,7 @@ export default function UploadPage() {
             <div className="flex-1">
               <p className="font-medium text-sm text-red-800">登録できる範囲外です</p>
               <p className="text-xs text-red-600 mt-0.5 mb-1">
-                愛知県立芸術大学から{radiusKm}km以内からのみ登録できます。
+                室内楽ホールから{radiusKm}km以内からのみ登録できます。
               </p>
               <p className="text-xs text-red-500">
                 現在地との距離: 約{locationState.distanceKm.toFixed(0)}km
@@ -252,7 +252,7 @@ export default function UploadPage() {
         <div className="bg-stone-50 rounded-xl border border-stone-200 p-8 text-center">
           <p className="text-stone-500 text-sm">
             {locationState.status === 'too_far'
-              ? '愛知県立芸術大学の付近からのみ演奏会を登録できます。'
+              ? '室内楽ホールの付近からのみ演奏会を登録できます。'
               : '位置情報が確認できるまでフォームは表示されません。'}
           </p>
         </div>

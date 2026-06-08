@@ -39,6 +39,15 @@ export const UNIVERSITY_VENUES: Record<string, {
   parking: string;
   googleMapsUrl: string;
 }> = {
+  chamber_hall: {
+    name: '愛知県立芸術大学 室内楽ホール',
+    address: '愛知県長久手市岩作三ケ峯1-114',
+    lat: 35.1694718,
+    lng: 137.0702776,
+    access: ['リニモ「芸大通」下車 徒歩約10分'],
+    parking: '学内駐車場あり（台数制限あり）',
+    googleMapsUrl: 'https://www.google.com/maps/place/%E5%AE%A4%E5%86%85%E6%A5%BD%E3%83%9B%E3%83%BC%E3%83%AB/@35.1694718,137.0702776,18z',
+  },
   concert_hall: {
     name: '愛知県立芸術大学 奏楽堂',
     address: '愛知県長久手市岩作三ケ峯1-114',

@@ -1301,7 +1301,9 @@ function SettingsTab({ token }: { token: string }) {
 
   // Location restriction settings
   const [locationEnabled, setLocationEnabled] = useState(false);
-  const [radiusKm, setRadiusKm] = useState(50);
+  const [radiusKm, setRadiusKm] = useState(3);
+  const [centerLat, setCenterLat] = useState(35.1694718);
+  const [centerLng, setCenterLng] = useState(137.0702776);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsSaving, setSettingsSaving] = useState(false);
 
@@ -1310,6 +1312,8 @@ function SettingsTab({ token }: { token: string }) {
       if (res.ok && res.data) {
         setLocationEnabled(res.data.location_restriction_enabled);
         setRadiusKm(res.data.location_restriction_radius_km);
+        setCenterLat(res.data.location_restriction_lat);
+        setCenterLng(res.data.location_restriction_lng);
       }
       setSettingsLoading(false);
     });
@@ -1329,13 +1333,23 @@ function SettingsTab({ token }: { token: string }) {
 
   const handleRadiusSave = async () => {
     setSettingsSaving(true);
-    const res = await updateAdminSettings(token, { location_restriction_radius_km: radiusKm });
+    const res = await updateAdminSettings(token, {
+      location_restriction_radius_km: radiusKm,
+      location_restriction_lat: centerLat,
+      location_restriction_lng: centerLng,
+    });
     if (res.ok) {
-      toast(`半径を${radiusKm}kmに設定しました`, 'success');
+      toast(`中心地点と半径${radiusKm}kmを保存しました`, 'success');
     } else {
       toast(res.error || '設定の保存に失敗しました', 'error');
     }
     setSettingsSaving(false);
+  };
+
+  const applyChamberHallPreset = () => {
+    setRadiusKm(3);
+    setCenterLat(35.1694718);
+    setCenterLng(137.0702776);
   };
 
   // PDF 一括事前変換
@@ -1456,7 +1470,7 @@ function SettingsTab({ token }: { token: string }) {
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200/60 p-5">
         <h2 className="font-bold text-sm mb-1">📍 演奏会登録の位置情報制限</h2>
         <p className="text-xs text-stone-500 mb-4">
-          ONにすると、愛知県立芸術大学付近にいるユーザーのみ演奏会を登録できます。
+          ONにすると、指定した中心地点の近くにいるユーザーのみ演奏会を登録できます。
         </p>
         {settingsLoading ? (
           <div className="flex items-center gap-2 py-2">
@@ -1496,18 +1510,57 @@ function SettingsTab({ token }: { token: string }) {
 
             {/* 半径設定 */}
             <div className="p-4 bg-stone-50 rounded-xl space-y-3">
-              <p className="font-medium text-sm">許可範囲（半径）</p>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  min={1}
-                  max={200}
-                  value={radiusKm}
-                  onChange={(e) => setRadiusKm(Number(e.target.value))}
-                  className="input w-24 text-sm text-center"
-                  aria-label="半径（km）"
-                />
-                <span className="text-sm text-stone-600">km 以内</span>
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-medium text-sm">許可範囲</p>
+                <button
+                  type="button"
+                  onClick={applyChamberHallPreset}
+                  disabled={settingsSaving}
+                  className="btn-secondary text-xs"
+                >
+                  室内楽ホール 3km
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label className="text-xs text-stone-500">
+                  半径（km）
+                  <input
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={radiusKm}
+                    onChange={(e) => setRadiusKm(Number(e.target.value))}
+                    className="input mt-1 text-sm text-center"
+                    aria-label="半径（km）"
+                  />
+                </label>
+                <label className="text-xs text-stone-500">
+                  中心緯度
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={centerLat}
+                    onChange={(e) => setCenterLat(Number(e.target.value))}
+                    className="input mt-1 text-sm text-center"
+                    aria-label="中心緯度"
+                  />
+                </label>
+                <label className="text-xs text-stone-500">
+                  中心経度
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={centerLng}
+                    onChange={(e) => setCenterLng(Number(e.target.value))}
+                    className="input mt-1 text-sm text-center"
+                    aria-label="中心経度"
+                  />
+                </label>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-stone-400">
+                  基準地点: 室内楽ホール（Google Maps短縮URLから取得）
+                </p>
                 <button
                   type="button"
                   onClick={handleRadiusSave}
@@ -1517,9 +1570,6 @@ function SettingsTab({ token }: { token: string }) {
                   保存
                 </button>
               </div>
-              <p className="text-xs text-stone-400">
-                基準地点: 愛知県立芸術大学（愛知県長久手市）
-              </p>
             </div>
           </div>
         )}

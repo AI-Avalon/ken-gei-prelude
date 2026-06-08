@@ -56,7 +56,7 @@ export default function PasswordGate({ concertSlug, title, onVerified, children 
         <h2 className="text-xl font-bold mb-2 text-stone-900">編集認証</h2>
         {title && <p className="text-sm font-medium text-stone-700 line-clamp-2 mb-2">{title}</p>}
         <p className="text-stone-500 mb-5 text-sm leading-relaxed">
-          この操作には、演奏会登録時に設定したパスワードが必要です。
+          この操作には、演奏会登録時に設定したパスワード、または管理者パスワードが必要です。
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
@@ -83,7 +83,7 @@ export default function PasswordGate({ concertSlug, title, onVerified, children 
           </button>
         </form>
         <p className="text-[11px] text-stone-400 mt-4 leading-relaxed">
-          認証後はこのブラウザのタブを閉じるまで再入力を省略します。忘れた場合は管理者に再設定を依頼してください。
+          認証後はこのブラウザのタブを閉じるまで再入力を省略します。忘れた場合は管理者に再設定を依頼できます。
         </p>
       </div>
     </div>

@@ -19,9 +19,9 @@ interface SiteSettings {
 
 const DEFAULT_SETTINGS: SiteSettings = {
   location_restriction_enabled: false,
-  location_restriction_radius_km: 5,
-  location_restriction_lat: 35.1789,
-  location_restriction_lng: 137.0506,
+  location_restriction_radius_km: 3,
+  location_restriction_lat: 35.1694718,
+  location_restriction_lng: 137.0702776,
 };
 
 async function getSiteSettings(kv: KVNamespace): Promise<SiteSettings> {
@@ -71,6 +71,10 @@ async function isAdmin(request: Request, env: Env): Promise<boolean> {
   if (!token || !env.ADMIN_PASSWORD) return false;
   const expected = await generateToken(env.ADMIN_PASSWORD);
   return token === expected;
+}
+
+function isAdminPlainPassword(password: string, env: Env): boolean {
+  return !!env.ADMIN_PASSWORD && password === env.ADMIN_PASSWORD;
 }
 
 async function sha256(text: string): Promise<string> {
@@ -444,7 +448,7 @@ async function handleVerify(slug: string, request: Request, env: Env): Promise<R
   if (!row) return jsonResponse({ ok: false, error: '演奏会が見つかりません' }, 404);
 
   const hash = await sha256(body.password);
-  if (hash !== row.edit_password_hash) {
+  if (hash !== row.edit_password_hash && !isAdminPlainPassword(body.password, env)) {
     await incrementRateLimit(env.DB, ip, endpoint);
     return jsonResponse({ ok: false, error: 'パスワードが違います', data: { valid: false } }, 401);
   }
@@ -468,7 +472,7 @@ async function handleUpdate(slug: string, request: Request, env: Env): Promise<R
     if (!row) return jsonResponse({ ok: false, error: '演奏会が見つかりません' }, 404);
 
     const hash = await sha256(editPassword);
-    if (hash !== row.edit_password_hash) {
+    if (hash !== row.edit_password_hash && !isAdminPlainPassword(editPassword, env)) {
       return jsonResponse({ ok: false, error: 'パスワードが違います' }, 401);
     }
   }
@@ -561,7 +565,7 @@ async function handleDelete(slug: string, request: Request, env: Env): Promise<R
     if (!row) return jsonResponse({ ok: false, error: '演奏会が見つかりません' }, 404);
 
     const hash = await sha256(editPassword);
-    if (hash !== row.edit_password_hash) {
+    if (hash !== row.edit_password_hash && !isAdminPlainPassword(editPassword, env)) {
       return jsonResponse({ ok: false, error: 'パスワードが違います' }, 401);
     }
   }

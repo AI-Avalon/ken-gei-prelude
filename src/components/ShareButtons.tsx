@@ -41,6 +41,17 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
     }
   };
 
+  const shareToInstagram = async () => {
+    await copyLink();
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = 'instagram://story-camera';
+      setTimeout(() => window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer'), 700);
+      return;
+    }
+    window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer');
+  };
+
   const downloadQR = () => {
     const svg = qrRef.current?.querySelector('svg');
     if (!svg) return;
@@ -62,6 +73,13 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
     <div className="space-y-3">
       {/* メイン共有ボタン — 2列グリッド */}
       <div className="grid grid-cols-2 gap-2">
+        {canNativeShare && (
+          <button type="button" onClick={nativeShare}
+            className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors">
+            端末の共有シートを開く
+          </button>
+        )}
+
         <button type="button" onClick={copyLink}
           className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all ${
             copied
@@ -71,12 +89,10 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
           {copied ? '✅ コピーしました' : '📋 リンクコピー'}
         </button>
 
-        {canNativeShare && (
-          <button type="button" onClick={nativeShare}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition-colors">
-            端末で共有
-          </button>
-        )}
+        <button type="button" onClick={shareToInstagram}
+          className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#FCAF45] text-white hover:opacity-90 transition-opacity">
+          📸 Instagram
+        </button>
 
         <a href={urls.line} target="_blank" rel="noopener noreferrer"
           className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium bg-[#06C755] text-white hover:bg-[#05b34d] transition-colors">
@@ -102,6 +118,16 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
           Threads
         </a>
 
+        <a href={urls.bluesky} target="_blank" rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium bg-[#1185FE] text-white hover:bg-[#0b74e6] transition-colors">
+          Bluesky
+        </a>
+
+        <a href={urls.mail} target="_blank" rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium bg-stone-50 border border-stone-200 text-stone-700 hover:bg-stone-100 transition-colors">
+          ✉ メール
+        </a>
+
         <button type="button" onClick={openQR}
           className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium bg-stone-50 border border-stone-200 text-stone-700 hover:bg-stone-100 transition-colors">
           <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current text-stone-600"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zM15 15h2v2h-2zM13 17h2v2h-2zM17 13h2v2h-2zM19 15h2v2h-2zM17 17h2v2h-2zM19 19h2v2h-2zM13 19h2v2h-2zM15 19h2v2h-2z"/></svg>
@@ -115,7 +141,7 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
         <div>
           <p className="text-xs font-medium text-purple-800">Instagramで共有する場合</p>
           <p className="text-[11px] text-purple-600 mt-0.5">
-            リンクをコピー → ストーリーまたは投稿のリンクスタンプに貼り付けてください
+            Instagramボタンでリンクをコピーしてから、ストーリーや投稿のリンクスタンプに貼り付けてください
           </p>
         </div>
       </div>

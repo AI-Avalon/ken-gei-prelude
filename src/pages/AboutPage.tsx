@@ -58,7 +58,12 @@ export default function AboutPage() {
               ♪
             </div>
             <div>
-              <p className="font-medium text-stone-900">{CREATOR_DISPLAY_NAME}</p>
+              <p className="font-medium text-stone-900">
+                {CREATOR_DISPLAY_NAME}
+                <Link to="/dainagon" className="ml-2 text-primary-700 hover:text-primary-600">
+                  大納言
+                </Link>
+              </p>
               <p className="text-sm text-stone-600 mt-2 leading-relaxed">
                 愛知県立芸術大学の演奏会情報をより多くの人に届けたいという思いから、
                 このサイトを開発しました。

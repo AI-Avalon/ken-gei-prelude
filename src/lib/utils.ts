@@ -198,8 +198,10 @@ export function shareUrls(concert: Concert) {
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
     threads: `https://threads.net/intent/post?text=${encodeURIComponent(textWithUrl)}`,
     bluesky: `https://bsky.app/intent/compose?text=${encodeURIComponent(textWithUrl)}`,
+    mail: `mailto:?subject=${encodeURIComponent(concert.title)}&body=${encodeURIComponent(textWithUrl)}`,
     url,
     text,
+    textWithUrl,
   };
 }
 

@@ -274,10 +274,14 @@ export async function updateAdminSettings(
   data: {
     location_restriction_enabled?: boolean;
     location_restriction_radius_km?: number;
+    location_restriction_lat?: number;
+    location_restriction_lng?: number;
   }
 ): Promise<ApiResponse<{
   location_restriction_enabled: boolean;
   location_restriction_radius_km: number;
+  location_restriction_lat: number;
+  location_restriction_lng: number;
 }>> {
   return request('/admin/settings', {
     method: 'PUT',
