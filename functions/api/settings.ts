@@ -26,6 +26,19 @@ const DEFAULT_SETTINGS: SiteSettings = {
   location_restriction_lng: 137.0702776,
 };
 
+function normalizeSettings(settings: SiteSettings): SiteSettings {
+  const legacyLat = Math.abs(settings.location_restriction_lat - 35.1789) < 0.00001;
+  const legacyLng = Math.abs(settings.location_restriction_lng - 137.0506) < 0.00001;
+  if (legacyLat && legacyLng) {
+    return {
+      ...settings,
+      location_restriction_lat: DEFAULT_SETTINGS.location_restriction_lat,
+      location_restriction_lng: DEFAULT_SETTINGS.location_restriction_lng,
+    };
+  }
+  return settings;
+}
+
 export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
 
@@ -47,7 +60,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   let settings: SiteSettings = { ...DEFAULT_SETTINGS };
   if (raw) {
     try {
-      settings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+      settings = normalizeSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
     } catch { /* use defaults */ }
   }
 
