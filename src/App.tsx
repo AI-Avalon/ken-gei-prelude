@@ -1,22 +1,24 @@
 import { Routes, Route, useLocation, Link, useNavigationType } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import NavBar from './components/NavBar';
 import MobileTabBar from './components/MobileTabBar';
 import Footer from './components/Footer';
 import ToastContainer from './components/Toast';
-import HomePage from './pages/HomePage';
-import ConcertListPage from './pages/ConcertListPage';
-import ConcertDetailPage from './pages/ConcertDetailPage';
-import ConcertEditPage from './pages/ConcertEditPage';
-import CalendarPage from './pages/CalendarPage';
-import ArchivePage from './pages/ArchivePage';
-import UploadPage from './pages/UploadPage';
-import AdminPage from './pages/AdminPage';
-import ContactPage from './pages/ContactPage';
-import DocsPage from './pages/DocsPage';
-import ApiDocsPage from './pages/ApiDocsPage';
-import AboutPage from './pages/AboutPage';
+import Logo from './components/Logo';
 import { useIsMobile } from './hooks/useDevice';
+
+const HomePage = lazy(() => import('./pages/HomePage'));
+const ConcertListPage = lazy(() => import('./pages/ConcertListPage'));
+const ConcertDetailPage = lazy(() => import('./pages/ConcertDetailPage'));
+const ConcertEditPage = lazy(() => import('./pages/ConcertEditPage'));
+const CalendarPage = lazy(() => import('./pages/CalendarPage'));
+const ArchivePage = lazy(() => import('./pages/ArchivePage'));
+const UploadPage = lazy(() => import('./pages/UploadPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const DocsPage = lazy(() => import('./pages/DocsPage'));
+const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
 
 function NotFoundPage() {
   return (
@@ -29,6 +31,42 @@ function NotFoundPage() {
         <Link to="/concerts" className="btn-secondary">演奏会一覧へ</Link>
       </div>
     </div>
+  );
+}
+
+function PageFallback() {
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-10 space-y-4" aria-live="polite" aria-busy="true">
+      <div className="skeleton h-4 w-36" />
+      <div className="skeleton h-9 w-2/3" />
+      <div className="bg-white rounded-xl border border-stone-200/60 p-5 space-y-3">
+        <div className="skeleton h-4 w-full" />
+        <div className="skeleton h-4 w-3/4" />
+        <div className="skeleton h-4 w-1/2" />
+      </div>
+    </div>
+  );
+}
+
+function AppRoutes() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/concerts" element={<ConcertListPage />} />
+        <Route path="/concerts/:slug" element={<ConcertDetailPage />} />
+        <Route path="/concerts/:slug/edit" element={<ConcertEditPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/archive" element={<ArchivePage />} />
+        <Route path="/upload" element={<UploadPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/docs" element={<DocsPage />} />
+        <Route path="/docs/api" element={<ApiDocsPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </Suspense>
   );
 }
 
@@ -90,9 +128,7 @@ export default function App() {
       {isMobile ? (
         !isAdminPage && (
           <header className="bg-navy-900/95 border-b border-primary-800/20 sticky top-0 z-50 backdrop-blur-xl h-12 flex items-center justify-center">
-            <Link to="/" className="text-primary-400 text-lg tracking-widest font-display font-semibold">
-              Crescendo
-            </Link>
+            <Logo compact showSubtitle={false} />
           </header>
         )
       ) : (
@@ -100,38 +136,10 @@ export default function App() {
       )}
       <main className="flex-1">
         {isMobile ? (
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/concerts" element={<ConcertListPage />} />
-            <Route path="/concerts/:slug" element={<ConcertDetailPage />} />
-            <Route path="/concerts/:slug/edit" element={<ConcertEditPage />} />
-            <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/archive" element={<ArchivePage />} />
-            <Route path="/upload" element={<UploadPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/docs" element={<DocsPage />} />
-            <Route path="/docs/api" element={<ApiDocsPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+          <AppRoutes />
         ) : (
           <PageTransition>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/concerts" element={<ConcertListPage />} />
-              <Route path="/concerts/:slug" element={<ConcertDetailPage />} />
-              <Route path="/concerts/:slug/edit" element={<ConcertEditPage />} />
-              <Route path="/calendar" element={<CalendarPage />} />
-              <Route path="/archive" element={<ArchivePage />} />
-              <Route path="/upload" element={<UploadPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/docs" element={<DocsPage />} />
-              <Route path="/docs/api" element={<ApiDocsPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
+            <AppRoutes />
           </PageTransition>
         )}
       </main>

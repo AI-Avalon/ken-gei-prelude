@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SITE_NAME, SITE_URL, SITE_TAGLINE, CREATOR_DISPLAY_NAME } from '../lib/constants';
+import Logo from './Logo';
 
 const host = SITE_URL.replace(/^https?:\/\//, '');
 const webcalUrl = `webcal://${host}/api/feed/ics`;
@@ -25,7 +26,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <span className="font-display text-xl tracking-widest text-primary-400">{SITE_NAME}</span>
+              <Logo showSubtitle={false} />
             </div>
             <p className="text-sm leading-relaxed text-stone-500">
               {SITE_TAGLINE}

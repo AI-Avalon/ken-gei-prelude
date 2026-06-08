@@ -1,26 +1,62 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { shareUrls } from '../lib/utils';
-import { useIsMobile } from '../hooks/useDevice';
 import type { Concert } from '../types';
 
 export default function ShareButtons({ concert }: { concert: Concert }) {
   const [showQR, setShowQR] = useState(false);
   const [copied, setCopied] = useState(false);
-  const isMobile = useIsMobile();
-  const urls = shareUrls(concert);
+  const qrRef = useRef<HTMLDivElement>(null);
+  const urls = useMemo(() => shareUrls(concert), [concert]);
+  const canNativeShare = typeof navigator !== 'undefined' && 'share' in navigator;
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(urls.url);
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(urls.url);
+    } else {
+      const input = document.createElement('input');
+      input.value = urls.url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const nativeShare = async () => {
+    if (!canNativeShare) {
+      await copyLink();
+      return;
+    }
+    try {
+      await navigator.share({
+        title: concert.title,
+        text: urls.text,
+        url: urls.url,
+      });
+    } catch {
+      // User cancelled the native share sheet.
+    }
+  };
+
+  const downloadQR = () => {
+    const svg = qrRef.current?.querySelector('svg');
+    if (!svg) return;
+    const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${concert.slug}-qr.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const openQR = useCallback(() => setShowQR(true), []);
   const closeQR = useCallback(() => setShowQR(false), []);
-
-  // モバイルではQRを画面幅に合わせて縮小
-  const qrSize = isMobile ? Math.min(200, Math.max(window.innerWidth - 96, 140)) : 220;
 
   return (
     <div className="space-y-3">
@@ -34,6 +70,13 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
           }`}>
           {copied ? '✅ コピーしました' : '📋 リンクコピー'}
         </button>
+
+        {canNativeShare && (
+          <button type="button" onClick={nativeShare}
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition-colors">
+            端末で共有
+          </button>
+        )}
 
         <a href={urls.line} target="_blank" rel="noopener noreferrer"
           className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium bg-[#06C755] text-white hover:bg-[#05b34d] transition-colors">
@@ -102,8 +145,8 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
             </div>
 
             {/* QRコード */}
-            <div className="flex justify-center p-4 bg-white border border-stone-100 rounded-xl mb-3">
-              <QRCodeSVG value={urls.url} size={qrSize} />
+            <div ref={qrRef} className="flex justify-center p-4 bg-white border border-stone-100 rounded-xl mb-3">
+              <QRCodeSVG value={urls.url} size={220} className="w-full max-w-[220px] h-auto" />
             </div>
 
             {/* URL表示 */}
@@ -114,6 +157,10 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
             <button type="button" onClick={copyLink}
               className="mt-4 w-full btn-secondary text-sm">
               {copied ? '✅ URLをコピーしました' : '📋 URLをコピー'}
+            </button>
+            <button type="button" onClick={downloadQR}
+              className="mt-2 w-full btn-secondary text-sm">
+              QRコードを保存
             </button>
           </div>
         </div>

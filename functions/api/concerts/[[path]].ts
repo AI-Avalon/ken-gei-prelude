@@ -522,6 +522,14 @@ async function handleUpdate(slug: string, request: Request, env: Env): Promise<R
       sets.push('is_featured = ?');
       vals.push(Number(body.is_featured));
     }
+    if (body.edit_password !== undefined) {
+      const nextPassword = String(body.edit_password || '').trim();
+      if (nextPassword.length < 4) {
+        return jsonResponse({ ok: false, error: '編集用パスワードは4文字以上必要です' }, 400);
+      }
+      sets.push('edit_password_hash = ?');
+      vals.push(await sha256(nextPassword));
+    }
   }
 
   if (sets.length === 0) {

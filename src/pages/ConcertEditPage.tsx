@@ -106,7 +106,7 @@ export default function ConcertEditPage() {
         </nav>
       )}
 
-      <PasswordGate concertSlug={slug!} onVerified={(pw) => setPassword(pw)}>
+      <PasswordGate concertSlug={slug!} title={concert.title} onVerified={(pw) => setPassword(pw)}>
         <h1 className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold mb-2`}>演奏会を編集</h1>
         <p className="text-stone-500 mb-6 text-sm">{concert.title}</p>
 

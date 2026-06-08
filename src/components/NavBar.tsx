@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { SITE_NAME } from '../lib/constants';
+import Logo from './Logo';
 
 const NAV_LINKS = [
   { path: '/concerts', label: '演奏会一覧' },
@@ -34,14 +34,7 @@ export default function NavBar() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center gap-3 group">
-              <span className="text-primary-400 text-xl tracking-widest font-display font-semibold group-hover:text-primary-300 transition-colors">
-                {SITE_NAME}
-              </span>
-              <span className="hidden sm:inline text-[10px] text-stone-500 tracking-[0.15em] uppercase border-l border-stone-700 pl-3">
-                Aichi Univ. of the Arts
-              </span>
-            </Link>
+            <Logo />
           </div>
 
           {/* Desktop nav */}

@@ -36,6 +36,14 @@ export default function DocsPage() {
 function UserDocs() {
   return (
     <div className="prose prose-primary max-w-none space-y-10">
+      <Section id="quickstart" title="0. 画面で見るクイックガイド">
+        <div className="grid gap-4 md:grid-cols-3 not-prose">
+          <Screenshot src="/docs/screenshots/home-desktop.png" alt="PCトップページ" label="PCトップ" />
+          <Screenshot src="/docs/screenshots/home-mobile.png" alt="スマホトップページ" label="スマホトップ" />
+          <Screenshot src="/docs/screenshots/admin-login.png" alt="管理ログイン画面" label="管理ログイン" />
+        </div>
+      </Section>
+
       <Section id="about" title="1. Crescendo とは">
         <p>
           Crescendo（クレッシェンド）は、愛知県立芸術大学の演奏会情報ポータルサイトです。
@@ -72,8 +80,9 @@ function UserDocs() {
         <h4>⚡ かんたん登録</h4>
         <p>最低限の情報（タイトル、日付、開演時刻、会場、カテゴリ、パスワード）だけで登録。</p>
         <h4>🔑 編集用パスワード</h4>
-        <p className="text-amber-700 font-medium">
-          登録時に設定したパスワードは必ずメモしてください。再発行はできません。
+        <p>
+          登録時に設定したパスワードは編集・削除で使います。同じブラウザのタブでは一度認証すると再入力を省略できます。
+          忘れた場合は管理者が管理画面から新しい編集用パスワードを再設定できます。
         </p>
         <h4>チラシアップロード</h4>
         <p>
@@ -103,7 +112,9 @@ function UserDocs() {
 
       <Section id="share" title="5. 共有する">
         <ul className="list-disc list-inside space-y-1">
-          <li>📋 リンクコピー / X (Twitter) / LINE / Facebook / QRコード</li>
+          <li>リンクコピー / 端末共有 / X / LINE / Facebook / Threads / QRコード</li>
+          <li>QRコードは表示・URLコピー・SVG保存に対応しています。</li>
+          <li>演奏会ページは個別のタイトル・説明・チラシ画像を OGP として返すため、SNSやチャットに貼るとプレビューが出ます。</li>
         </ul>
       </Section>
 
@@ -116,10 +127,19 @@ function UserDocs() {
       <Section id="faq" title="7. よくある質問">
         <FAQ q="無料ですか？" a="はい、完全無料です。" />
         <FAQ q="誰でも登録できますか？" a="はい、アカウント不要で登録できます。" />
-        <FAQ q="パスワードを忘れました" a="再発行不可。お問い合わせフォームからご連絡ください。" />
+        <FAQ q="パスワードを忘れました" a="管理者が新しい編集用パスワードを再設定できます。お問い合わせフォームから対象ページURLを添えてご連絡ください。" />
         <FAQ q="PDFをアップロードできますか？" a="はい。PDFは自動的に高品質なWebP画像に変換されます。" />
       </Section>
     </div>
+  );
+}
+
+function Screenshot({ src, alt, label }: { src: string; alt: string; label: string }) {
+  return (
+    <figure className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+      <img src={src} alt={alt} className="w-full aspect-[4/3] object-cover bg-stone-100" loading="lazy" />
+      <figcaption className="px-3 py-2 text-xs text-stone-500">{label}</figcaption>
+    </figure>
   );
 }
 
@@ -370,10 +390,12 @@ PC専用:
 管理者認証:
   - パスワード → HMAC-SHA256比較 → JWTライクなトークン発行
   - X-Admin-Token ヘッダーで認証
+  - 管理画面から登録者の編集用パスワードを再設定可能
 
 編集認証:
   - 登録時パスワード → SHA-256ハッシュ化して保存
   - 編集時にパスワード送信 → ハッシュ比較
+  - 認証成功後は sessionStorage に一時保存し、同一タブ内の再入力を省略
 
 レート制限:
   - アップロード: 10回/時/IP (D1カウント)
@@ -413,7 +435,7 @@ UNIVERSITY_VENUES:
 4. モバイルUI: 仕様書はレスポンシブCSS → 独立コンポーネント分岐
 5. 大学スクレイピング: 仕様書はCRONで自動取得 → 現在手動登録のみ
 6. Webhook通知: 仕様書はLINE/Discord通知 → 未実装
-7. OGP画像: 仕様書は動的生成 → 静的OGPのみ
+7. OGP画像: /concerts/:slug で個別タイトル・説明・チラシ画像をHTMLメタへ注入
 8. 管理者ログ: 仕様書は詳細な監査ログ → 基本的なアクセス統計のみ`}</Pre>
       </Section>
 

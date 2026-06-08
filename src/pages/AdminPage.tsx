@@ -12,6 +12,7 @@ import { analyzeConcertFlyers, buildFlyerUploadName, buildFlyerThumbnailName } f
 import Modal from '../components/Modal';
 import { toast } from '../components/Toast';
 import { useIsMobile } from '../hooks/useDevice';
+import Logo from '../components/Logo';
 import type { Concert, Inquiry, MaintenanceLogEntry } from '../types';
 
 type Tab = 'overview' | 'concerts' | 'inquiries' | 'flyers' | 'analytics' | 'users' | 'settings' | 'logs';
@@ -99,8 +100,10 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
-          <div className="bg-white rounded-2xl shadow-sm border border-stone-200/60 p-8 text-center">
-            <div className="text-4xl mb-3">🔒</div>
+          <div className="bg-white rounded-xl shadow-sm border border-stone-200/70 p-7 sm:p-8 text-center">
+            <div className="flex justify-center mb-5">
+              <Logo compact showSubtitle={false} />
+            </div>
             <h1 className="text-xl font-bold mb-1">管理ダッシュボード</h1>
             <p className="text-stone-500 mb-6 text-sm">管理者パスワードを入力してください</p>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -128,7 +131,7 @@ export default function AdminPage() {
       {/* ヘッダー */}
       {isMobile ? (
         <div className="bg-navy-900/95 sticky top-0 z-30 px-4 h-12 flex items-center justify-between border-b border-primary-800/20">
-          <Link to="/" className="text-primary-400 text-sm font-display font-semibold tracking-widest">← Crescendo</Link>
+          <Logo compact showSubtitle={false} />
           <span className="text-white text-sm font-bold">管理ダッシュボード</span>
           <button type="button" onClick={logout}
             className="text-xs text-stone-400 hover:text-red-400 px-2 py-1 rounded transition-colors">
@@ -150,13 +153,14 @@ export default function AdminPage() {
 
       {/* タブナビゲーション — モバイルはアイコン、PCは全ラベル */}
       {isMobile ? (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 z-40 grid grid-cols-7 safe-area-pb">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 z-40 safe-area-bottom overflow-x-auto">
+          <div className="flex min-w-max">
           {TAB_LIST.map(([key, shortLabel]) => (
             <button
               type="button"
               key={key}
               onClick={() => setTab(key)}
-              className={`flex flex-col items-center justify-center py-2 text-[10px] gap-0.5 transition-colors ${
+              className={`flex w-16 flex-col items-center justify-center py-2 text-[10px] gap-0.5 transition-colors ${
                 tab === key ? 'text-primary-600' : 'text-stone-400'
               }`}
             >
@@ -164,6 +168,7 @@ export default function AdminPage() {
               <span className="leading-none">{shortLabel.split(' ')[1] || ''}</span>
             </button>
           ))}
+          </div>
         </div>
       ) : (
         <div className="flex gap-1 border-b border-stone-200 mb-6 overflow-x-auto">
@@ -339,9 +344,13 @@ function OverviewTab({ token, isMobile }: { token: string; isMobile: boolean }) 
 function ConcertsTab({ token, isMobile }: { token: string; isMobile: boolean }) {
   const [concerts, setConcerts] = useState<Concert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'published' | 'unpublished' | 'deleted'>('all');
+  const [filter, setFilter] = useState<'all' | 'published' | 'unpublished' | 'auto' | 'deleted'>('all');
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [passwordTarget, setPasswordTarget] = useState<Concert | null>(null);
+  const [newEditPassword, setNewEditPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [bulkDeletingAuto, setBulkDeletingAuto] = useState(false);
 
   useEffect(() => {
     adminFetchConcerts(token).then((res) => {
@@ -373,10 +382,52 @@ function ConcertsTab({ token, isMobile }: { token: string; isMobile: boolean }) 
     }
   };
 
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordTarget) return;
+    const nextPassword = newEditPassword.trim();
+    if (nextPassword.length < 4) {
+      toast('編集用パスワードは4文字以上で設定してください', 'error');
+      return;
+    }
+    setResettingPassword(true);
+    const res = await adminUpdateConcert(passwordTarget.slug, { edit_password: nextPassword }, token);
+    setResettingPassword(false);
+    if (res.ok) {
+      toast('編集用パスワードを再設定しました', 'success');
+      setPasswordTarget(null);
+      setNewEditPassword('');
+    } else {
+      toast(res.error || 'パスワード再設定に失敗しました', 'error');
+    }
+  };
+
+  const handleBulkDeleteAuto = async () => {
+    const targets = concerts.filter((c) => c.source === 'auto_scrape' && !c.is_deleted);
+    if (targets.length === 0) {
+      toast('削除できる自動取得データはありません', 'info');
+      return;
+    }
+    if (!confirm(`自動取得された演奏会 ${targets.length} 件を削除しますか？`)) return;
+
+    setBulkDeletingAuto(true);
+    let deleted = 0;
+    for (const concert of targets) {
+      const res = await adminDeleteConcert(concert.slug, token);
+      if (res.ok) deleted++;
+    }
+    setConcerts((prev) => prev.map((c) =>
+      targets.some((target) => target.slug === c.slug) ? { ...c, is_deleted: 1 } : c
+    ));
+    setBulkDeletingAuto(false);
+    toast(`自動取得データを${deleted}件削除しました`, deleted > 0 ? 'success' : 'error');
+  };
+
   const filtered = concerts.filter((c) => {
     const matchFilter =
       filter === 'published' ? c.is_published && !c.is_deleted :
       filter === 'unpublished' ? !c.is_published && !c.is_deleted :
+      filter === 'auto' ? c.source === 'auto_scrape' && !c.is_deleted :
       filter === 'deleted' ? !!c.is_deleted : true;
     const matchSearch = !search || c.title.includes(search) || c.venue?.name?.includes(search) || false;
     return matchFilter && matchSearch;
@@ -386,6 +437,7 @@ function ConcertsTab({ token, isMobile }: { token: string; isMobile: boolean }) 
     all: concerts.length,
     published: concerts.filter((c) => c.is_published && !c.is_deleted).length,
     unpublished: concerts.filter((c) => !c.is_published && !c.is_deleted).length,
+    auto: concerts.filter((c) => c.source === 'auto_scrape' && !c.is_deleted).length,
     deleted: concerts.filter((c) => !!c.is_deleted).length,
   };
 
@@ -403,8 +455,8 @@ function ConcertsTab({ token, isMobile }: { token: string; isMobile: boolean }) 
           className="input w-full"
         />
         <div className={`flex gap-2 ${isMobile ? 'overflow-x-auto pb-1' : 'flex-wrap'}`}>
-          {(['all', 'published', 'unpublished', 'deleted'] as const).map((f) => {
-            const labels = { all: 'すべて', published: '🟢 公開中', unpublished: '🟡 非公開', deleted: '🗑 削除済' };
+          {(['all', 'published', 'unpublished', 'auto', 'deleted'] as const).map((f) => {
+            const labels = { all: 'すべて', published: '公開中', unpublished: '非公開', auto: '自動取得', deleted: '削除済' };
             return (
               <button type="button" key={f} onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-colors ${
@@ -414,6 +466,19 @@ function ConcertsTab({ token, isMobile }: { token: string; isMobile: boolean }) 
               </button>
             );
           })}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-stone-50 border border-stone-200/70 rounded-xl px-3 py-2">
+          <p className="text-xs text-stone-500">
+            自動取得データ: {counts.auto} 件。誤取得や重複はここからまとめて整理できます。
+          </p>
+          <button
+            type="button"
+            onClick={handleBulkDeleteAuto}
+            disabled={bulkDeletingAuto || counts.auto === 0}
+            className="text-xs text-red-600 bg-white border border-red-100 hover:bg-red-50 px-3 py-1.5 rounded-lg disabled:opacity-50"
+          >
+            {bulkDeletingAuto ? '削除中...' : '自動取得を一括削除'}
+          </button>
         </div>
       </div>
 
@@ -481,6 +546,10 @@ function ConcertsTab({ token, isMobile }: { token: string; isMobile: boolean }) 
                     <button type="button" onClick={() => handleDelete(c)}
                       className="text-xs text-red-500 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100">
                       🗑 削除
+                    </button>
+                    <button type="button" onClick={() => setPasswordTarget(c)}
+                      className="text-xs text-stone-600 bg-stone-100 px-3 py-1.5 rounded-lg hover:bg-stone-200">
+                      パスワード再設定
                     </button>
                   </div>
                 )}
@@ -551,6 +620,10 @@ function ConcertsTab({ token, isMobile }: { token: string; isMobile: boolean }) 
                               className="text-xs text-red-500 hover:underline">
                               削除
                             </button>
+                            <button type="button" onClick={() => setPasswordTarget(c)}
+                              className="text-xs text-stone-500 hover:underline">
+                              パスワード再設定
+                            </button>
                           </div>
                         )}
                       </td>
@@ -569,6 +642,38 @@ function ConcertsTab({ token, isMobile }: { token: string; isMobile: boolean }) 
           <p className="text-sm">該当する演奏会はありません</p>
         </div>
       )}
+
+      <Modal open={!!passwordTarget} onClose={() => { setPasswordTarget(null); setNewEditPassword(''); }}>
+        <form onSubmit={handlePasswordReset} className="space-y-4">
+          <div>
+            <h2 className="text-lg font-bold text-stone-900">編集用パスワード再設定</h2>
+            <p className="text-sm text-stone-500 mt-1 line-clamp-2">{passwordTarget?.title}</p>
+          </div>
+          <div>
+            <label className="label">新しい編集用パスワード</label>
+            <input
+              type="text"
+              value={newEditPassword}
+              onChange={(e) => setNewEditPassword(e.target.value)}
+              className="input"
+              minLength={4}
+              autoFocus
+              placeholder="4文字以上"
+            />
+            <p className="text-xs text-stone-400 mt-1">
+              登録者がパスワードを忘れた場合に管理者が再設定できます。既存パスワードは表示できません。
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-secondary text-sm" onClick={() => { setPasswordTarget(null); setNewEditPassword(''); }}>
+              キャンセル
+            </button>
+            <button type="submit" className="btn-primary text-sm" disabled={resettingPassword}>
+              {resettingPassword ? '保存中...' : '再設定する'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
