@@ -80,8 +80,13 @@ function injectMeta(html: string, meta: Record<string, string>): string {
 
 export const onRequestGet: PagesFunction<Env> = async ({ env, params, request }) => {
   const slug = String(params.slug || '');
-  const assetResponse = await env.ASSETS.fetch(new Request(new URL('/index.html', request.url), request));
-  const html = await assetResponse.text();
+  const indexUrl = new URL('/index.html', request.url);
+  const assetResponse = await env.ASSETS.fetch(indexUrl.toString());
+  let html = await assetResponse.text();
+  if (!html.trim()) {
+    const rootResponse = await env.ASSETS.fetch(new URL('/', request.url).toString());
+    html = await rootResponse.text();
+  }
 
   const row = await env.DB.prepare(`
     SELECT title, subtitle, description, date, time_start, venue_json, flyer_thumbnail_key, flyer_r2_keys
