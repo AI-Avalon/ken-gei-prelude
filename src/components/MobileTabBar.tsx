@@ -11,6 +11,7 @@ const MAIN_TABS = [
 
 const MORE_LINKS = [
   { path: '/archive', label: 'アーカイブ', icon: '📁' },
+  { path: '/student-tools', label: '音大生ツール', icon: '🎧' },
   { path: '/docs', label: '使い方ガイド', icon: '📖' },
   { path: '/about', label: 'About', icon: 'ℹ️' },
   { path: '/admin', label: '管理者ページ', icon: '🔒' },

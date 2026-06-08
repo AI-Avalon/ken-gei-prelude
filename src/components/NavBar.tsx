@@ -6,6 +6,7 @@ const NAV_LINKS = [
   { path: '/concerts', label: '演奏会一覧' },
   { path: '/calendar', label: 'カレンダー' },
   { path: '/archive', label: 'アーカイブ' },
+  { path: '/student-tools', label: '音大生ツール' },
   { path: '/upload', label: '演奏会登録' },
   { path: '/contact', label: 'お問い合わせ' },
   { path: '/docs', label: '使い方' },

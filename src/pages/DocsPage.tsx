@@ -112,9 +112,10 @@ function UserDocs() {
 
       <Section id="share" title="5. 共有する">
         <ul className="list-disc list-inside space-y-1">
-          <li>リンクコピー / 端末共有 / X / LINE / Facebook / Threads / QRコード</li>
+          <li>端末共有 / リンクコピー / Instagram / LINE / X / Facebook / Threads / Bluesky / メール / QRコード</li>
           <li>QRコードは表示・URLコピー・SVG保存に対応しています。</li>
           <li>演奏会ページは個別のタイトル・説明・チラシ画像を OGP として返すため、SNSやチャットに貼るとプレビューが出ます。</li>
+          <li>iPhoneやAndroidでは端末共有を使うと、端末に入っているSNSやメッセージアプリへ直接共有できます。</li>
         </ul>
       </Section>
 
@@ -122,12 +123,31 @@ function UserDocs() {
         <p>
           演奏会詳細ページの「✏️ この演奏会を編集」から編集可能。削除後90日間はゴミ箱保管。
         </p>
+        <p>
+          登録時の編集用パスワードを忘れた場合でも、管理者パスワードで編集画面を開けます。
+          管理画面から新しい編集用パスワードを再設定することもできます。
+        </p>
       </Section>
 
-      <Section id="faq" title="7. よくある質問">
+      <Section id="student-tools" title="7. 音大生ツール">
+        <p>
+          <Link to="/student-tools" className="text-primary-600 hover:underline">音大生ツール</Link>では、
+          メトロノーム、移調メモ、告知文メーカー、本番チェックリストを無料で使えます。
+        </p>
+      </Section>
+
+      <Section id="dainagon" title="8. 大納言写真室">
+        <p>
+          写真を `public/dainagon/inbox/` に入れて `npm run dainagon:photos` を実行すると、
+          `public/dainagon/gallery/` にWebP画像が生成され、重複は自動で除外されます。
+          変換に成功した元ファイルは削除されます。
+        </p>
+      </Section>
+
+      <Section id="faq" title="9. よくある質問">
         <FAQ q="無料ですか？" a="はい、完全無料です。" />
         <FAQ q="誰でも登録できますか？" a="はい、アカウント不要で登録できます。" />
-        <FAQ q="パスワードを忘れました" a="管理者が新しい編集用パスワードを再設定できます。お問い合わせフォームから対象ページURLを添えてご連絡ください。" />
+        <FAQ q="パスワードを忘れました" a="管理者パスワードで編集画面に入れます。管理画面から新しい編集用パスワードを再設定することもできます。" />
         <FAQ q="PDFをアップロードできますか？" a="はい。PDFは自動的に高品質なWebP画像に変換されます。" />
       </Section>
     </div>
@@ -179,6 +199,8 @@ ken-gei-prelude/
 │   │   ├── ContactPage.tsx       # お問い合わせ
 │   │   ├── DocsPage.tsx          # ドキュメント
 │   │   ├── ApiDocsPage.tsx       # API仕様
+│   │   ├── StudentToolsPage.tsx  # 音大生向け無料ツール
+│   │   ├── DainagonPage.tsx      # 大納言写真室
 │   │   └── AboutPage.tsx         # サイトについて
 │   ├── components/
 │   │   ├── NavBar.tsx       # デスクトップナビゲーション
@@ -395,6 +417,7 @@ PC専用:
 編集認証:
   - 登録時パスワード → SHA-256ハッシュ化して保存
   - 編集時にパスワード送信 → ハッシュ比較
+  - 管理者パスワードは編集画面でも利用可能
   - 認証成功後は sessionStorage に一時保存し、同一タブ内の再入力を省略
 
 レート制限:
