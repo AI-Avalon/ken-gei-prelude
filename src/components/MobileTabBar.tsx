@@ -35,8 +35,8 @@ export default function MobileTabBar() {
 
       {/* More drawer */}
       <div
-        className={`fixed bottom-14 left-0 right-0 z-50 bg-navy-900/98 border-t border-primary-800/20 rounded-t-2xl shadow-2xl transition-transform duration-300 ${
-          showMore ? 'translate-y-0' : 'translate-y-full'
+        className={`fixed bottom-14 left-0 right-0 z-50 bg-navy-900/98 border-t border-primary-800/20 rounded-t-2xl shadow-2xl transition-all duration-300 ${
+          showMore ? 'translate-y-0 opacity-100' : 'translate-y-[calc(100%+4rem)] opacity-0 pointer-events-none'
         }`}
       >
         <div className="px-2 pt-4 pb-6">
