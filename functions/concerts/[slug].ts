@@ -121,7 +121,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params, request })
     'og:site_name': 'Crescendo',
     'og:image': imageUrl,
     'og:image:secure_url': imageUrl,
-    'og:image:type': imageKey ? 'image/webp' : 'image/png',
     'og:image:width': imageKey ? '1200' : '512',
     'og:image:height': imageKey ? '1600' : '512',
     'og:image:alt': `${row.title} チラシ`,

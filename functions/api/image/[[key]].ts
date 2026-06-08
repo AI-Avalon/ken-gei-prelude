@@ -6,7 +6,7 @@ interface Env {
   KV: KVNamespace;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+async function handleImage(context: Parameters<PagesFunction<Env>>[0], includeBody: boolean): Promise<Response> {
   const { env, params, request } = context;
   const keyParts = (params.key as string[]) || [];
   const key = keyParts.join('/');
@@ -20,7 +20,12 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const cache = caches.default;
   const cachedResponse = await cache.match(cacheKey);
   if (cachedResponse) {
-    return cachedResponse;
+    if (includeBody) return cachedResponse;
+    return new Response(null, {
+      status: cachedResponse.status,
+      statusText: cachedResponse.statusText,
+      headers: cachedResponse.headers,
+    });
   }
 
   // Cache miss — read from KV
@@ -44,10 +49,15 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   headers.set('Cache-Control', 'public, max-age=2592000'); // 30 days
   headers.set('Access-Control-Allow-Origin', '*');
 
-  const response = new Response(result.value, { headers });
+  const response = new Response(includeBody ? result.value : null, { headers });
 
   // Store in edge cache for future requests
-  context.waitUntil(cache.put(cacheKey, response.clone()));
+  if (includeBody) {
+    context.waitUntil(cache.put(cacheKey, response.clone()));
+  }
 
   return response;
-};
+}
+
+export const onRequestGet: PagesFunction<Env> = (context) => handleImage(context, true);
+export const onRequestHead: PagesFunction<Env> = (context) => handleImage(context, false);
