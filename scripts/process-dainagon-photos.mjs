@@ -4,8 +4,8 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const root = process.cwd();
-const inboxDir = path.join(root, 'public', 'dainagon', 'inbox');
-const galleryDir = path.join(root, 'public', 'dainagon', 'gallery');
+const inboxDir = path.join(root, 'private', 'dainagon-inbox');
+const galleryDir = path.join(root, 'public', 'assets', 'prelude-cache');
 const manifestPath = path.join(root, 'src', 'data', 'dainagonPhotos.json');
 const supported = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.tif', '.tiff']);
 
@@ -62,7 +62,7 @@ async function main() {
     await fs.writeFile(outputPath, output);
     const outputMeta = await sharp(output).metadata();
     manifest.push({
-      src: `/dainagon/gallery/${outputName}`,
+      src: `/assets/prelude-cache/${outputName}`,
       width: outputMeta.width || metadata.width || 0,
       height: outputMeta.height || metadata.height || 0,
       size: output.length,

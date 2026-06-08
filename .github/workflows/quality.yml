@@ -1,0 +1,35 @@
+name: Quality Checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run verify:pdf
+      - run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test rendered pages
+        run: |
+          npm run dev -- --host 127.0.0.1 --port 5173 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:5173/ > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          npx playwright screenshot --browser=chromium --viewport-size=390,844 http://127.0.0.1:5173/student-tools /tmp/student-tools.png
+          npx playwright screenshot --browser=chromium --viewport-size=1366,900 http://127.0.0.1:5173/ /tmp/home.png

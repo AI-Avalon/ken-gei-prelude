@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation, Link, useNavigationType } from 'react-router-dom';
+import { Routes, Route, useLocation, Link, useNavigationType, useNavigate } from 'react-router-dom';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import NavBar from './components/NavBar';
 import MobileTabBar from './components/MobileTabBar';
@@ -21,6 +21,7 @@ const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const DainagonPage = lazy(() => import('./pages/DainagonPage'));
 const StudentToolsPage = lazy(() => import('./pages/StudentToolsPage'));
+const SECRET_DAINAGON_PATH = '/solfege/after-hours/86b7';
 
 function NotFoundPage() {
   return (
@@ -66,11 +67,55 @@ function AppRoutes() {
         <Route path="/docs" element={<DocsPage />} />
         <Route path="/docs/api" element={<ApiDocsPage />} />
         <Route path="/about" element={<AboutPage />} />
-        <Route path="/dainagon" element={<DainagonPage />} />
+        <Route path={SECRET_DAINAGON_PATH} element={<DainagonPage />} />
         <Route path="/student-tools" element={<StudentToolsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
+  );
+}
+
+function EasterEggs() {
+  const navigate = useNavigate();
+  const bufferRef = useRef('');
+  const tapsRef = useRef(0);
+  const tapTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key.length !== 1) return;
+      bufferRef.current = `${bufferRef.current}${event.key.toLowerCase()}`.slice(-24);
+      if (bufferRef.current.endsWith('dainagon')) {
+        navigate(SECRET_DAINAGON_PATH);
+      }
+      if (bufferRef.current.endsWith('bravo')) {
+        document.documentElement.classList.add('egg-bravo');
+        window.setTimeout(() => document.documentElement.classList.remove('egg-bravo'), 1800);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [navigate]);
+
+  const tap = () => {
+    tapsRef.current += 1;
+    if (tapTimerRef.current) window.clearTimeout(tapTimerRef.current);
+    tapTimerRef.current = window.setTimeout(() => { tapsRef.current = 0; }, 1200);
+    if (tapsRef.current >= 7) {
+      tapsRef.current = 0;
+      navigate(SECRET_DAINAGON_PATH);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      aria-label="."
+      onClick={tap}
+      className="fixed right-0 top-0 z-[60] h-3 w-3 opacity-0"
+      tabIndex={-1}
+    />
   );
 }
 
@@ -128,6 +173,7 @@ export default function App() {
   return (
     <div className={`min-h-screen flex flex-col ${isMobile && !isAdminPage ? 'pb-14' : ''}`}>
       <ScrollToTop />
+      <EasterEggs />
       {/* Desktop: top navbar, Mobile: simplified top bar + bottom tabs */}
       {isMobile ? (
         !isAdminPage && (

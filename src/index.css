@@ -112,6 +112,15 @@
   animation: blur-in 0.5s ease-out;
 }
 
+@keyframes bravo-flash {
+  0% { filter: saturate(1); }
+  35% { filter: saturate(1.7) brightness(1.08); }
+  100% { filter: saturate(1); }
+}
+html.egg-bravo body {
+  animation: bravo-flash 1.8s ease-out;
+}
+
 /* Gold shimmer for accents */
 .text-gold {
   background: linear-gradient(135deg, #c4ab6e, #b89a54, #d4c595);

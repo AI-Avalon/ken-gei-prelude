@@ -6,6 +6,8 @@
  */
 export function classifyCategory(title: string): string {
   const t = title.normalize('NFKC');
+  if (/専攻.*定期|定期.*専攻/.test(t)) return 'major_teiki';
+  if (/自主企画|自主公演|自主/.test(t)) return 'self_planned';
   if (/定期演奏会/.test(t)) return 'teiki';
   if (/卒業演奏会|卒業/.test(t)) return 'sotsugyou';
   if (/学位審査|学位/.test(t)) return 'gakui';

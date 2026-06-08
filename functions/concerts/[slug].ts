@@ -52,12 +52,12 @@ function encodeImageKey(key: string): string {
 function formatDescription(row: ConcertMetaRow): string {
   const venue = safeJsonParse<{ name?: string }>(row.venue_json, {});
   const parts = [
-    row.subtitle,
-    `${row.date}${row.time_start ? ` ${row.time_start}` : ''}`,
+    `${row.date}${row.time_start ? ` ${row.time_start}開演` : ''}`,
     venue.name,
-    row.description,
+    row.subtitle,
+    '愛知県立芸術大学の演奏会情報',
   ].filter(Boolean);
-  return parts.join(' / ').replace(/\s+/g, ' ').slice(0, 160);
+  return parts.join(' / ').replace(/\s+/g, ' ').slice(0, 120);
 }
 
 function injectMeta(html: string, meta: Record<string, string>): string {

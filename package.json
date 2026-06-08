@@ -10,7 +10,8 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "backfill:pdf-flyers": "node scripts/backfill-pdf-flyers.mjs",
     "fetch:missing-flyers": "node scripts/fetch-missing-flyers.mjs",
-    "dainagon:photos": "node scripts/process-dainagon-photos.mjs"
+    "dainagon:photos": "node scripts/process-dainagon-photos.mjs",
+    "verify:pdf": "node scripts/verify-pdf-pipeline.mjs"
   },
   "dependencies": {
     "fuse.js": "^7.0.0",

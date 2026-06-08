@@ -1290,6 +1290,46 @@ function UsersTab({ token, isMobile }: { token: string; isMobile: boolean }) {
   );
 }
 
+function LocationCoveragePreview({ lat, lng, radiusKm }: { lat: number; lng: number; radiusKm: number }) {
+  const clampedRadius = Math.max(1, Math.min(radiusKm, 20));
+  const circleRadius = Math.max(18, Math.min(92, 18 + clampedRadius * 5));
+  const scale = Math.round(radiusKm * 2);
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
+  return (
+    <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
+      <div className="relative aspect-[16/9] bg-[#edf4ef]">
+        <svg viewBox="0 0 320 180" className="absolute inset-0 h-full w-full" role="img" aria-label="許可範囲プレビュー">
+          <defs>
+            <pattern id="coverage-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+              <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#cbd5c7" strokeWidth="1" opacity="0.5" />
+            </pattern>
+          </defs>
+          <rect width="320" height="180" fill="url(#coverage-grid)" />
+          <path d="M0 118 C70 92 102 140 164 110 C226 78 248 116 320 80" fill="none" stroke="#a8b8a1" strokeWidth="12" opacity="0.35" />
+          <path d="M36 38 L94 76 L150 44 L214 80 L286 42" fill="none" stroke="#ffffff" strokeWidth="10" opacity="0.9" />
+          <path d="M36 38 L94 76 L150 44 L214 80 L286 42" fill="none" stroke="#c7a35f" strokeWidth="2" opacity="0.7" />
+          <circle cx="160" cy="90" r={circleRadius} fill="#0ea5e9" opacity="0.16" />
+          <circle cx="160" cy="90" r={circleRadius} fill="none" stroke="#0284c7" strokeWidth="2.5" strokeDasharray="6 5" />
+          <circle cx="160" cy="90" r="6" fill="#b45309" stroke="#fff" strokeWidth="3" />
+          <text x="170" y="84" fontSize="11" fill="#1f2937" fontWeight="700">中心</text>
+          <text x="160" y={Math.max(18, 87 - circleRadius)} textAnchor="middle" fontSize="12" fill="#0369a1" fontWeight="700">
+            半径 {radiusKm}km
+          </text>
+          <rect x="222" y="148" width="70" height="8" fill="#1f2937" opacity="0.75" rx="2" />
+          <text x="257" y="143" textAnchor="middle" fontSize="10" fill="#1f2937">約 {scale}km</text>
+        </svg>
+      </div>
+      <div className="flex items-center justify-between gap-3 px-3 py-2 text-xs text-stone-500">
+        <span>中心: {lat.toFixed(6)}, {lng.toFixed(6)}</span>
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-primary-700 hover:text-primary-600">
+          Google Mapsで中心を見る
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function SettingsTab({ token }: { token: string }) {
   const [scraping, setScraping] = useState(false);
   const [maintaining, setMaintaining] = useState(false);
@@ -1570,6 +1610,7 @@ function SettingsTab({ token }: { token: string }) {
                   保存
                 </button>
               </div>
+              <LocationCoveragePreview lat={centerLat} lng={centerLng} radiusKm={radiusKm} />
             </div>
           </div>
         )}

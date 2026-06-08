@@ -132,19 +132,11 @@ function UserDocs() {
       <Section id="student-tools" title="7. 音大生ツール">
         <p>
           <Link to="/student-tools" className="text-primary-600 hover:underline">音大生ツール</Link>では、
-          メトロノーム、移調メモ、告知文メーカー、本番チェックリストを無料で使えます。
+          爆速メトロノーム、リアルタイムチューナー、移調メモを無料で使えます。
         </p>
       </Section>
 
-      <Section id="dainagon" title="8. 大納言写真室">
-        <p>
-          写真を `public/dainagon/inbox/` に入れて `npm run dainagon:photos` を実行すると、
-          `public/dainagon/gallery/` にWebP画像が生成され、重複は自動で除外されます。
-          変換に成功した元ファイルは削除されます。
-        </p>
-      </Section>
-
-      <Section id="faq" title="9. よくある質問">
+      <Section id="faq" title="8. よくある質問">
         <FAQ q="無料ですか？" a="はい、完全無料です。" />
         <FAQ q="誰でも登録できますか？" a="はい、アカウント不要で登録できます。" />
         <FAQ q="パスワードを忘れました" a="管理者パスワードで編集画面に入れます。管理画面から新しい編集用パスワードを再設定することもできます。" />
@@ -200,7 +192,6 @@ ken-gei-prelude/
 │   │   ├── DocsPage.tsx          # ドキュメント
 │   │   ├── ApiDocsPage.tsx       # API仕様
 │   │   ├── StudentToolsPage.tsx  # 音大生向け無料ツール
-│   │   ├── DainagonPage.tsx      # 大納言写真室
 │   │   └── AboutPage.tsx         # サイトについて
 │   ├── components/
 │   │   ├── NavBar.tsx       # デスクトップナビゲーション

@@ -88,6 +88,8 @@ export const UNIVERSITY_VENUES: Record<string, {
 
 export const CATEGORIES: Record<string, { label: string; color: string; icon: string }> = {
   teiki: { label: '定期演奏会', color: 'bg-primary-100 text-primary-800', icon: '🎵' },
+  major_teiki: { label: '専攻定期', color: 'bg-sky-100 text-sky-800', icon: '🎼' },
+  self_planned: { label: '自主企画', color: 'bg-lime-100 text-lime-800', icon: '✨' },
   sotsugyou: { label: '卒業演奏会', color: 'bg-purple-100 text-purple-800', icon: '🎓' },
   gakui: { label: '学位審査演奏会', color: 'bg-indigo-100 text-indigo-800', icon: '📜' },
   recital: { label: 'リサイタル', color: 'bg-pink-100 text-pink-800', icon: '🎤' },

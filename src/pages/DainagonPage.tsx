@@ -15,17 +15,16 @@ export default function DainagonPage() {
     <div className="min-h-screen bg-stone-950 text-stone-100">
       <div className="max-w-5xl mx-auto px-4 py-10 sm:py-14">
         <div className="mb-8">
-          <p className="text-xs uppercase tracking-[0.35em] text-primary-300">secret room</p>
-          <h1 className="mt-2 text-3xl sm:text-5xl font-serif font-bold">大納言写真室</h1>
+          <p className="text-xs uppercase tracking-[0.35em] text-primary-300">after hours</p>
+          <h1 className="mt-2 text-3xl sm:text-5xl font-serif font-bold">backstage</h1>
           <p className="mt-3 text-sm text-stone-400">
-            ここは知っている人だけが見られる小さな写真置き場です。
+            ここは知っている人だけが開ける小さな余白です。
           </p>
         </div>
 
         {items.length === 0 ? (
           <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm text-stone-300">
-            まだ写真はありません。`public/dainagon/inbox` に写真を入れて `npm run dainagon:photos` を実行すると、
-            WebP化された写真がここに並びます。
+            まだ何も置かれていません。
           </div>
         ) : (
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 [column-fill:_balance]">
@@ -39,7 +38,7 @@ export default function DainagonPage() {
               >
                 <img
                   src={photo.src}
-                  alt="大納言"
+                  alt="after hours"
                   width={photo.width}
                   height={photo.height}
                   loading="lazy"

@@ -1,0 +1,40 @@
+name: Process Private Photos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'private/dainagon-inbox/**'
+      - 'scripts/process-dainagon-photos.mjs'
+      - 'src/data/dainagonPhotos.json'
+  workflow_dispatch:
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Convert photos to WebP
+        run: npm run dainagon:photos
+
+      - name: Commit converted photos
+        run: |
+          if git diff --quiet; then
+            echo "No photo changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add private/dainagon-inbox src/data/dainagonPhotos.json public/assets/prelude-cache
+          git commit -m "Process private photos"
+          git push
