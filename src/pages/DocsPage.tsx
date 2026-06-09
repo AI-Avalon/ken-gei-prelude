@@ -36,7 +36,18 @@ export default function DocsPage() {
 function UserDocs() {
   return (
     <div className="prose prose-primary max-w-none space-y-10">
-      <Section id="quickstart" title="0. 画面で見るクイックガイド">
+      <Section id="quickstart" title="0. まず何ができるサイト？">
+        <p>
+          Crescendo は、愛知県立芸術大学の演奏会を「探す・登録する・共有する・カレンダーに入れる」ためのポータルサイトです。
+          チラシ画像、QRコード、SNS共有、カレンダー同期まで、演奏会の告知に必要な導線をまとめて使えます。
+        </p>
+        <div className="grid gap-4 md:grid-cols-2 not-prose">
+          <PromoAsset src="/promo/crescendo/instagram-square.png" alt="Crescendo Instagram宣伝画像" label="サイト宣伝用 Instagram 正方形" />
+          <PromoAsset src="/promo/crescendo/registration-flow.png" alt="Crescendo登録手順画像" label="登録手順の説明画像" />
+        </div>
+      </Section>
+
+      <Section id="screens" title="1. 画面で見るクイックガイド">
         <div className="grid gap-4 md:grid-cols-3 not-prose">
           <Screenshot src="/docs/screenshots/home-desktop.png" alt="PCトップページ" label="PCトップ" />
           <Screenshot src="/docs/screenshots/home-mobile.png" alt="スマホトップページ" label="スマホトップ" />
@@ -44,103 +55,94 @@ function UserDocs() {
         </div>
       </Section>
 
-      <Section id="about" title="1. Crescendo とは">
-        <p>
-          Crescendo（クレッシェンド）は、愛知県立芸術大学の演奏会情報ポータルサイトです。
-          学生・教職員の演奏会を「掲載・閲覧・検索・共有」できます。
-        </p>
-        <p>
-          チケット販売や座席予約は行いません。演奏会の宣伝と情報共有を目的としています。
-          完全無料で利用できます。
-        </p>
-      </Section>
-
-      <Section id="browse" title="2. 演奏会を見る">
-        <h4>一覧ページ</h4>
-        <p>
-          <Link to="/concerts" className="text-primary-600 hover:underline">演奏会一覧</Link>では、
-          今後開催される演奏会をカード形式で表示しています。
-        </p>
-        <h4>フィルター・検索</h4>
-        <p>
-          カテゴリチップでフィルター、キーワード検索ボックスで演奏会名・会場名・出演者名などで検索できます。
-        </p>
-        <h4>カレンダー</h4>
-        <p>
-          <Link to="/calendar" className="text-primary-600 hover:underline">カレンダーページ</Link>で月ごとのスケジュールを確認できます。
-        </p>
-      </Section>
-
-      <Section id="register" title="3. 演奏会を登録する">
-        <p>
-          <Link to="/upload" className="text-primary-600 hover:underline">演奏会登録ページ</Link>から誰でも登録可能（アカウント不要）。
-        </p>
-        <h4>🔧 詳細登録（デフォルト）</h4>
-        <p>プログラム、出演者、料金区分、説明文など全情報を入力できます。</p>
-        <h4>⚡ かんたん登録</h4>
-        <p>最低限の情報（タイトル、日付、開演時刻、会場、カテゴリ、パスワード）だけで登録。</p>
-        <h4>🔑 編集用パスワード</h4>
-        <p>
-          登録時に設定したパスワードは編集・削除で使います。同じブラウザのタブでは一度認証すると再入力を省略できます。
-          忘れた場合は管理者が管理画面から新しい編集用パスワードを再設定できます。
-        </p>
-        <h4>チラシアップロード</h4>
-        <p>
-          PDF, JPEG, PNG, WebP, GIF対応。PDFは自動的にWebP画像に変換されます（最大4ページ）。
-          1ページ目がサムネイルとして使用されます。
-        </p>
-        <h4>大学会場のクイック入力</h4>
-        <p>
-          会場入力欄の上部にある「奏楽堂」「講義棟ホール」等のボタンをタップすると、
-          住所・座標・アクセス情報が自動入力されます。
-        </p>
-      </Section>
-
-      <Section id="calendar" title="4. カレンダーに追加する">
-        <p>演奏会詳細ページから各種カレンダーに追加できます。</p>
+      <Section id="for-visitors" title="2. 初めて見る人向け">
         <ul className="list-disc list-inside space-y-1">
-          <li>Google カレンダー / Outlook / Yahoo! カレンダー</li>
-          <li>Apple カレンダー（ICSダウンロード）</li>
+          <li><Link to="/concerts" className="text-primary-600 hover:underline">演奏会一覧</Link>で今後の演奏会を探します。</li>
+          <li>検索欄、カテゴリ、日付で絞り込みます。演奏会名、会場、出演者名でも探せます。</li>
+          <li>詳細ページで日時、会場、チラシ、料金、出演者、地図、共有ボタンを確認します。</li>
+          <li><Link to="/calendar" className="text-primary-600 hover:underline">カレンダー</Link>では月ごとの予定をまとめて見られます。</li>
         </ul>
-        <h4>📅 カレンダーの自動同期</h4>
-        <p className="text-sm text-stone-600 mb-2">
-          お使いのカレンダーアプリ（Google カレンダー・Apple カレンダー等）に、
-          新しい演奏会が自動で追加されるようになります。
-          演奏会詳細ページの「カレンダーに追加」ボタンから設定できます。
+      </Section>
+
+      <Section id="register" title="3. 演奏会を登録する人向け">
+        <p>
+          <Link to="/upload" className="text-primary-600 hover:underline">演奏会登録ページ</Link>から登録します。
+          アカウントは不要です。あとから編集できるよう、登録時に編集用パスワードを設定します。
+        </p>
+        <ol className="list-decimal list-inside space-y-1">
+          <li>タイトル、日付、開演時刻、会場、カテゴリを入力します。</li>
+          <li>料金、出演者、プログラム、連絡先、説明文を必要に応じて追加します。</li>
+          <li>チラシ画像またはPDFを追加します。PDFはページごとに画像化され、表/裏も表示できます。</li>
+          <li>編集用パスワードを設定して登録します。</li>
+          <li>登録後の詳細ページURLを、SNS、QRコード、メール、LINEなどで共有します。</li>
+        </ol>
+        <h4>付属ポスターを例にした入力</h4>
+        <p>
+          20thポスターから確実に読める基本情報は、タイトル
+          「Ensemble Celliberta 20th Anniversary Concert」、日付「2027-02-20」、
+          開場「17:30」、開演「18:00」、料金「¥1,000」です。
+          会場や出演者など読み取れない細部は推測せず、確認できてから追記します。
         </p>
       </Section>
 
-      <Section id="share" title="5. 共有する">
+      <Section id="promote" title="4. 宣伝に使う人向け">
+        <p>
+          詳細ページを作ると、演奏会ごとにURL、QRコード、SNS共有文、チラシ表示、カレンダー追加が使えます。
+          ポスターやストーリー投稿には、宣伝キットの画像も使えます。
+        </p>
+        <div className="grid gap-4 md:grid-cols-2 not-prose">
+          <PromoAsset src="/promo/crescendo/qr-guide.png" alt="QR付き案内画像" label="QR付き案内画像" />
+          <PromoAsset src="/promo/crescendo/calendar-flow.png" alt="カレンダー連携説明画像" label="カレンダー連携説明画像" />
+        </div>
         <ul className="list-disc list-inside space-y-1">
-          <li>端末共有 / リンクコピー / Instagram / LINE / X / Facebook / Threads / Bluesky / メール / QRコード</li>
-          <li>QRコードは表示・URLコピー・SVG保存に対応しています。</li>
-          <li>演奏会ページは個別のタイトル・説明・チラシ画像を OGP として返すため、SNSやチャットに貼るとプレビューが出ます。</li>
-          <li>iPhoneやAndroidでは端末共有を使うと、端末に入っているSNSやメッセージアプリへ直接共有できます。</li>
+          <li>Instagram: 正方形画像、ストーリー画像、QR付き画像を利用します。</li>
+          <li>LINE/X/Threads/Bluesky: 詳細ページURLと短い紹介文を投稿します。</li>
+          <li>紙掲示: A4説明チラシを印刷し、QRコードからサイトに誘導します。</li>
+          <li>演奏会個別ページ: チラシ画像を大きく表示し、来場者が予定表へ追加できます。</li>
+        </ul>
+      </Section>
+
+      <Section id="calendar" title="5. カレンダーに追加する">
+        <p>演奏会詳細ページの「カレンダーに追加」から、予定を追加できます。</p>
+        <ul className="list-disc list-inside space-y-1">
+          <li>この予定だけ追加: Google、Apple、Outlook、Yahoo!、TimeTree、ICSに対応。</li>
+          <li>すべての演奏会を同期: 新しい演奏会が追加されるとカレンダー側にも反映されます。</li>
+          <li>カレンダーURLコピー: ほかのカレンダーアプリへ貼り付けられます。</li>
         </ul>
       </Section>
 
       <Section id="edit" title="6. 編集・削除">
         <p>
-          演奏会詳細ページの「✏️ この演奏会を編集」から編集可能。削除後90日間はゴミ箱保管。
+          演奏会詳細ページの「この演奏会を編集」から編集できます。
+          登録時の編集用パスワード、または管理者パスワードを使います。
         </p>
         <p>
-          登録時の編集用パスワードを忘れた場合でも、管理者パスワードで編集画面を開けます。
-          管理画面から新しい編集用パスワードを再設定することもできます。
+          日付、時刻、料金、チラシを修正すると、詳細ページ、一覧、カレンダー、ICSフィードにも更新が反映されます。
+          削除した演奏会は90日間ゴミ箱に保管されます。
         </p>
       </Section>
 
-      <Section id="student-tools" title="7. 音大生ツール">
+      <Section id="admin" title="7. 管理者向け">
+        <ul className="list-disc list-inside space-y-1">
+          <li><Link to="/admin" className="text-primary-600 hover:underline">管理画面</Link>で公開/非公開、削除、編集用パスワード再設定を行います。</li>
+          <li>チラシ管理でサムネイル有無、PDF変換状況、未登録画像を確認します。</li>
+          <li>設定画面からスクレイピング、メンテナンス、バックアップを実行できます。</li>
+          <li>宣伝素材と投稿文面は GitHub の `docs/PROMOTION_KIT.md` にまとめています。</li>
+        </ul>
+      </Section>
+
+      <Section id="student-tools" title="8. 音大生ツール">
         <p>
           <Link to="/student-tools" className="text-primary-600 hover:underline">音大生ツール</Link>では、
           爆速メトロノーム、リアルタイムチューナー、移調メモを無料で使えます。
         </p>
       </Section>
 
-      <Section id="faq" title="8. よくある質問">
+      <Section id="faq" title="9. よくある質問">
         <FAQ q="無料ですか？" a="はい、完全無料です。" />
         <FAQ q="誰でも登録できますか？" a="はい、アカウント不要で登録できます。" />
         <FAQ q="パスワードを忘れました" a="管理者パスワードで編集画面に入れます。管理画面から新しい編集用パスワードを再設定することもできます。" />
-        <FAQ q="PDFをアップロードできますか？" a="はい。PDFは自動的に高品質なWebP画像に変換されます。" />
+        <FAQ q="PDFをアップロードできますか？" a="はい。PDFはページごとに高品質なWebP画像へ変換して表示できます。大きすぎるPDFは画像化してから使うと安定します。" />
       </Section>
     </div>
   );
@@ -150,6 +152,15 @@ function Screenshot({ src, alt, label }: { src: string; alt: string; label: stri
   return (
     <figure className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
       <img src={src} alt={alt} className="w-full aspect-[4/3] object-cover bg-stone-100" loading="lazy" />
+      <figcaption className="px-3 py-2 text-xs text-stone-500">{label}</figcaption>
+    </figure>
+  );
+}
+
+function PromoAsset({ src, alt, label }: { src: string; alt: string; label: string }) {
+  return (
+    <figure className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+      <img src={src} alt={alt} className="w-full aspect-[4/3] object-cover bg-stone-100" loading="eager" />
       <figcaption className="px-3 py-2 text-xs text-stone-500">{label}</figcaption>
     </figure>
   );
@@ -391,7 +402,7 @@ PC専用:
 1. ユーザーがファイル選択（JPEG/PNG/WebP/GIF/PDF）
 2. クライアントサイドで処理:
    - 画像: Canvas描画 → WebP変換（フル: 2000px/0.85品質, サムネ: 400px/0.7品質）
-   - PDF: pdfjs-dist で各ページをCanvas描画 → WebP変換（最大4ページ）
+   - PDF: pdfjs-dist で各ページをCanvas描画 → WebP変換（50MB以下、全ページ）
          1ページ目 → サムネイル生成
          各ページ → 個別WebP画像として保存
 3. FormData でサーバーにアップロード

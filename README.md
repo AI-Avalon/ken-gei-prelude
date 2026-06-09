@@ -20,6 +20,7 @@
 - **カレンダー連携** — Google / Apple / Outlook / TimeTree / Webcal購読
 - **SNS共有** — X, LINE, Facebook, QRコード
 - **地図・ルート案内** — Leaflet + OpenStreetMap（無料）
+- **宣伝キット** — Instagram / X / LINE / OGP / A4 / QR付き説明画像を同梱
 - **自動スクレイピング** — 大学公式サイトから演奏会情報を自動取得
 - **過去歴演奏会アーカイブ** — 2022年から現在までの全公演を収録
 
@@ -97,7 +98,7 @@
 
 ---
 
-## 📱 ページ構成（12ページ）
+## 📱 ページ構成（13公開ページ + 隠しページ）
 
 | パス | ページ | 説明 |
 |---|---|---|
@@ -112,7 +113,9 @@
 | `/contact` | お問い合わせ | 暗号化されたメッセージ送信 |
 | `/docs` | 使い方 | ユーザーガイド |
 | `/docs/api` | API仕様 | 開発者向けAPIドキュメント |
+| `/student-tools` | 音大生ツール | メトロノーム、チューナー、移調メモ |
 | `/about` | サイト情報 | コンセプト・制作者・技術スタック |
+| `/solfege/after-hours/86b7` | 隠しギャラリー | GitHub向け文書でのみ解説 |
 
 ---
 
@@ -161,6 +164,24 @@
 - **HMAC認証** — 管理者トークンは HMAC-SHA256 で検証
 - **入力サニタイズ** — DOMPurify でXSS防止
 - **暗号化お問い合わせ** — AES-GCM で問い合わせ内容を暗号化保存
+
+### 📣 宣伝キット
+
+サイト宣伝用の高画質素材を `public/promo/crescendo/` に保存しています。
+
+| 用途 | ファイル |
+|---|---|
+| Instagram 正方形 | `instagram-square.png` |
+| Instagram ストーリー | `instagram-story.png` |
+| X 横長 | `x-card.png` |
+| LINE配信 | `line-share.png` |
+| OGP | `ogp.png` |
+| A4説明チラシ | `a4-guide.jpg` |
+| QR付き案内 | `qr-guide.png` |
+| 登録手順 | `registration-flow.png` |
+| カレンダー連携 | `calendar-flow.png` |
+
+投稿文面と使い分けは [docs/PROMOTION_KIT.md](docs/PROMOTION_KIT.md) を参照してください。
 
 ---
 
@@ -245,6 +266,12 @@ npm run build
 
 # プレビュー
 npm run preview
+
+# 宣伝素材を再生成
+npm run promo:assets
+
+# Chromiumで主要ページを検証
+npm run smoke:chromium
 ```
 
 ---
@@ -267,16 +294,23 @@ ken-gei-prelude/
 │   ├── 0001_init.sql        # テーブル定義
 │   └── 0002_seed.sql        # 初期データ
 ├── scripts/
-│   └── scrape-historical.sh # 過去イベント一括取得スクリプト
+│   ├── generate-promo-assets.mjs # 宣伝素材生成
+│   └── scrape-historical.sh      # 過去イベント一括取得スクリプト
+├── public/
+│   └── promo/                # サイト宣伝画像・掲載例画像
+├── docs/
+│   ├── USER_GUIDE.md
+│   ├── PROMOTION_KIT.md
+│   └── EASTER_EGGS.md
 ├── src/
-│   ├── components/          # React コンポーネント (14個)
+│   ├── components/          # React コンポーネント
 │   │   ├── NavBar.tsx       # グラスモーフィズムナビ
 │   │   ├── Footer.tsx       # サイトフッター（管理者リンク含む）
 │   │   ├── ConcertForm.tsx  # 演奏会登録（GoogleMaps連携）
 │   │   ├── PricingEditor.tsx# 料金区分エディタ（プリセット付き）
 │   │   ├── ConcertCard.tsx  # 演奏会カード
 │   │   └── ...
-│   ├── pages/               # 12 ページコンポーネント
+│   ├── pages/               # 公開ページ + 隠しページ
 │   │   ├── HomePage.tsx     # ヒーロー + Upcoming
 │   │   ├── AdminPage.tsx    # 管理画面
 │   │   └── ...

@@ -19,7 +19,7 @@ interface Props {
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-const MAX_PDF_SIZE = 10 * 1024 * 1024;
+const MAX_PDF_SIZE = 50 * 1024 * 1024;
 
 export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload, onFilesReady, onThumbnailChange }: Props) {
   const [files, setFiles] = useState<FlyerFile[]>([]);
@@ -63,7 +63,7 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
     const maxSize = file.type === 'application/pdf' ? MAX_PDF_SIZE : MAX_IMAGE_SIZE;
     if (file.size > maxSize) {
       setError(file.type === 'application/pdf'
-        ? 'PDFのサイズが10MBを超えています'
+        ? 'PDFのサイズが50MBを超えています'
         : 'ファイルサイズが5MBを超えています。圧縮してから再度お試しください');
       return;
     }
@@ -265,7 +265,7 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
         ) : (
           <>
             <p className="text-stone-500">📎 クリックまたはドラッグ&ドロップ</p>
-            <p className="text-xs text-stone-400 mt-1">JPEG, PNG, WebP, GIF (5MB以下) / PDF (10MB以下, 全ページ変換)</p>
+            <p className="text-xs text-stone-400 mt-1">JPEG, PNG, WebP, GIF (5MB以下) / PDF (50MB以下, 全ページ変換)</p>
             {allPreviews.length > 0 && (
               <p className="text-xs text-primary-500 mt-1">追加の画像をアップロードできます</p>
             )}
