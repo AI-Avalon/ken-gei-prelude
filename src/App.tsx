@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import ToastContainer from './components/Toast';
 import Logo from './components/Logo';
 import { useIsMobile } from './hooks/useDevice';
+import LoadingMetronome from './components/LoadingMetronome';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const ConcertListPage = lazy(() => import('./pages/ConcertListPage'));
@@ -39,14 +40,8 @@ function NotFoundPage() {
 
 function PageFallback() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 space-y-4" aria-live="polite" aria-busy="true">
-      <div className="skeleton h-4 w-36" />
-      <div className="skeleton h-9 w-2/3" />
-      <div className="bg-white rounded-xl border border-stone-200/60 p-5 space-y-3">
-        <div className="skeleton h-4 w-full" />
-        <div className="skeleton h-4 w-3/4" />
-        <div className="skeleton h-4 w-1/2" />
-      </div>
+    <div className="max-w-3xl mx-auto px-4 py-16" aria-live="polite" aria-busy="true">
+      <LoadingMetronome label="ページを準備しています..." />
     </div>
   );
 }

@@ -6,6 +6,16 @@ import {
   buildFlyerUploadName,
   type FlyerFile,
 } from '../lib/flyers';
+import {
+  downloadFlyerAs,
+  formatBytes,
+  normalizeFlyerFiles,
+  processFlyerFile,
+  rotateFlyerFile,
+  validateFlyerFile,
+  type ProcessProgress,
+} from '../lib/flyerProcessing';
+import LoadingMetronome from './LoadingMetronome';
 
 interface Props {
   concertSlug?: string;
@@ -17,151 +27,70 @@ interface Props {
   onThumbnailChange?: (index: number) => void;
 }
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-const MAX_PDF_SIZE = 50 * 1024 * 1024;
-
 export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload, onFilesReady, onThumbnailChange }: Props) {
   const [files, setFiles] = useState<FlyerFile[]>([]);
   const [thumbnailIndex, setThumbnailIndex] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
-  const [pdfProgress, setPdfProgress] = useState('');
+  const [progress, setProgress] = useState<ProcessProgress | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const addFile = useCallback((f: FlyerFile) => {
-    setFiles((prev) => {
-      const next = [...prev, f];
-      onFilesReady?.(next);
-      return next;
-    });
-  }, [onFilesReady]);
-
-  const removeFile = useCallback((index: number) => {
-    setFiles((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      URL.revokeObjectURL(prev[index].previewUrl);
-      onFilesReady?.(next);
-      return next;
-    });
-    setThumbnailIndex((prev) => {
-      const next = prev === index ? 0 : prev > index ? prev - 1 : prev;
-      onThumbnailChange?.(next);
-      return next;
-    });
-  }, [onFilesReady, onThumbnailChange]);
+  const syncFiles = useCallback((nextFiles: FlyerFile[], nextThumb = thumbnailIndex) => {
+    const normalized = normalizeFlyerFiles(nextFiles);
+    const safeThumb = normalized.length === 0 ? 0 : Math.min(nextThumb, normalized.length - 1);
+    setFiles(normalized);
+    setThumbnailIndex(safeThumb);
+    onFilesReady?.(normalized);
+    onThumbnailChange?.(safeThumb);
+    return normalized;
+  }, [onFilesReady, onThumbnailChange, thumbnailIndex]);
 
   const processFile = useCallback(async (file: File) => {
     setError('');
-    setPdfProgress('');
+    setProgress(null);
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setError('対応していないファイル形式です。PDF、JPEG、PNG、WebPをアップロードしてください');
-      return;
-    }
-
-    const maxSize = file.type === 'application/pdf' ? MAX_PDF_SIZE : MAX_IMAGE_SIZE;
-    if (file.size > maxSize) {
-      setError(file.type === 'application/pdf'
-        ? 'PDFのサイズが50MBを超えています'
-        : 'ファイルサイズが5MBを超えています。圧縮してから再度お試しください');
+    const validationError = validateFlyerFile(file);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     try {
       setUploading(true);
+      const nextFiles = await processFlyerFile(file, setProgress);
 
-      if (file.type === 'application/pdf') {
-        await processPdf(file);
+      if (onFilesReady) {
+        setFiles((prev) => {
+          const normalized = normalizeFlyerFiles([...prev, ...nextFiles]);
+          onFilesReady(normalized);
+          onThumbnailChange?.(Math.min(thumbnailIndex, Math.max(0, normalized.length - 1)));
+          return normalized;
+        });
       } else {
-        const img = await loadImage(file);
-        const blob = await imageToWebP(img, 2000, 0.85);
-        const thumbnail = await imageToWebP(img, 400, 0.7);
-        const previewUrl = URL.createObjectURL(blob);
-        const groupId = crypto.randomUUID();
-
-        if (onFilesReady) {
-          // Staging mode — store locally
-          addFile({ blob, thumbnail, previewUrl, groupId, pageIndex: 0, pageTotal: 1 });
-        } else {
-          // Direct upload mode: first image is thumbnail by default
-          await uploadToServer(blob, thumbnail, groupId, 0, 1, true);
+        for (const [index, flyer] of normalizeFlyerFiles(nextFiles).entries()) {
+          await uploadToServer(flyer, index, index === 0);
         }
       }
     } catch {
       setError('ファイルの変換に失敗しました。別のファイルをお試しください');
     } finally {
       setUploading(false);
-      setPdfProgress('');
+      setProgress(null);
+      if (fileRef.current) fileRef.current.value = '';
     }
-  }, [concertSlug, onUpload, onFilesReady, addFile]);
+  }, [onFilesReady, onThumbnailChange, thumbnailIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const processPdf = async (file: File) => {
-    setPdfProgress('PDFを読み込み中...');
-
-    const pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const cdnBase = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}`;
-    const pdf = await pdfjsLib.getDocument({
-      data: arrayBuffer,
-      cMapUrl: `${cdnBase}/cmaps/`,
-      cMapPacked: true,
-      standardFontDataUrl: `${cdnBase}/standard_fonts/`,
-      useWorkerFetch: true,
-    }).promise;
-    const totalPages = pdf.numPages;
-    const groupId = crypto.randomUUID();
-
-    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      setPdfProgress(`ページ ${pageNum}/${totalPages} を変換中...`);
-      const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 3.0 });
-
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas not supported');
-
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
-
-      const blob = await canvasToWebP(canvas, 0.96);
-      const thumbnail = await createThumbnailFromCanvas(canvas, 560, 0.9);
-      const previewUrl = URL.createObjectURL(blob);
-
-      if (onFilesReady) {
-        addFile({
-          blob,
-          thumbnail,
-          previewUrl,
-          groupId,
-          pageIndex: pageNum - 1,
-          pageTotal: totalPages,
-        });
-      } else {
-        await uploadToServer(blob, thumbnail, groupId, pageNum - 1, totalPages, pageNum === 1);
-      }
-    }
-
-    setPdfProgress(`${totalPages}ページの変換完了！`);
-  };
-
-  const uploadToServer = async (blob: Blob, thumbnail: Blob, groupId: string, pageIndex = 0, pageTotal = 1, isThumb = false) => {
+  const uploadToServer = async (flyer: FlyerFile, sortIndex: number, isThumb = false) => {
     const formData = new FormData();
-    formData.append('file', blob, buildFlyerUploadName(groupId, pageIndex, pageIndex, pageTotal));
+    formData.append('file', flyer.blob, buildFlyerUploadName(flyer.groupId, sortIndex, flyer.pageIndex, flyer.pageTotal));
     if (isThumb) {
-      formData.append('thumbnail', thumbnail, buildFlyerThumbnailName(groupId, pageIndex, pageIndex, pageTotal));
+      formData.append('thumbnail', flyer.thumbnail, buildFlyerThumbnailName(flyer.groupId, sortIndex, flyer.pageIndex, flyer.pageTotal));
     }
     if (concertSlug) formData.append('concert_slug', concertSlug);
-    formData.append('group_id', groupId);
-    formData.append('page_index', String(pageIndex));
-    formData.append('page_total', String(pageTotal));
-    formData.append('sort_index', String(pageIndex));
+    formData.append('group_id', flyer.groupId);
+    formData.append('page_index', String(flyer.pageIndex));
+    formData.append('page_total', String(flyer.pageTotal));
+    formData.append('sort_index', String(sortIndex));
     formData.append('set_thumbnail', isThumb ? '1' : '0');
 
     const res = await uploadFlyer(formData);
@@ -170,6 +99,42 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
     } else {
       setError(res.error || 'アップロードに失敗しました');
     }
+  };
+
+  const removeFile = useCallback((index: number) => {
+    const removed = files[index];
+    if (removed) URL.revokeObjectURL(removed.previewUrl);
+    syncFiles(files.filter((_, i) => i !== index), thumbnailIndex === index ? 0 : thumbnailIndex > index ? thumbnailIndex - 1 : thumbnailIndex);
+  }, [files, syncFiles, thumbnailIndex]);
+
+  const moveFile = useCallback((index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= files.length) return;
+    const next = [...files];
+    [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+    const nextThumb = thumbnailIndex === index ? nextIndex : thumbnailIndex === nextIndex ? index : thumbnailIndex;
+    syncFiles(next, nextThumb);
+  }, [files, syncFiles, thumbnailIndex]);
+
+  const rotateFile = useCallback(async (index: number) => {
+    try {
+      setUploading(true);
+      setProgress({ phase: 'ページを回転しています...' });
+      const rotated = await rotateFlyerFile(files[index], 90);
+      const next = [...files];
+      next[index] = rotated;
+      syncFiles(next);
+    } catch {
+      setError('ページの回転に失敗しました');
+    } finally {
+      setUploading(false);
+      setProgress(null);
+    }
+  }, [files, syncFiles]);
+
+  const selectThumbnail = (index: number) => {
+    setThumbnailIndex(index);
+    onThumbnailChange?.(index);
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -183,12 +148,13 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
     if (file) processFile(file);
   };
 
-  const allPreviews = files.map((f) => f.previewUrl);
   const existingPreviewKeys = analyzeConcertFlyers(existingKeys).displayKeys;
+  const progressText = progress?.current && progress.total
+    ? `${progress.phase} ${progress.current}/${progress.total}`
+    : progress?.phase || '変換中...';
 
   return (
     <div>
-      {/* Existing server images */}
       {existingPreviewKeys.length > 0 && (
         <div className="mb-4">
           <p className="text-xs text-stone-500 mb-2">現在のチラシ</p>
@@ -203,53 +169,59 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
         </div>
       )}
 
-      {/* Local previews with thumbnail selection */}
-      {allPreviews.length > 0 && (
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {allPreviews.map((url, i) => (
-            <div
-              key={i}
-              className={`relative group cursor-pointer rounded border-2 transition-all ${
-                i === thumbnailIndex
-                  ? 'border-primary-500 shadow-md'
-                  : 'border-stone-200 hover:border-primary-300'
-              }`}
-              onClick={() => {
-                if (onFilesReady) {
-                  setThumbnailIndex(i);
-                  onThumbnailChange?.(i);
-                }
-              }}
-            >
-              <img src={url} alt={`プレビュー ${i + 1}`}
-                className="w-24 h-32 object-cover rounded" />
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); removeFile(i); }}
-                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+      {files.length > 0 && (
+        <div className="mb-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-stone-500">アップロード前にページを整えられます</p>
+            <p className="text-[11px] text-stone-400">PDF/画像は端末内でWebP化されます</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {files.map((file, i) => (
+              <div
+                key={file.previewUrl}
+                className={`rounded-lg border bg-white p-2 shadow-sm transition-all ${
+                  i === thumbnailIndex ? 'border-primary-500 ring-2 ring-primary-200' : 'border-stone-200'
+                }`}
               >
-                ×
-              </button>
-              {i === thumbnailIndex ? (
-                <span className="absolute bottom-0 left-0 right-0 bg-primary-600/80 text-white text-[9px] text-center py-0.5 font-medium rounded-b">
-                  ⭐ サムネイル
-                </span>
-              ) : onFilesReady ? (
-                <span className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] text-center py-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-b">
-                  タップして設定
-                </span>
-              ) : null}
-            </div>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => selectThumbnail(i)}
+                  className="block w-full overflow-hidden rounded bg-stone-50"
+                  aria-label={`ページ ${i + 1} をサムネイルにする`}
+                >
+                  <img src={file.previewUrl} alt={`プレビュー ${i + 1}`}
+                    className="h-40 w-full object-contain" />
+                </button>
+                <div className="mt-2 flex items-center justify-between text-[11px] text-stone-500">
+                  <span>ページ {i + 1}</span>
+                  <span>{formatBytes(file.blob.size)}</span>
+                </div>
+                {i === thumbnailIndex && (
+                  <div className="mt-1 rounded bg-primary-600 px-2 py-1 text-center text-[10px] font-medium text-white">
+                    サムネイル
+                  </div>
+                )}
+                <div className="mt-2 grid grid-cols-4 gap-1">
+                  <IconButton label="前へ" disabled={i === 0} onClick={() => moveFile(i, -1)}>←</IconButton>
+                  <IconButton label="次へ" disabled={i === files.length - 1} onClick={() => moveFile(i, 1)}>→</IconButton>
+                  <IconButton label="回転" onClick={() => rotateFile(i)}>↻</IconButton>
+                  <IconButton label="削除" onClick={() => removeFile(i)}>×</IconButton>
+                </div>
+                <div className="mt-1 grid grid-cols-2 gap-1">
+                  <SmallButton onClick={() => downloadFlyerAs(file, 'png', `crescendo-page-${i + 1}.png`)}>PNG保存</SmallButton>
+                  <SmallButton onClick={() => downloadFlyerAs(file, 'webp', `crescendo-page-${i + 1}.webp`)}>WebP保存</SmallButton>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Drop zone */}
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
-        onClick={() => fileRef.current?.click()}
-        className="border-2 border-dashed border-stone-300 rounded-lg p-8 text-center cursor-pointer
+        onClick={() => !uploading && fileRef.current?.click()}
+        className="border-2 border-dashed border-stone-300 rounded-lg p-7 text-center cursor-pointer
                    hover:border-primary-400 hover:bg-primary-50 transition-colors"
       >
         <input
@@ -261,14 +233,12 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
           className="hidden"
         />
         {uploading ? (
-          <p className="text-primary-600">{pdfProgress || '変換中...'}</p>
+          <LoadingMetronome label={progressText} compact />
         ) : (
           <>
-            <p className="text-stone-500">📎 クリックまたはドラッグ&ドロップ</p>
-            <p className="text-xs text-stone-400 mt-1">JPEG, PNG, WebP, GIF (5MB以下) / PDF (50MB以下, 全ページ変換)</p>
-            {allPreviews.length > 0 && (
-              <p className="text-xs text-primary-500 mt-1">追加の画像をアップロードできます</p>
-            )}
+            <p className="text-stone-600 font-medium">クリックまたはドラッグ&ドロップ</p>
+            <p className="text-xs text-stone-400 mt-1">JPEG, PNG, WebP, GIF (5MB以下) / PDF (50MB以下)</p>
+            <p className="text-xs text-primary-600 mt-1">PDFはスマホ・PC内でページごとに画像化してから送信します</p>
           </>
         )}
       </div>
@@ -278,76 +248,39 @@ export default function FlyerUploader({ concertSlug, existingKeys = [], onUpload
   );
 }
 
-function loadImage(file: File): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = URL.createObjectURL(file);
-  });
+function IconButton({
+  children,
+  label,
+  disabled,
+  onClick,
+}: {
+  children: React.ReactNode;
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="rounded border border-stone-200 bg-stone-50 px-2 py-1 text-xs text-stone-700 disabled:opacity-30 hover:bg-primary-50"
+    >
+      {children}
+    </button>
+  );
 }
 
-function imageToWebP(img: HTMLImageElement, maxSize: number, quality: number): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas');
-    let { width, height } = img;
-
-    if (Math.max(width, height) > maxSize) {
-      const ratio = maxSize / Math.max(width, height);
-      width = Math.round(width * ratio);
-      height = Math.round(height * ratio);
-    }
-
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return reject(new Error('Canvas not supported'));
-    ctx.drawImage(img, 0, 0, width, height);
-    canvas.toBlob(
-      (blob) => blob ? resolve(blob) : reject(new Error('Conversion failed')),
-      'image/webp',
-      quality
-    );
-  });
-}
-
-function canvasToWebP(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => blob ? resolve(blob) : reject(new Error('Conversion failed')),
-      'image/webp',
-      quality
-    );
-  });
-}
-
-function createThumbnailFromCanvas(canvas: HTMLCanvasElement, maxSize: number, quality: number): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const thumbCanvas = document.createElement('canvas');
-    let width = canvas.width;
-    let height = canvas.height;
-
-    if (Math.max(width, height) > maxSize) {
-      const ratio = maxSize / Math.max(width, height);
-      width = Math.round(width * ratio);
-      height = Math.round(height * ratio);
-    }
-
-    thumbCanvas.width = width;
-    thumbCanvas.height = height;
-    const ctx = thumbCanvas.getContext('2d');
-    if (!ctx) {
-      reject(new Error('Canvas not supported'));
-      return;
-    }
-
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
-    ctx.drawImage(canvas, 0, 0, width, height);
-    thumbCanvas.toBlob(
-      (blob) => blob ? resolve(blob) : reject(new Error('Thumbnail failed')),
-      'image/webp',
-      quality
-    );
-  });
+function SmallButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded border border-stone-200 bg-white px-2 py-1 text-[10px] text-stone-600 hover:border-primary-300 hover:text-primary-700"
+    >
+      {children}
+    </button>
+  );
 }

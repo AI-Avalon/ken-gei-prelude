@@ -6,6 +6,7 @@ import { createConcert, uploadFlyer, fetchSiteSettings } from '../lib/api';
 import { buildFlyerThumbnailName, buildFlyerUploadName, type FlyerFile } from '../lib/flyers';
 import { toast } from '../components/Toast';
 import { useIsMobile } from '../hooks/useDevice';
+import LoadingMetronome from '../components/LoadingMetronome';
 
 // Haversine distance (km)
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -155,7 +156,7 @@ export default function UploadPage() {
   if (!settingsLoaded) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-7 h-7 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+        <LoadingMetronome label="登録ページを準備しています..." />
       </div>
     );
   }
@@ -169,7 +170,9 @@ export default function UploadPage() {
     if (locationState.status === 'checking') {
       return (
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+          <div className="flex-shrink-0">
+            <LoadingMetronome label="" compact />
+          </div>
           <div>
             <p className="font-medium text-sm text-amber-800">位置情報を確認しています...</p>
             <p className="text-xs text-amber-600 mt-0.5">室内楽ホールから{radiusKm}km以内からのみ登録できます</p>

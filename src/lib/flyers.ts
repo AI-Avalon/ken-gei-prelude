@@ -6,6 +6,8 @@ export interface FlyerFile {
   pageIndex: number;
   pageTotal: number;
   sourcePdfKey?: string;
+  sourceName?: string;
+  rotation?: number;
 }
 
 type FlyerKind = 'converted-page' | 'image' | 'pdf' | 'other';

@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Concert } from '../types';
 import { googleCalendarUrl, outlookCalendarUrl, yahooCalendarUrl, downloadICS } from '../lib/utils';
-import { SITE_URL } from '../lib/constants';
+import { CATEGORIES, SITE_URL } from '../lib/constants';
 import { toast } from './Toast';
 
 interface Props {
@@ -36,15 +36,18 @@ export default function CalendarAddDropdown({ concert }: Props) {
   }, []);
 
   const host = SITE_URL.replace(/^https?:\/\//, '');
-  const webcalAllUrl = `webcal://${host}/api/feed/ics`;
-  const httpsIcsUrl = `${SITE_URL}/api/feed/ics`;
-  // Google Calendar の cid には webcal:// URL を渡す（https:// よりも確実に同期される）
-  const googleSubUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcalAllUrl)}`;
+  const feedUrl = (category = '', scheme: 'webcal' | 'https' = 'https') => {
+    const query = category ? `?category=${encodeURIComponent(category)}` : '';
+    return scheme === 'webcal'
+      ? `webcal://${host}/api/feed/ics${query}`
+      : `${SITE_URL}/api/feed/ics${query}`;
+  };
+  const googleSubUrl = (category = '') => `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(feedUrl(category, 'webcal'))}`;
 
   const { isAndroid, isIOS, isMac } = detectPlatform();
 
-  const copyIcsUrl = () => {
-    navigator.clipboard.writeText(httpsIcsUrl).then(() => {
+  const copyIcsUrl = (category = '') => {
+    navigator.clipboard.writeText(feedUrl(category)).then(() => {
       toast('カレンダーURLをコピーしました', 'success');
     }).catch(() => {
       toast('コピーに失敗しました', 'error');
@@ -93,34 +96,12 @@ export default function CalendarAddDropdown({ concert }: Props) {
     },
   ].filter((item) => !item.hidden);
 
-  // 全演奏会をカレンダーに同期
-  const syncItems = [
-    {
-      label: 'Google カレンダーと同期',
-      icon: '📅',
-      description: 'すべての端末で使えます',
-      onClick: () => window.open(googleSubUrl, '_blank'),
-    },
-    // iOS / macOS のみ webcal:// を使う
-    ...(!isAndroid ? [{
-      label: isIOS ? 'Apple カレンダーに登録' : 'Apple / iCal に登録',
-      icon: '🍎',
-      description: `${isIOS ? 'iPhone / iPad' : 'Mac'} のカレンダーアプリ`,
-      onClick: () => { window.location.href = webcalAllUrl; },
-    }] : []),
-    // デスクトップのみ Outlook
-    ...(!isIOS && !isAndroid ? [{
-      label: 'Outlookに登録',
-      icon: '📧',
-      description: 'デスクトップアプリに連携',
-      onClick: () => { window.location.href = webcalAllUrl; },
-    }] : []),
-    {
-      label: 'カレンダーURLをコピー',
-      icon: '🔗',
-      description: 'その他のアプリへ貼り付け',
-      onClick: copyIcsUrl,
-    },
+  const feedChoices = [
+    { label: 'すべて', value: '', description: '公開中の全演奏会' },
+    { label: CATEGORIES.self_planned.label, value: 'self_planned', description: '学生の自主企画を中心に受け取る' },
+    { label: CATEGORIES.daigaku.label, value: 'daigaku', description: '大学主催だけを受け取る' },
+    { label: CATEGORIES.major_teiki.label, value: 'major_teiki', description: '専攻定期だけを受け取る' },
+    { label: '室内楽/アンサンブル', value: 'chamber,ensemble', description: '小編成の演奏会を受け取る' },
   ];
 
   return (
@@ -158,26 +139,50 @@ export default function CalendarAddDropdown({ concert }: Props) {
 
           <div className="border-t border-stone-200 my-1" />
 
-          {/* すべての演奏会をまとめて登録 */}
+          {/* カレンダー同期 */}
           <div className="px-4 pt-2 pb-1">
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">🔄 すべての演奏会をまとめて登録</span>
+            <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">🔄 受け取る演奏会を選んで同期</span>
           </div>
-          <p className="px-4 pb-1 text-xs text-stone-400">新しい演奏会が追加されると自動でカレンダーに反映されます</p>
-          {syncItems.map((item, i) => (
-            <button
-              key={`a-${i}`}
-              type="button"
-              onClick={() => { item.onClick(); setOpen(false); }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-accent-50 flex items-center gap-3 transition-colors"
-            >
-              <span className="text-lg">{item.icon}</span>
-              <div>
-                <div>{item.label}</div>
-                {item.description && (
-                  <div className="text-xs text-stone-400">{item.description}</div>
+          <p className="px-4 pb-1 text-xs text-stone-400">新しい演奏会が追加されると、選んだ範囲だけ反映されます</p>
+          {feedChoices.map((choice) => (
+            <div key={choice.value || 'all'} className="px-3 py-2 hover:bg-accent-50 transition-colors">
+              <div className="mb-1 text-sm font-medium text-stone-800">{choice.label}</div>
+              <div className="mb-2 text-xs text-stone-400">{choice.description}</div>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => { window.open(googleSubUrl(choice.value), '_blank'); setOpen(false); }}
+                  className="rounded-full bg-white border border-stone-200 px-2.5 py-1 text-[11px] text-stone-700 hover:border-primary-300"
+                >
+                  Google
+                </button>
+                {!isAndroid && (
+                  <button
+                    type="button"
+                    onClick={() => { window.location.href = feedUrl(choice.value, 'webcal'); setOpen(false); }}
+                    className="rounded-full bg-white border border-stone-200 px-2.5 py-1 text-[11px] text-stone-700 hover:border-primary-300"
+                  >
+                    {isIOS || isMac ? 'Apple' : 'Apple/iCal'}
+                  </button>
                 )}
+                {!isIOS && !isAndroid && (
+                  <button
+                    type="button"
+                    onClick={() => { window.location.href = feedUrl(choice.value, 'webcal'); setOpen(false); }}
+                    className="rounded-full bg-white border border-stone-200 px-2.5 py-1 text-[11px] text-stone-700 hover:border-primary-300"
+                  >
+                    Outlook
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { copyIcsUrl(choice.value); setOpen(false); }}
+                  className="rounded-full bg-white border border-stone-200 px-2.5 py-1 text-[11px] text-stone-700 hover:border-primary-300"
+                >
+                  URLコピー
+                </button>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}

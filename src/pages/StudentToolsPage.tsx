@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useIsMobile } from '../hooks/useDevice';
+import type { FlyerFile } from '../lib/flyers';
+import { downloadFlyerAs, formatBytes, processFlyerFile, rotateFlyerFile, validateFlyerFile } from '../lib/flyerProcessing';
+import LoadingMetronome from '../components/LoadingMetronome';
 
 const NOTES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 const JP_NOTES = ['ド', 'レb', 'レ', 'ミb', 'ミ', 'ファ', 'ソb', 'ソ', 'ラb', 'ラ', 'シb', 'シ'];
@@ -301,7 +304,102 @@ export default function StudentToolsPage() {
             書いてある音を同じ半音幅で動かすと <span className="font-bold text-stone-900">{writtenToSounding}</span>。
           </div>
         </section>
+
+        <FlyerConvertTool />
       </div>
     </div>
+  );
+}
+
+function FlyerConvertTool() {
+  const [pages, setPages] = useState<FlyerFile[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    const error = validateFlyerFile(file);
+    if (error) {
+      setMessage(error);
+      return;
+    }
+    try {
+      setBusy(true);
+      setMessage('端末内で変換しています...');
+      pages.forEach((page) => URL.revokeObjectURL(page.previewUrl));
+      const next = await processFlyerFile(file, (progress) => {
+        setMessage(progress.current && progress.total ? `${progress.phase} ${progress.current}/${progress.total}` : progress.phase);
+      });
+      setPages(next);
+      setMessage(`${next.length}ページを変換しました`);
+    } catch {
+      setMessage('変換に失敗しました。別のPDFまたは画像をお試しください。');
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  const rotatePage = async (index: number) => {
+    try {
+      setBusy(true);
+      const rotated = await rotateFlyerFile(pages[index], 90);
+      setPages((prev) => prev.map((page, i) => i === index ? rotated : page));
+    } catch {
+      setMessage('ページの回転に失敗しました');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="bg-white rounded-xl border border-stone-200/70 p-5 shadow-sm lg:col-span-2">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-bold text-stone-900">PDF/画像変換</h2>
+          <p className="text-xs text-stone-500 mt-1">PDFをページごとにPNG/WebP保存できます。ファイルは端末内だけで処理されます。</p>
+        </div>
+        <button type="button" onClick={() => inputRef.current?.click()} className="btn-secondary text-sm">
+          ファイルを選ぶ
+        </button>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) handleFile(file);
+        }}
+      />
+      {busy ? (
+        <div className="rounded-xl bg-primary-50 border border-primary-100 p-5">
+          <LoadingMetronome label={message || '変換中...'} compact />
+        </div>
+      ) : pages.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-6 text-center text-sm text-stone-500">
+          PDF、JPEG、PNG、WebP、GIFを選ぶと、ここに変換結果が表示されます。
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {pages.map((page, index) => (
+            <div key={page.previewUrl} className="rounded-lg border border-stone-200 bg-stone-50 p-2">
+              <img src={page.previewUrl} alt={`変換ページ ${index + 1}`} className="h-36 w-full rounded bg-white object-contain" />
+              <div className="mt-2 flex items-center justify-between text-[11px] text-stone-500">
+                <span>ページ {index + 1}</span>
+                <span>{formatBytes(page.blob.size)}</span>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-1">
+                <button type="button" onClick={() => rotatePage(index)} className="rounded border bg-white px-2 py-1 text-[10px]">回転</button>
+                <button type="button" onClick={() => downloadFlyerAs(page, 'png', `crescendo-tool-${index + 1}.png`)} className="rounded border bg-white px-2 py-1 text-[10px]">PNG</button>
+                <button type="button" onClick={() => downloadFlyerAs(page, 'webp', `crescendo-tool-${index + 1}.webp`)} className="rounded border bg-white px-2 py-1 text-[10px]">WebP</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {message && !busy && <p className="mt-3 text-xs text-stone-500">{message}</p>}
+    </section>
   );
 }

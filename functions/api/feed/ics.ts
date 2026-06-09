@@ -6,11 +6,22 @@ interface Env {
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
-  const { env } = context;
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const categories = (url.searchParams.get('category') || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
-  const results = await env.DB.prepare(
-    'SELECT * FROM concerts WHERE is_published = 1 AND is_deleted = 0 ORDER BY date ASC'
-  ).all();
+  let where = 'WHERE is_published = 1 AND is_deleted = 0';
+  const params: string[] = [];
+  if (categories.length > 0) {
+    where += ` AND category IN (${categories.map(() => '?').join(',')})`;
+    params.push(...categories);
+  }
+
+  const statement = env.DB.prepare(`SELECT * FROM concerts ${where} ORDER BY date ASC`);
+  const results = params.length > 0 ? await statement.bind(...params).all() : await statement.all();
 
   const events = (results.results || []).map((row) => {
     const startDate = (row.date as string).replace(/-/g, '');
@@ -48,7 +59,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     'VERSION:2.0',
     'PRODID:-//Crescendo//JP',
     'CALSCALE:GREGORIAN',
-    'X-WR-CALNAME:Crescendo 演奏会',
+    `X-WR-CALNAME:${escapeICS(calendarName(categories))}`,
     'X-WR-TIMEZONE:Asia/Tokyo',
     ...events,
     'END:VCALENDAR',
@@ -63,6 +74,30 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     },
   });
 };
+
+const CATEGORY_LABELS: Record<string, string> = {
+  teiki: '定期演奏会',
+  major_teiki: '専攻定期',
+  self_planned: '自主企画',
+  sotsugyou: '卒業演奏会',
+  gakui: '学位審査演奏会',
+  recital: 'リサイタル',
+  chamber: '室内楽',
+  orchestra: 'オーケストラ',
+  ensemble: 'アンサンブル',
+  opera: 'オペラ',
+  wind: '吹奏楽',
+  vocal: '声楽',
+  piano: 'ピアノ',
+  daigaku: '大学主催',
+  other: 'その他',
+};
+
+function calendarName(categories: string[]): string {
+  if (categories.length === 0) return 'Crescendo 演奏会';
+  const labels = categories.map((category) => CATEGORY_LABELS[category] || category);
+  return `Crescendo ${labels.join('・')}`;
+}
 
 function escapeICS(text: string): string {
   return text.replace(/[\\;,\n]/g, (c) => {

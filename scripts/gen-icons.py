@@ -1,55 +1,90 @@
 #!/usr/bin/env python3
-"""Generate favicon PNG icons for Crescendo"""
-from PIL import Image, ImageDraw
+"""Generate PNG icons for Crescendo."""
+from PIL import Image, ImageDraw, ImageFilter
 import math
 
-def create_icon(size):
-    img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    
-    cx, cy, r = size/2, size/2, size/2
+
+def lerp(a, b, t):
+    return int(a + (b - a) * t)
+
+
+def draw_gradient_circle(img, size):
+    px = img.load()
+    cx, cy = size * 0.44, size * 0.38
     for y in range(size):
         for x in range(size):
-            dx, dy = x - cx, y - cy
-            if dx*dx + dy*dy <= r*r:
-                t = (x + y) / (2 * size)
-                rb = int(15 + t * 11)
-                gb = int(18 + t * 13)
-                bb = int(37 + t * 24)
-                img.putpixel((x, y), (rb, gb, bb, 255))
-    
-    gold = (196, 171, 110, 255)
-    s = size / 512
-    
-    # Crescendo wedge
-    points_top = [(int((120 + (280-120)*t/49) * s), int((160 + (256-160)*t/49) * s)) for t in range(50)]
-    points_bot = [(int((120 + (280-120)*t/49) * s), int((352 + (256-352)*t/49) * s)) for t in range(50)]
-    lw = max(2, int(14 * s))
-    draw.line(points_top, fill=gold, width=lw)
-    draw.line(points_bot, fill=gold, width=lw)
-    
-    # Note head
-    note_cx, note_cy = int(370*s), int(300*s)
-    note_rx, note_ry = int(38*s), int(28*s)
-    draw.ellipse([note_cx-note_rx, note_cy-note_ry, note_cx+note_rx, note_cy+note_ry], fill=gold)
-    
-    # Note stem
-    stem_x = int(398*s)
-    stem_w = max(2, int(10*s))
-    draw.rectangle([stem_x, int(160*s), stem_x + stem_w, int(302*s)], fill=gold)
-    
-    # Flag
-    flag_x = stem_x + max(1, int(5*s))
-    for i in range(max(1, int(25*s))):
-        fx = flag_x + int(math.sin(i / max(1, int(15*s)) * math.pi) * 15 * s)
-        fy = int(160*s) + i
-        rr = max(1, int(4*s))
-        draw.ellipse([fx-rr, fy-rr, fx+rr, fy+rr], fill=gold)
-    
-    return img
+            dx = x - size / 2
+            dy = y - size / 2
+            if dx * dx + dy * dy > (size / 2) ** 2:
+                continue
+            glow = max(0, 1 - math.hypot(x - cx, y - cy) / (size * 0.72))
+            edge = math.hypot(dx, dy) / (size / 2)
+            r = lerp(8, 32, glow) - int(edge * 2)
+            g = lerp(10, 38, glow) - int(edge * 3)
+            b = lerp(21, 74, glow) - int(edge * 6)
+            px[x, y] = (max(0, r), max(0, g), max(0, b), 255)
 
-icon_192 = create_icon(192)
-icon_512 = create_icon(512)
-icon_192.save('public/icon-192.png')
-icon_512.save('public/icon-512.png')
-print('Icons generated: icon-192.png, icon-512.png')
+
+def crescent_path(size):
+    s = size / 512
+    top = []
+    bottom = []
+    for i in range(64):
+        t = i / 63
+        x = (132 + 188 * t) * s
+        y = (180 + 76 * (t ** 0.92)) * s
+        top.append((x, y))
+        bottom.append((x, (332 - 76 * (t ** 0.92)) * s))
+    return top, bottom
+
+
+def create_icon(size):
+    scale = 4
+    canvas_size = size * scale
+    img = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
+    draw_gradient_circle(img, canvas_size)
+    draw = ImageDraw.Draw(img)
+    s = canvas_size / 512
+
+    gold = (196, 171, 110, 255)
+    light = (241, 223, 155, 210)
+    shadow = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
+
+    top, bottom = crescent_path(canvas_size)
+    wedge = top + list(reversed(bottom))
+    sd.line(top, fill=(0, 0, 0, 110), width=max(8, int(34 * s)), joint="curve")
+    sd.line(bottom, fill=(0, 0, 0, 110), width=max(8, int(34 * s)), joint="curve")
+    shadow = shadow.filter(ImageFilter.GaussianBlur(max(2, int(7 * s))))
+    img.alpha_composite(shadow)
+
+    draw.line(top, fill=gold, width=max(8, int(28 * s)), joint="curve")
+    draw.line(bottom, fill=gold, width=max(8, int(28 * s)), joint="curve")
+    mid = [((146 + 214 * (i / 63)) * s, (226 + 60 * math.sin((i / 63) * math.pi / 2)) * s) for i in range(64)]
+    draw.line(mid, fill=light, width=max(3, int(11 * s)), joint="curve")
+
+    # Note head and stem
+    note_cx, note_cy = int(380 * s), int(318 * s)
+    note_rx, note_ry = int(36 * s), int(27 * s)
+    draw.ellipse([note_cx - note_rx, note_cy - note_ry, note_cx + note_rx, note_cy + note_ry], fill=gold)
+    stem_x = int(402 * s)
+    draw.rounded_rectangle([stem_x - int(7 * s), int(154 * s), stem_x + int(7 * s), int(318 * s)], radius=int(7 * s), fill=gold)
+    flag = [
+        (stem_x, int(158 * s)),
+        (int(438 * s), int(168 * s)),
+        (int(438 * s), int(206 * s)),
+        (int(412 * s), int(181 * s)),
+        (stem_x, int(178 * s)),
+    ]
+    draw.polygon(flag, fill=gold)
+
+    # Soft lower arc: a portal/listening horizon.
+    draw.arc([int(104 * s), int(304 * s), int(408 * s), int(442 * s)], 18, 162, fill=(196, 171, 110, 95), width=max(2, int(5 * s)))
+
+    return img.resize((size, size), Image.Resampling.LANCZOS)
+
+
+for icon_size in (192, 512):
+    create_icon(icon_size).save(f"public/icon-{icon_size}.png")
+
+print("Icons generated: icon-192.png, icon-512.png")

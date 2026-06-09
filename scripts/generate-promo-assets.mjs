@@ -115,10 +115,11 @@ function brandMark(x, y, scale = 1) {
   return `
     <g transform="translate(${x} ${y}) scale(${scale})">
       <circle cx="34" cy="34" r="34" fill="${colors.navy}"/>
-      <path d="M21 43c12-3 19-10 24-22" fill="none" stroke="${colors.gold}" stroke-width="4" stroke-linecap="round"/>
-      <circle cx="51" cy="19" r="4" fill="${colors.gold}"/>
-      <path d="M47 20v28" stroke="${colors.gold}" stroke-width="3" stroke-linecap="round"/>
-      <path d="M47 31c8-1 12 2 13 7" fill="none" stroke="${colors.gold}" stroke-width="3" stroke-linecap="round"/>
+      <path d="M17 26c14 5 26 10 38 8-12 4-24 10-38 16" fill="none" stroke="${colors.gold}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M19 35c15 1 26 1 42 0" fill="none" stroke="#f1df9b" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+      <circle cx="51" cy="46" r="5.5" fill="${colors.gold}"/>
+      <path d="M55 45V17" stroke="${colors.gold}" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M55 18c7-1 11 3 10 9-3-4-6-5-10-5" fill="${colors.gold}"/>
     </g>`;
 }
 
@@ -148,12 +149,13 @@ async function makeSquare() {
     ${brandMark(86, 78, 1.05)}
     ${textBlock([SITE_TITLE], { x: 185, y: 124, size: 58, color: colors.gold, weight: 700, family: 'Cormorant Garamond, Georgia, serif' })}
     ${textBlock([SITE_SUBTITLE], { x: 187, y: 168, size: 24, color: '#d8d0c2', weight: 500 })}
-    ${textBlock(['演奏会を、', 'もっと見つけやすく。'], { x: 88, y: 355, size: 82, color: colors.white, weight: 800, lineHeight: 1.15 })}
-    ${textBlock(['探す・登録する・共有する・カレンダーに入れる。', 'チラシもQRも、スマホでそのまま届けられます。'], { x: 92, y: 570, size: 31, color: '#ede7d8', weight: 500, lineHeight: 1.55 })}
-    ${featurePills(['演奏会一覧', '登録無料', 'SNS共有', 'カレンダー同期'], 90, 710, 29)}
-    ${roundedRect(760, 760, 224, 224, 30, colors.white)}
-    <image href="${qrData}" x="787" y="787" width="170" height="170"/>
-    ${textBlock(['今すぐ見る'], { x: 872, y: 1010, size: 26, color: colors.gold, weight: 700, anchor: 'middle' })}
+    ${roundedRect(102, 292, 640, 520, 46, 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.20)', 2)}
+    ${textBlock(['その演奏会、', '今日から見つかる。'], { x: 88, y: 380, size: 78, color: colors.white, weight: 850, lineHeight: 1.15 })}
+    ${textBlock(['チラシを入れて、URLを届けるだけ。'], { x: 92, y: 605, size: 32, color: '#ede7d8', weight: 600 })}
+    ${featurePills(['登録無料', 'チラシ表示', 'QR共有', '予定表へ'], 90, 705, 28)}
+    ${roundedRect(770, 704, 238, 238, 32, colors.white)}
+    <image href="${qrData}" x="799" y="733" width="180" height="180"/>
+    ${textBlock(['登録する'], { x: 889, y: 982, size: 28, color: colors.gold, weight: 800, anchor: 'middle' })}
     ${textBlock(['ken-gei-prelude.pages.dev'], { x: 90, y: 995, size: 28, color: '#d8d0c2', weight: 600 })}
   `, colors.navy);
   await renderSvg(join(outCrescendo, 'instagram-square.png'), width, height, svg);
@@ -169,10 +171,10 @@ async function makeStory() {
     <path d="M0 1280 C260 1160 470 1430 760 1290 C930 1210 1010 1040 1080 960 L1080 1920 L0 1920 Z" fill="${colors.gold}" opacity="0.16"/>
     ${brandMark(88, 90, 1.15)}
     ${textBlock([SITE_TITLE], { x: 196, y: 142, size: 62, color: colors.gold, weight: 700, family: 'Cormorant Garamond, Georgia, serif' })}
-    ${textBlock(['演奏会情報を', 'ひとつの場所に。'], { x: 88, y: 410, size: 100, color: colors.white, weight: 850, lineHeight: 1.14 })}
-    ${textBlock(['愛知県立芸術大学の演奏会を', '探す / 登録する / 共有する / カレンダー同期'], { x: 92, y: 720, size: 38, color: '#efe8d8', weight: 600, lineHeight: 1.55 })}
-    ${roundedRect(90, 930, 900, 390, 46, 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.20)', 2)}
-    ${textBlock(['1. 演奏会を登録', '2. チラシをアップロード', '3. QRやSNSで共有', '4. 来場者はカレンダーへ追加'], { x: 148, y: 1014, size: 42, color: colors.white, weight: 700, lineHeight: 1.75 })}
+    ${textBlock(['載せた瞬間、', '届きはじめる。'], { x: 88, y: 410, size: 98, color: colors.white, weight: 850, lineHeight: 1.14 })}
+    ${textBlock(['チラシ、QR、SNS、予定表まで。', '演奏会ページを無料で作れます。'], { x: 92, y: 720, size: 38, color: '#efe8d8', weight: 600, lineHeight: 1.55 })}
+    ${roundedRect(90, 930, 900, 310, 46, 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.20)', 2)}
+    ${textBlock(['ポスターができたら', 'Crescendoに登録。'], { x: 148, y: 1040, size: 54, color: colors.white, weight: 850, lineHeight: 1.3 })}
     ${roundedRect(340, 1450, 400, 400, 42, colors.white)}
     <image href="${qrData}" x="382" y="1492" width="316" height="316"/>
     ${textBlock(['無料で使える演奏会ポータル'], { x: 540, y: 1380, size: 39, color: colors.gold, weight: 800, anchor: 'middle' })}
@@ -187,22 +189,22 @@ async function makeWideCards() {
       file: 'x-card.png',
       width: 1600,
       height: 900,
-      title: ['演奏会を探す、登録する、届ける。'],
-      body: ['Crescendo は愛知県立芸術大学の演奏会情報ポータル。', 'チラシ、SNS共有、QRコード、カレンダー連携までひとまとめ。'],
+      title: ['演奏会ページを', 'すぐ作れる。'],
+      body: ['チラシを入れて、URLとQRでそのまま告知。', '登録無料、スマホで完結。'],
     },
     {
       file: 'ogp.png',
       width: 1200,
       height: 630,
       title: ['Crescendo'],
-      body: ['愛知県立芸術大学 演奏会情報ポータル', '演奏会を見つける。登録する。共有する。'],
+      body: ['愛知県立芸術大学 演奏会情報ポータル', '登録した演奏会を、見つけてもらえる場所へ。'],
     },
     {
       file: 'line-share.png',
       width: 1200,
       height: 1200,
-      title: ['演奏会情報を', 'LINEでもすぐ共有'],
-      body: ['登録無料 / QR対応 / カレンダー同期', 'チラシ画像も見やすく表示できます。'],
+      title: ['この演奏会、', '見に来てほしい。'],
+      body: ['登録無料 / QR対応 / 予定表に追加', 'チラシごと、きれいに届けられます。'],
     },
   ];
 
@@ -229,10 +231,10 @@ async function makeWideCards() {
 
 async function makeGuideImages() {
   const guideCards = [
-    ['1', '演奏会を登録', ['タイトル、日付、開演、会場、料金を入力']],
-    ['2', 'チラシを追加', ['PDFや画像をアップロード', '表/裏の複数ページにも対応']],
-    ['3', '詳細ページを共有', ['URL、QR、LINE、X、', 'Instagram用文面で告知']],
-    ['4', 'カレンダーへ同期', ['Google / Apple / Outlook /', 'TimeTree に追加']],
+    ['1', '基本情報', ['日付と会場だけでも始められる']],
+    ['2', 'チラシ', ['PDFもスマホ内で画像化']],
+    ['3', '共有', ['URLとQRですぐ告知']],
+    ['4', '予定表', ['カテゴリ別に受け取れる']],
   ];
   const flow = guideCards.map(([n, title, bodyLines], i) => {
     const x = 95 + (i % 2) * 720;
@@ -248,25 +250,25 @@ async function makeGuideImages() {
 
   const registration = baseSvg(1600, 1200, `
     ${brandMark(90, 70, 0.9)}
-    ${textBlock(['Crescendo 登録の流れ'], { x: 172, y: 116, size: 50, color: colors.ink, weight: 850 })}
-    ${textBlock(['ポスターができたら、まずは基本情報だけでも掲載できます。'], { x: 95, y: 205, size: 31, color: colors.muted, weight: 550 })}
+    ${textBlock(['登録は、ポスターからはじまる。'], { x: 172, y: 116, size: 54, color: colors.ink, weight: 850 })}
+    ${textBlock(['演奏会ページ、共有リンク、カレンダー導線まで一気に整います。'], { x: 95, y: 205, size: 31, color: colors.muted, weight: 550 })}
     ${flow}
-    ${textBlock(['登録後は、演奏会詳細ページ・一覧・カレンダー・共有リンクに反映されます。'], { x: 800, y: 1088, size: 31, color: colors.ink, weight: 700, anchor: 'middle' })}
+    ${textBlock(['無料。アカウント不要。あとから編集できます。'], { x: 800, y: 1088, size: 34, color: colors.ink, weight: 800, anchor: 'middle' })}
   `);
   await renderSvg(join(outCrescendo, 'registration-flow.png'), 1600, 1200, registration);
 
   const calendar = baseSvg(1600, 1200, `
     <rect x="0" y="0" width="1600" height="1200" fill="${colors.stone}"/>
     ${brandMark(90, 70, 0.9)}
-    ${textBlock(['カレンダー連携の使い方'], { x: 172, y: 116, size: 50, color: colors.ink, weight: 850 })}
-    ${textBlock(['来場者は気になる演奏会を自分の予定表に追加できます。'], { x: 95, y: 205, size: 31, color: colors.muted, weight: 550 })}
+    ${textBlock(['ほしい予定だけ、受け取る。'], { x: 172, y: 116, size: 54, color: colors.ink, weight: 850 })}
+    ${textBlock(['全演奏会でも、自主企画だけでも。カレンダー同期を選べます。'], { x: 95, y: 205, size: 31, color: colors.muted, weight: 550 })}
     ${roundedRect(110, 310, 1380, 270, 42, colors.navy)}
     ${textBlock(['この予定だけ追加'], { x: 185, y: 410, size: 50, color: colors.gold, weight: 800 })}
-    ${textBlock(['Google / Apple / Outlook / Yahoo! / ICS で個別登録'], { x: 185, y: 482, size: 35, color: colors.white, weight: 600 })}
+    ${textBlock(['気になる公演を、自分の予定表へ。'], { x: 185, y: 482, size: 35, color: colors.white, weight: 600 })}
     ${roundedRect(110, 650, 1380, 270, 42, colors.white, '#e8dfce', 2)}
-    ${textBlock(['すべての演奏会を同期'], { x: 185, y: 750, size: 50, color: colors.ink, weight: 800 })}
-    ${textBlock(['新しい演奏会が追加されると、自分のカレンダーにも反映'], { x: 185, y: 822, size: 35, color: colors.muted, weight: 600 })}
-    ${textBlock(['詳細ページの「カレンダーに追加」ボタンから設定できます。'], { x: 800, y: 1055, size: 34, color: colors.ink, weight: 750, anchor: 'middle' })}
+    ${textBlock(['カテゴリ別に同期'], { x: 185, y: 750, size: 50, color: colors.ink, weight: 800 })}
+    ${textBlock(['自主企画、大学主催、専攻定期などを選べます。'], { x: 185, y: 822, size: 35, color: colors.muted, weight: 600 })}
+    ${textBlock(['詳細ページの「カレンダーに追加」から設定できます。'], { x: 800, y: 1055, size: 34, color: colors.ink, weight: 750, anchor: 'middle' })}
   `);
   await renderSvg(join(outCrescendo, 'calendar-flow.png'), 1600, 1200, calendar);
 }

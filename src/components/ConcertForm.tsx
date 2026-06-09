@@ -627,7 +627,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
             existingKeys={flyerKeys}
             onUpload={(key, thumbKey) => {
               setFlyerKeys((prev) => [...prev, key]);
-              setFlyerThumb(thumbKey);
+              if (thumbKey) setFlyerThumb(thumbKey);
             }}
           />
         </div>

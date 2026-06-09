@@ -86,10 +86,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return jsonResponse({ ok: false, error: '対応していないファイル形式です。JPEG、PNG、WebP、PDFをアップロードしてください' }, 400);
     }
 
-    // Validate size (10MB for PDF, 5MB for images)
-    const maxSize = file.type === 'application/pdf' ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+    // Validate size. The public UI converts PDFs to WebP before upload; PDF is kept
+    // here for compatibility with older/admin flows.
+    const maxSize = file.type === 'application/pdf' ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
     if (file.size > maxSize) {
-      return jsonResponse({ ok: false, error: `ファイルサイズが${maxSize / 1024 / 1024}MBを超えています` }, 400);
+      return jsonResponse({
+        ok: false,
+        error: file.type === 'application/pdf'
+          ? 'PDFのサイズが50MBを超えています。通常の登録画面では端末内でWebP画像に変換してから送信されます。'
+          : '画像ファイルが5MBを超えています。端末内変換後も大きい場合はページ数や画像サイズを減らしてください。',
+      }, 400);
     }
 
     const timestamp = Date.now();

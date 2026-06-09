@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { analyzeConcertFlyers, buildFlyerThumbnailName, buildFlyerUploadName } from '../lib/flyers';
+import { canvasToUploadBlobs } from '../lib/flyerProcessing';
+import LoadingMetronome from './LoadingMetronome';
 
 interface Props {
   pdfKey: string;
@@ -77,14 +79,7 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
 
         await (page.render({ canvasContext: ctx, viewport, canvas } as any).promise);
 
-        // Convert to WebP blob with higher quality for text readability
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(
-            (b) => b ? resolve(b) : reject(new Error('Conversion failed')),
-            'image/webp',
-            0.92
-          );
-        });
+        const { blob } = await canvasToUploadBlobs(canvas);
 
         const url = URL.createObjectURL(blob);
         urls.push(url);
@@ -121,9 +116,8 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
   if (loading) {
     return (
       <div className="space-y-3">
-        <div className="bg-stone-100 rounded-lg p-8 text-center animate-pulse">
-          <div className="text-2xl mb-2">📄</div>
-          <p className="text-sm text-stone-500">PDFチラシを変換中...</p>
+        <div className="bg-stone-100 rounded-lg p-8 text-center">
+          <LoadingMetronome label="PDFチラシを端末内で変換中..." />
         </div>
       </div>
     );
@@ -167,36 +161,19 @@ async function uploadConverted(
   groupId: string,
   sortIndex: number
 ): Promise<void> {
-  // Create a small thumbnail
   const img = new Image();
   await new Promise<void>((resolve, reject) => {
     img.onload = () => resolve();
     img.onerror = reject;
     img.src = URL.createObjectURL(blob);
   });
-
-  const thumbCanvas = document.createElement('canvas');
-  const maxThumb = 400;
-  let { width, height } = img;
-  if (Math.max(width, height) > maxThumb) {
-    const ratio = maxThumb / Math.max(width, height);
-    width = Math.round(width * ratio);
-    height = Math.round(height * ratio);
-  }
-  thumbCanvas.width = width;
-  thumbCanvas.height = height;
-  const ctx = thumbCanvas.getContext('2d');
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  ctx.drawImage(img, 0, 0, width, height);
-
-  const thumbnail = await new Promise<Blob>((resolve, reject) => {
-    thumbCanvas.toBlob(
-      (b) => b ? resolve(b) : reject(new Error('Thumb failed')),
-      'image/webp',
-      0.7
-    );
-  });
-
+  ctx.drawImage(img, 0, 0);
+  const { thumbnail } = await canvasToUploadBlobs(canvas);
   URL.revokeObjectURL(img.src);
 
   const formData = new FormData();

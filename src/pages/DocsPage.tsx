@@ -72,7 +72,7 @@ function UserDocs() {
         <ol className="list-decimal list-inside space-y-1">
           <li>タイトル、日付、開演時刻、会場、カテゴリを入力します。</li>
           <li>料金、出演者、プログラム、連絡先、説明文を必要に応じて追加します。</li>
-          <li>チラシ画像またはPDFを追加します。PDFはページごとに画像化され、表/裏も表示できます。</li>
+          <li>チラシ画像またはPDFを追加します。PDFは端末内でページごとにWebP化され、回転・削除・並べ替えもできます。</li>
           <li>編集用パスワードを設定して登録します。</li>
           <li>登録後の詳細ページURLを、SNS、QRコード、メール、LINEなどで共有します。</li>
         </ol>
@@ -106,7 +106,7 @@ function UserDocs() {
         <p>演奏会詳細ページの「カレンダーに追加」から、予定を追加できます。</p>
         <ul className="list-disc list-inside space-y-1">
           <li>この予定だけ追加: Google、Apple、Outlook、Yahoo!、TimeTree、ICSに対応。</li>
-          <li>すべての演奏会を同期: 新しい演奏会が追加されるとカレンダー側にも反映されます。</li>
+          <li>カテゴリ別に同期: すべて、自主企画、大学主催、専攻定期、室内楽/アンサンブルを選べます。</li>
           <li>カレンダーURLコピー: ほかのカレンダーアプリへ貼り付けられます。</li>
         </ul>
       </Section>
@@ -134,7 +134,7 @@ function UserDocs() {
       <Section id="student-tools" title="8. 音大生ツール">
         <p>
           <Link to="/student-tools" className="text-primary-600 hover:underline">音大生ツール</Link>では、
-          爆速メトロノーム、リアルタイムチューナー、移調メモを無料で使えます。
+          爆速メトロノーム、リアルタイムチューナー、移調メモ、PDF/画像変換を無料で使えます。
         </p>
       </Section>
 
@@ -142,7 +142,7 @@ function UserDocs() {
         <FAQ q="無料ですか？" a="はい、完全無料です。" />
         <FAQ q="誰でも登録できますか？" a="はい、アカウント不要で登録できます。" />
         <FAQ q="パスワードを忘れました" a="管理者パスワードで編集画面に入れます。管理画面から新しい編集用パスワードを再設定することもできます。" />
-        <FAQ q="PDFをアップロードできますか？" a="はい。PDFはページごとに高品質なWebP画像へ変換して表示できます。大きすぎるPDFは画像化してから使うと安定します。" />
+        <FAQ q="PDFをアップロードできますか？" a="はい。50MB以下のPDFを端末内でWebP画像へ変換してから送信します。ページの回転、削除、並べ替え、PNG/WebP保存もできます。" />
       </Section>
     </div>
   );
@@ -351,6 +351,8 @@ POST   /api/upload           チラシアップロード
 POST   /api/admin/auth       管理者認証 → token
 POST   /api/contact          お問い合わせ送信
 GET    /api/feed/ics          ICSカレンダーフィード
+  ?category=self_planned      カテゴリ別フィード
+  ?category=chamber,ensemble  複数カテゴリ
 GET/PUT /api/inquiries        管理者用お問い合わせ管理`}</Pre>
       </Section>
 
@@ -403,6 +405,7 @@ PC専用:
 2. クライアントサイドで処理:
    - 画像: Canvas描画 → WebP変換（フル: 2000px/0.85品質, サムネ: 400px/0.7品質）
    - PDF: pdfjs-dist で各ページをCanvas描画 → WebP変換（50MB以下、全ページ）
+         回転/削除/並べ替え/サムネイル選択/PNG・WebP保存
          1ページ目 → サムネイル生成
          各ページ → 個別WebP画像として保存
 3. FormData でサーバーにアップロード
