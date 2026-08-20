@@ -53,6 +53,7 @@ interface Props {
 
 export default function ConcertCard({ concert, highlight }: Props) {
   const [thumbSrcIdx, setThumbSrcIdx] = useState(0);
+  const [thumbFailed, setThumbFailed] = useState(false);
   const cat = CATEGORIES[concert.category] || CATEGORIES.other;
   const status = daysUntil(concert.date);
   const isToday = status === '本日！';
@@ -61,8 +62,14 @@ export default function ConcertCard({ concert, highlight }: Props) {
   const pricing = formatPricing(concert.pricing);
   const isFree = pricing === '無料';
   const thumbSrcs = getFlyerThumbSrcs(concert);
-  const thumbSrc = thumbSrcs[thumbSrcIdx] ?? null;
-  const handleThumbError = () => setThumbSrcIdx((i) => i + 1);
+  const thumbSrc = thumbFailed ? null : (thumbSrcs[thumbSrcIdx] ?? null);
+  const handleThumbError = () => {
+    if (thumbSrcIdx + 1 < thumbSrcs.length) {
+      setThumbSrcIdx((i) => i + 1);
+    } else {
+      setThumbFailed(true);
+    }
+  };
 
   /* ===== Mobile: horizontal card ===== */
   if (isMobile) {
@@ -74,12 +81,12 @@ export default function ConcertCard({ concert, highlight }: Props) {
         } ${isEnded ? 'opacity-75' : ''}`}
       >
         {/* Thumbnail — left side */}
-        <div className="w-[72px] self-stretch flex-shrink-0 bg-stone-100 relative overflow-hidden">
+        <div className="w-[72px] self-stretch flex-shrink-0 bg-navy-950 relative overflow-hidden">
           {thumbSrc ? (
             <img
               src={thumbSrc}
               alt={concert.title}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-contain"
               loading="lazy"
               onError={handleThumbError}
             />
@@ -128,12 +135,12 @@ export default function ConcertCard({ concert, highlight }: Props) {
       className={`card block group ${highlight ? 'ring-2 ring-primary-400 shadow-lg' : ''} ${isEnded ? 'opacity-80' : ''}`}
     >
       {/* Thumbnail */}
-      <div className="aspect-[4/3] bg-stone-100 overflow-hidden relative">
+      <div className="aspect-[4/3] bg-navy-950 overflow-hidden relative">
         {thumbSrc ? (
           <img
             src={thumbSrc}
             alt={concert.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
             onError={handleThumbError}
           />

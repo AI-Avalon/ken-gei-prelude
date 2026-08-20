@@ -172,7 +172,7 @@ export default function App() {
       {/* Desktop: top navbar, Mobile: simplified top bar + bottom tabs */}
       {isMobile ? (
         !isAdminPage && (
-          <header className="bg-navy-900/95 border-b border-primary-800/20 sticky top-0 z-50 backdrop-blur-xl h-12 flex items-center justify-center">
+          <header className="bg-navy-900/95 border-b border-primary-800/20 sticky top-0 z-50 backdrop-blur-xl min-h-[48px] flex items-center justify-center px-4">
             <Logo compact showSubtitle={false} />
           </header>
         )

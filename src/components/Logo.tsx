@@ -9,7 +9,7 @@ interface LogoProps {
 
 export default function Logo({ compact = false, className = '', showSubtitle = true }: LogoProps) {
   return (
-    <Link to="/" className={`inline-flex items-center gap-3 group min-w-0 ${className}`}>
+    <Link to="/" className={`inline-flex items-center gap-3 group min-w-0 py-2 px-1 -mx-1 rounded-lg active:opacity-70 transition-opacity ${className}`}>
       <img
         src="/favicon.svg"
         alt=""

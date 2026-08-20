@@ -224,10 +224,10 @@ export default function ConcertDetailPage() {
                   <span className="text-emerald-600">入場無料</span>
                 ) : hasPricing ? (
                   <span className="text-stone-800">
-                    {cleanedPricing.filter(p => p.amount > 0).map((p, i) => (
+                    {cleanedPricing.map((p, i) => (
                       <span key={i}>
                         {i > 0 && <span className="text-stone-300 mx-1">|</span>}
-                        {p.label} ¥{p.amount.toLocaleString()}
+                        {p.label} {p.amount === 0 ? <span className="text-emerald-600">無料</span> : `¥${p.amount.toLocaleString()}`}
                       </span>
                     ))}
                   </span>

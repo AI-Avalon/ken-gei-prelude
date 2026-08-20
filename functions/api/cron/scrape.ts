@@ -145,7 +145,19 @@ function parseEventList(html: string, baseUrl: string): ScrapedEvent[] {
 
     // <p class="event_info">会場名やサブ情報</p>（金額混在を除去してクリーンな会場名を取得）
     const infoMatch = block.match(/<p\s+class="event_info">([^<]*)<\/p>/);
-    const venue = cleanVenueName(infoMatch ? infoMatch[1] : '');
+    const rawInfo = infoMatch ? infoMatch[1] : '';
+    const venue = cleanVenueName(rawInfo);
+
+    // Extract pricing from event_info text (e.g. "奏楽堂・入場料1000円")
+    // cleanVenueName removes this info, so we parse it before cleaning
+    let pricingJson: string | undefined;
+    if (rawInfo) {
+      const infoNormalized = rawInfo.normalize('NFKC').trim();
+      const pricing = parsePricingFromText(infoNormalized, []);
+      if (pricing.length > 0) {
+        pricingJson = JSON.stringify(pricing);
+      }
+    }
 
     // <img src="/event/item/..." />
     const imgMatch = block.match(/<img\s+src="([^"]+)"/);
@@ -164,6 +176,7 @@ function parseEventList(html: string, baseUrl: string): ScrapedEvent[] {
       sourceUrl: baseUrl,
       imageUrl: imageUrl,
       category: classifyCategory(title),
+      pricingJson,
     });
   }
 
