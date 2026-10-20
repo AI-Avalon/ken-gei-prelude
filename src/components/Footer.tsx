@@ -80,16 +80,18 @@ export default function Footer() {
             <ul className="grid grid-cols-2 sm:grid-cols-1 gap-2 text-sm">
               <li><Link to="/concerts" className="hover:text-primary-400 transition-colors">演奏会一覧</Link></li>
               <li><Link to="/calendar" className="hover:text-primary-400 transition-colors">カレンダー・日程表</Link></li>
-              <li><Link to="/archive" className="hover:text-primary-400 transition-colors">過去の公演アーカイブ</Link></li>
+              <li><Link to="/dictionary" className="hover:text-primary-400 transition-colors">音楽楽語辞典</Link></li>
+              <li><Link to="/tools" className="hover:text-primary-400 transition-colors">音大生・演奏家ツール</Link></li>
               <li><Link to="/upload" className="hover:text-primary-400 transition-colors">演奏会登録</Link></li>
-              <li><Link to="/student-tools" className="hover:text-primary-400 transition-colors">音大生ツール</Link></li>
+              <li><Link to="/faq" className="hover:text-primary-400 transition-colors">よくある質問 (Q&amp;A)</Link></li>
+              <li><Link to="/archive" className="hover:text-primary-400 transition-colors">過去の公演アーカイブ</Link></li>
               <li><Link to="/contact" className="hover:text-primary-400 transition-colors">お問い合わせ</Link></li>
-              <li><Link to="/docs" className="hover:text-primary-400 transition-colors">使い方ガイド</Link></li>
+              <li><Link to="/docs" className="hover:text-primary-400 transition-colors">使い方ガイド・仕様</Link></li>
               <li><Link to="/about" className="hover:text-primary-400 transition-colors">このサイトについて</Link></li>
             </ul>
             <div className="mt-4 pt-4 border-t border-stone-800">
               <Link to="/admin" className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-primary-400 transition-colors">
-                🔒 管理者用ページ
+                § 管理者用ページ
               </Link>
             </div>
           </div>

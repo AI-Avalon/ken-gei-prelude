@@ -21,6 +21,8 @@ const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const DainagonPage = lazy(() => import('./pages/DainagonPage'));
 const StudentToolsPage = lazy(() => import('./pages/StudentToolsPage'));
+const DictionaryPage = lazy(() => import('./pages/DictionaryPage'));
+const FaqPage = lazy(() => import('./pages/FaqPage'));
 const SECRET_DAINAGON_PATH = '/solfege/after-hours/86b7';
 
 function NotFoundPage() {
@@ -55,6 +57,11 @@ function AppRoutes() {
         <Route path="/concerts/:slug/edit" element={<ConcertEditPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/archive" element={<ArchivePage />} />
+        <Route path="/dictionary" element={<DictionaryPage />} />
+        <Route path="/dictionary/:slug" element={<DictionaryPage />} />
+        <Route path="/tools" element={<StudentToolsPage />} />
+        <Route path="/student-tools" element={<StudentToolsPage />} />
+        <Route path="/faq" element={<FaqPage />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/contact" element={<ContactPage />} />
@@ -62,7 +69,6 @@ function AppRoutes() {
         <Route path="/docs/api" element={<ApiDocsPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path={SECRET_DAINAGON_PATH} element={<DainagonPage />} />
-        <Route path="/student-tools" element={<StudentToolsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
@@ -114,23 +120,41 @@ function EasterEggs() {
 }
 
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const location = useLocation();
   const navigationType = useNavigationType();
-  const navTypeRef = useRef(navigationType);
-  navTypeRef.current = navigationType;
-
-  useEffect(() => {
-    if (navTypeRef.current !== 'POP') {
-      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-    }
-  }, [pathname]);
+  const scrollPositionsRef = useRef<Map<string, number>>(new Map());
+  const currentKeyRef = useRef<string>(location.key || location.pathname);
 
   useEffect(() => {
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
     }
-    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    const onScroll = () => {
+      scrollPositionsRef.current.set(currentKeyRef.current, window.scrollY);
+      scrollPositionsRef.current.set(window.location.pathname, window.scrollY);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    const key = location.key || location.pathname;
+    currentKeyRef.current = key;
+
+    if (navigationType === 'POP') {
+      const savedY =
+        scrollPositionsRef.current.get(key) ??
+        scrollPositionsRef.current.get(location.pathname) ??
+        0;
+      window.scrollTo({ top: savedY, behavior: 'instant' as ScrollBehavior });
+      const timer = window.setTimeout(() => {
+        window.scrollTo({ top: savedY, behavior: 'instant' as ScrollBehavior });
+      }, 60);
+      return () => window.clearTimeout(timer);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  }, [location.pathname, location.key, navigationType]);
 
   return null;
 }

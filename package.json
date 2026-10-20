@@ -13,6 +13,7 @@
     "dainagon:photos": "node scripts/process-dainagon-photos.mjs",
     "verify:pdf": "node scripts/verify-pdf-pipeline.mjs",
     "verify:all": "node scripts/verify-all.mjs",
+    "seed:dictionary": "node scripts/seed-music-dictionary.mjs",
     "promo:assets": "node scripts/generate-promo-assets.mjs",
     "smoke:chromium": "playwright test scripts/smoke-chromium.spec.mjs"
   },

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useIsMobile } from '../hooks/useDevice';
+import { FaqSection } from './FaqPage';
 
 type Tab = 'user' | 'tech';
 
@@ -139,10 +140,9 @@ function UserDocs() {
           ]} />
 
           <div className="not-prose bg-primary-50 border border-primary-200 rounded-lg p-4 mt-4">
-            <p className="text-sm text-primary-800 font-medium mb-1">💡 「かんたん登録」モードもあります</p>
+            <p className="text-sm text-primary-800 font-medium mb-1">§ 「簡易登録」モードとスマート原稿パーサー</p>
             <p className="text-sm text-primary-700">
-              フォーム上部の「⚡ かんたん登録」を選ぶと、必要最小限の項目だけで素早く登録できます。
-              詳細は後から編集ページで追加できます。
+              フォーム上部の「スマート原稿パーサー」にチラシ文面を貼り付けると一括自動入力が可能です。また「簡易登録モード」を選ぶと最小限の項目だけで素早く登録できます。
             </p>
           </div>
         </Section>
@@ -236,22 +236,25 @@ function UserDocs() {
           </ul>
         </Section>
 
-        <Section id="student-tools" title="8. 音大生ツール">
+        <Section id="student-tools" title="8. 音楽楽語辞典・音大生プロツール">
           <p>
-            <Link to="/student-tools" className="text-primary-600 hover:underline font-medium">音大生ツール</Link>では、
-            練習や本番に役立つ無料ツールが使えます。
+            <Link to="/dictionary" className="text-primary-600 hover:underline font-medium">演奏者のための音楽楽語辞典</Link>および
+            <Link to="/tools" className="text-primary-600 hover:underline font-medium ml-1">音大生・演奏家プロフェッショナルツール</Link>では、
+            日々の譜読み・練習室での合わせ・実技試験・自主企画運営に直結する専門機能を提供しています。
           </p>
           <ul className="list-disc list-inside space-y-1">
-            <li><strong>メトロノーム</strong>: BPM設定・タップテンポ対応の爆速メトロノーム</li>
-            <li><strong>チューナー</strong>: マイク入力でリアルタイムにピッチを表示</li>
-            <li><strong>移調メモ</strong>: 移調楽器のキー変換をサポート</li>
-            <li><strong>PDF/画像変換</strong>: 楽譜PDFをページごとの画像に変換（印刷・共有用）</li>
+            <li><strong>音楽楽語辞典（460語以上収録）</strong>: ウムラウト・アクサン無し検索（maessig / cedez）、略語（G.P. / rit. / l.v.）、日本語ニュアンス逆引き、BPMテンポパルス試聴、似た楽語の使い分け比較カード</li>
+            <li><strong>純正律ハーモニードローン &amp; 基準音（?tool=drone）</strong>: A=415〜444Hz（0.1Hz微調整）、純正完全5度（3:2）・純正長3度（5:4）・純正短3度（6:5）・長三和音（4:5:6）と平均律の比較再生</li>
+            <li><strong>Web Audio 高精度メトロノーム（?tool=metronome）</strong>: ハードウェアクロック先読みスケジューラ、5/4・7/8変拍子、サイレント小節（体内テンポ強化）モード</li>
+            <li><strong>プログラム尺＆進行表シミュレーター（?tool=timer）</strong>: 実技試験規定時間判定、開場・開演・転換・休憩を加味した秒単位の終演予定時刻算出、Markdown/印刷出力</li>
+            <li><strong>オーケストラ編成＆パート譜製本計算機（?tool=librarian）</strong>: 弦プルト人数からの必要パート譜・譜面台・椅子算出、PDFページ数からのA3中綴じ枚数計算</li>
+            <li><strong>演奏会プロデューサー・チェックリスト（?tool=producer）</strong>: 条件スイッチ連動の5フェーズ運営タスク管理</li>
           </ul>
         </Section>
 
         <Section id="admin" title="9. 管理者向け操作ガイド">
           <div className="not-prose bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-            <p className="text-sm text-red-800 font-medium">🔒 管理者パスワードが必要です</p>
+            <p className="text-sm text-red-800 font-medium">管理者パスワードが必要です</p>
             <p className="text-sm text-red-700 mt-1">
               <Link to="/admin" className="text-red-600 hover:underline">管理画面</Link>へのアクセスには管理者パスワードが必要です。
               パスワードはサイト管理者から取得してください。
@@ -260,14 +263,14 @@ function UserDocs() {
 
           <h4 className="font-medium">管理画面の機能一覧</h4>
           <div className="not-prose grid gap-3 sm:grid-cols-2 mt-3">
-            <AdminFeature icon="📊" title="概要" desc="演奏会数、閲覧数、カテゴリ別統計を確認" />
-            <AdminFeature icon="🎵" title="演奏会管理" desc="公開/非公開の切り替え、削除、パスワード再設定" />
-            <AdminFeature icon="📩" title="お問い合わせ" desc="お問い合わせの確認・返信管理" />
-            <AdminFeature icon="🖼️" title="チラシ管理" desc="チラシの有無確認、サムネイル状態の確認" />
-            <AdminFeature icon="📈" title="分析" desc="アクセス統計、人気の演奏会ランキング" />
-            <AdminFeature icon="👤" title="登録者情報" desc="登録者の名前・メールアドレスの確認（暗号化保存）" />
-            <AdminFeature icon="⚙️" title="設定" desc="位置制限、スクレイピング実行、メンテナンス、データバックアップ" />
-            <AdminFeature icon="📋" title="ログ" desc="スクレイピング・メンテナンスの実行履歴" />
+            <AdminFeature icon="§" title="概要" desc="演奏会数、閲覧数、カテゴリ別統計を確認" />
+            <AdminFeature icon="♩" title="演奏会管理" desc="公開/非公開の切り替え、削除、パスワード再設定" />
+            <AdminFeature icon="†" title="お問い合わせ" desc="お問い合わせの確認・返信管理" />
+            <AdminFeature icon="¶" title="チラシ管理" desc="チラシの有無確認、サムネイル状態の確認" />
+            <AdminFeature icon="—" title="分析" desc="アクセス統計、人気の演奏会ランキング" />
+            <AdminFeature icon="§" title="登録者情報" desc="登録者の名前・メールアドレスの確認（暗号化保存）" />
+            <AdminFeature icon="†" title="設定" desc="位置制限、スクレイピング実行、メンテナンス、データバックアップ" />
+            <AdminFeature icon="¶" title="ログ" desc="スクレイピング・メンテナンスの実行履歴" />
           </div>
 
           <h4 className="font-medium mt-6">管理者ができること</h4>
@@ -281,16 +284,10 @@ function UserDocs() {
           </ul>
         </Section>
 
-        <Section id="faq" title="10. よくある質問">
-          <FAQ q="利用料金はかかりますか？" a="いいえ、完全無料です。アカウント登録も不要です。" />
-          <FAQ q="誰でも演奏会を登録できますか？" a="はい。学内関係者でなくても、誰でも登録できます。ただし管理者が位置制限を有効にしている場合は、大学周辺からのみ登録できます。" />
-          <FAQ q="編集用パスワードを忘れました" a="管理者パスワードでも編集画面にログインできます。管理画面から新しい編集用パスワードを再設定することもできます。管理者にお問い合わせください。" />
-          <FAQ q="チラシのPDFをアップロードしたらどうなりますか？" a="PDFはスマホ・PC上でページごとにWebP画像に変換されます。サーバーに送られるのは変換後の画像のみです。回転・削除・並べ替え・PNG/WebP保存もできます。元のPDFは送信されませんので、50MBまでのファイルも高速にアップロードできます。" />
-          <FAQ q="カレンダーに追加した予定は自動更新されますか？" a="ICSフィード（カテゴリ別同期）を使えば、新しい演奏会や変更が自動的にカレンダーに反映されます。個別に追加した予定は更新されません。" />
-          <FAQ q="登録した演奏会が一覧に表示されません" a="管理者により非公開にされた可能性があります。お問い合わせページから管理者にご連絡ください。" />
-          <FAQ q="大学公式サイトの演奏会が自動で追加されていますが、情報を修正したい" a="自動取得された演奏会は、管理者パスワードで編集できます。管理画面からパスワードを再設定することも可能です。" />
-          <FAQ q="スマホとPCで表示が違います" a="CrescendoはスマホとPC向けに最適化された専用レイアウトを使い分けています。どちらでも同じ情報にアクセスできます。" />
-          <FAQ q="バグを見つけたり、機能リクエストがあります" a={<>お手数ですが<Link to="/contact" className="text-primary-600 hover:underline">お問い合わせページ</Link>からご連絡ください。</>} />
+        <Section id="faq" title="10. よくある質問（Q&A）">
+          <div className="not-prose">
+            <FaqSection />
+          </div>
         </Section>
       </div>
     </div>

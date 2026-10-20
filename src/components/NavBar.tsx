@@ -4,12 +4,12 @@ import Logo from './Logo';
 const NAV_LINKS = [
   { path: '/concerts', label: '演奏会一覧' },
   { path: '/calendar', label: 'カレンダー' },
-  { path: '/archive', label: 'アーカイブ' },
-  { path: '/student-tools', label: '音大生ツール' },
+  { path: '/dictionary', label: '楽語辞典' },
+  { path: '/tools', label: '音大生ツール' },
   { path: '/upload', label: '演奏会登録' },
+  { path: '/faq', label: 'Q&A' },
+  { path: '/archive', label: 'アーカイブ' },
   { path: '/contact', label: 'お問い合わせ' },
-  { path: '/docs', label: '使い方' },
-  { path: '/about', label: 'About' },
 ];
 
 export default function NavBar() {
@@ -29,7 +29,11 @@ export default function NavBar() {
             className="flex items-center gap-1 overflow-x-auto scrollbar-hide max-w-full py-0.5"
           >
             {NAV_LINKS.map((link) => {
-              const isActive = location.pathname === link.path;
+              const isActive =
+                location.pathname === link.path ||
+                (link.path === '/dictionary' && location.pathname.startsWith('/dictionary')) ||
+                (link.path === '/tools' &&
+                  (location.pathname === '/tools' || location.pathname === '/student-tools'));
               return (
                 <Link
                   key={link.path}

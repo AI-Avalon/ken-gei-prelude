@@ -30,20 +30,28 @@ export default {
           800: '#8d1e47',
           900: '#791c41',
         },
-        // Midnight navy for backgrounds
+        // Midnight navy & deep stage charcoal for backgrounds
         navy: {
           800: '#1a1f36',
           900: '#0f1225',
           950: '#080a15',
         },
+        editorial: {
+          charcoal: '#121211',
+          stage: '#1A1917',
+          ivory: '#FAF7F2',
+          brass: '#C5A059',
+          slate: '#4A6070',
+          crimson: '#8E2A2A',
+        },
       },
       fontFamily: {
-        serif: ['"Cormorant Garamond"', '"Noto Serif JP"', 'serif'],
-        sans: ['"Noto Sans JP"', 'Inter', 'sans-serif'],
-        display: ['"Cormorant Garamond"', '"Noto Serif JP"', 'serif'],
+        serif: ['"Cormorant Garamond"', '"EB Garamond"', '"Shippori Mincho"', '"Noto Serif JP"', 'Georgia', 'serif'],
+        sans: ['Inter', '"Noto Sans JP"', 'sans-serif'],
+        display: ['"Cormorant Garamond"', '"EB Garamond"', '"Shippori Mincho"', '"Noto Serif JP"', 'Georgia', 'serif'],
       },
       backgroundImage: {
-        'hero-gradient': 'linear-gradient(135deg, #0f1225 0%, #1a1f36 50%, #2d1f3d 100%)',
+        'hero-gradient': 'linear-gradient(135deg, #0f1225 0%, #151828 55%, #1a1917 100%)',
       },
     },
   },

@@ -40,9 +40,24 @@ export function daysUntil(dateStr: string): string {
 }
 
 export interface StatusBadgeInfo {
-  key: 'today' | 'tomorrow' | 'weekend' | 'free' | 'archive';
+  key: 'today' | 'tomorrow' | 'weekend' | 'free' | 'archive' | 'postponed' | 'cancelled' | 'changed' | 'sold_out';
   label: string;
   className: string;
+}
+
+/** Resolve irregular concert status from concert_status field or tags (`status:postponed` etc.) */
+export function resolveConcertStatus(concert?: Partial<Pick<Concert, 'concert_status' | 'tags'>>): NonNullable<Concert['concert_status']> {
+  if (concert?.concert_status && ['scheduled', 'postponed', 'cancelled', 'changed', 'sold_out'].includes(concert.concert_status)) {
+    return concert.concert_status;
+  }
+  const tagMatch = (concert?.tags || []).find((t) => t.startsWith('status:'));
+  if (tagMatch) {
+    const val = tagMatch.replace('status:', '') as NonNullable<Concert['concert_status']>;
+    if (['scheduled', 'postponed', 'cancelled', 'changed', 'sold_out'].includes(val)) {
+      return val;
+    }
+  }
+  return 'scheduled';
 }
 
 /** Check if concert is free */
@@ -52,19 +67,48 @@ export function isFreeConcert(pricing?: PricingItem[]): boolean {
 }
 
 /**
- * Phase 4.1: 公演ステータス・リアルタイム自動判定バッジ
- * 「🔴 本日開催」「🟡 明日開催」「🟢 今週末」「🎫 入場無料」「📦 終演アーカイブ」
+ * 公演ステータス・リアルタイム自動判定バッジ（Editorial Design）
  */
-export function getConcertStatusBadges(concert: Pick<Concert, 'date' | 'pricing'>): StatusBadgeInfo[] {
+export function getConcertStatusBadges(concert: Pick<Concert, 'date' | 'pricing'> & Partial<Pick<Concert, 'concert_status' | 'tags'>>): StatusBadgeInfo[] {
   const diff = getDaysDiff(concert.date);
   const badges: StatusBadgeInfo[] = [];
   const target = new Date(concert.date + 'T00:00:00');
   const targetDow = target.getDay(); // 0=Sun, 6=Sat
+  const irregularStatus = resolveConcertStatus(concert);
+
+  if (irregularStatus === 'cancelled') {
+    badges.push({
+      key: 'cancelled',
+      label: '公演中止',
+      className: 'bg-[#8E2A2A]/10 text-[#8E2A2A] border border-[#8E2A2A]/40 font-semibold',
+    });
+    return badges;
+  }
+
+  if (irregularStatus === 'postponed') {
+    badges.push({
+      key: 'postponed',
+      label: '公演延期',
+      className: 'bg-amber-900/10 text-amber-900 border border-amber-700/40 font-semibold',
+    });
+  } else if (irregularStatus === 'changed') {
+    badges.push({
+      key: 'changed',
+      label: '内容一部変更',
+      className: 'bg-[#4A6070]/15 text-[#4A6070] border border-[#4A6070]/40 font-semibold',
+    });
+  } else if (irregularStatus === 'sold_out') {
+    badges.push({
+      key: 'sold_out',
+      label: '満席・受付終了',
+      className: 'bg-stone-800 text-stone-100 border border-stone-700 font-semibold',
+    });
+  }
 
   if (diff < 0) {
     badges.push({
       key: 'archive',
-      label: '📦 終演アーカイブ',
+      label: '終演アーカイブ',
       className: 'bg-stone-100 text-stone-600 border border-stone-200/80',
     });
     return badges;
@@ -73,28 +117,28 @@ export function getConcertStatusBadges(concert: Pick<Concert, 'date' | 'pricing'
   if (diff === 0) {
     badges.push({
       key: 'today',
-      label: '🔴 本日開催',
-      className: 'bg-red-50 text-red-700 border border-red-200 font-bold',
+      label: '本日開催',
+      className: 'bg-[#8E2A2A]/10 text-[#8E2A2A] border border-[#8E2A2A]/35 font-bold',
     });
   } else if (diff === 1) {
     badges.push({
       key: 'tomorrow',
-      label: '🟡 明日開催',
-      className: 'bg-amber-50 text-amber-800 border border-amber-200 font-bold',
+      label: '明日開催',
+      className: 'bg-amber-50 text-amber-900 border border-amber-300/80 font-bold',
     });
   } else if (diff <= 6 && (targetDow === 0 || targetDow === 6)) {
     badges.push({
       key: 'weekend',
-      label: '🟢 今週末',
-      className: 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold',
+      label: '今週末',
+      className: 'bg-stone-100 text-stone-800 border border-stone-300/80 font-semibold',
     });
   }
 
-  if (isFreeConcert(concert.pricing)) {
+  if (isFreeConcert(concert.pricing) && irregularStatus !== 'sold_out') {
     badges.push({
       key: 'free',
-      label: '🎫 入場無料',
-      className: 'bg-teal-50 text-teal-700 border border-teal-200 font-medium',
+      label: '入場無料',
+      className: 'bg-emerald-50/80 text-emerald-900 border border-emerald-300/70 font-medium',
     });
   }
 
@@ -180,7 +224,12 @@ export function formatPricing(pricing: PricingItem[]): string {
 
 /** Format time display: "18:00開演（17:30開場）" */
 export function formatTime(concert: Pick<Concert, 'time_start' | 'time_open' | 'time_end'>): string {
-  if (!concert.time_start) return '開演時刻未定';
+  if (!concert.time_start || concert.time_start === '未定' || concert.time_start === '時間未定') {
+    return '開演時刻未定';
+  }
+  if (concert.time_start.includes('開演')) {
+    return concert.time_start;
+  }
   let s = `${concert.time_start}開演`;
   if (concert.time_open) s += `（${concert.time_open}開場）`;
   if (concert.time_end) s += `〜${concert.time_end}終演予定`;

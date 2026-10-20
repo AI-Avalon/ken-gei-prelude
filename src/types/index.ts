@@ -28,10 +28,43 @@ export interface Performer {
   instrument?: string;
 }
 
+export type ConcertStatus = 'scheduled' | 'postponed' | 'cancelled' | 'changed' | 'sold_out';
+
+export type MusicalTermLang = 'It' | 'De' | 'Fr' | 'En' | 'Lat' | 'Gr';
+export type TermLanguage = MusicalTermLang;
+export type MusicalTermCategory =
+  | 'tempo'
+  | 'tempo_change'
+  | 'dynamics'
+  | 'expression'
+  | 'technique'
+  | 'german_dir'
+  | 'french_dir'
+  | 'theory_form';
+export type TermCategory = MusicalTermCategory;
+
+export interface MusicalTerm {
+  id: string;
+  term: string;
+  normalized_term: string;
+  reading_kana: string;
+  reading_hiragana: string;
+  abbreviations: string[];
+  lang: MusicalTermLang;
+  category: MusicalTermCategory;
+  short_meaning: string;
+  definition: string;
+  performer_nuance: string;
+  bpm_range?: [number, number];
+  related_terms: string[];
+  scene_tags?: string[];
+}
+
 export interface Concert {
   id: string;
   slug: string;
   fingerprint?: string;
+  concert_status?: ConcertStatus;
 
   title: string;
   subtitle: string;
