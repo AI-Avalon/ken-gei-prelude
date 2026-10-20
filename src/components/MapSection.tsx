@@ -1,65 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
-import { routeUrls } from '../lib/utils';
-import { UNIVERSITY_VENUES } from '../lib/constants';
-import { useIsMobile } from '../hooks/useDevice';
+import { routeUrls, resolveSmartVenue } from '../lib/utils';
 import type { Venue } from '../types';
 
 interface Props {
   venue: Venue;
 }
 
+/**
+ * Single JSX Tree Smart Venue Navigation & Transit Access Guide
+ * Phase 4.2: Automatically resolves campus & regional concert halls,
+ * provides one-tap Linimo / Meitetsu Bus campus access guide, and Google Maps routes.
+ */
 export default function MapSection({ venue }: Props) {
-  const isMobile = useIsMobile();
-
-  // Check if this is a known university venue
-  const uniVenue = Object.values(UNIVERSITY_VENUES).find(
-    (v) => venue.name?.includes(v.name.replace('愛知県立芸術大学 ', '')) || v.name === venue.name
-  );
-
-  const lat = uniVenue?.lat || venue.lat;
-  const lng = uniVenue?.lng || venue.lng;
-
-  if (!lat || !lng) {
-    // No coordinates — show Google Maps search link as fallback
-    const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.name || '')}`;
-    return (
-      <div className="bg-stone-50 rounded-lg p-6 text-center space-y-3">
-        <p className="text-stone-500">座標情報がないため地図を表示できません</p>
-        {venue.name && (
-          <a href={searchUrl} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-primary-600 hover:underline text-sm font-medium">
-            📍 「{venue.name}」をGoogle Mapsで検索 →
-          </a>
-        )}
-      </div>
-    );
-  }
-
-  if (isMobile) {
-    return <MobileMap venue={venue} uniVenue={uniVenue} lat={lat} lng={lng} />;
-  }
-  return <DesktopMap venue={venue} uniVenue={uniVenue} lat={lat} lng={lng} />;
-}
-
-/* ========================= Mobile Map ========================= */
-interface MapInnerProps {
-  venue: Venue;
-  uniVenue: typeof UNIVERSITY_VENUES[keyof typeof UNIVERSITY_VENUES] | undefined;
-  lat: number;
-  lng: number;
-}
-
-function MobileMap({ venue, uniVenue, lat, lng }: MapInnerProps) {
+  const smart = resolveSmartVenue(venue);
+  const routes = routeUrls(venue);
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const routes = routeUrls(venue);
-
-  // Static map image as fallback / initial view
-  const googleMapsUrl = uniVenue?.googleMapsUrl
-    || `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  const [showCampusGuide, setShowCampusGuide] = useState(smart.isCampus);
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    setShowCampusGuide(smart.isCampus);
+  }, [smart.isCampus]);
+
+  useEffect(() => {
+    if (!mapRef.current || !smart.lat || !smart.lng) return;
     let map: any;
 
     Promise.all([
@@ -68,153 +32,174 @@ function MobileMap({ venue, uniVenue, lat, lng }: MapInnerProps) {
     ]).then(([L]) => {
       if (!mapRef.current) return;
       map = L.default.map(mapRef.current, {
-        zoomControl: false,       // Hide zoom buttons on mobile
-        attributionControl: false, // Show below instead
-      }).setView([lat, lng], 16);
+        attributionControl: true,
+      }).setView([smart.lat!, smart.lng!], 16);
 
       L.default.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
+        attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
 
-      L.default.marker([lat, lng]).addTo(map)
-        .bindPopup(venue.name || '').openPopup();
+      L.default.marker([smart.lat!, smart.lng!]).addTo(map)
+        .bindPopup(smart.name).openPopup();
 
       setMapLoaded(true);
-
-      // Fix Leaflet rendering in lazy-loaded containers
-      setTimeout(() => map.invalidateSize(), 100);
+      setTimeout(() => map.invalidateSize(), 150);
     }).catch(() => setMapLoaded(false));
 
     return () => { if (map) map.remove(); };
-  }, [lat, lng, venue.name]);
+  }, [smart.lat, smart.lng, smart.name]);
 
   return (
-    <div className="space-y-3">
-      {/* Compact map */}
-      <div ref={mapRef} className="h-48 rounded-lg overflow-hidden border border-stone-200" />
+    <div className="space-y-4" data-testid="smart-venue-nav">
+      {/* Venue Summary Header */}
+      <div className="bg-stone-50/90 rounded-xl p-4 border border-stone-200/70 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="font-serif font-bold text-stone-900 text-sm sm:text-base break-words [overflow-wrap:anywhere]">
+            📍 {smart.name}
+          </div>
+          {smart.isCampus && (
+            <span className="badge bg-primary-100 text-primary-800 border border-primary-200">
+              🏛️ 愛知県立芸術大学 学内会場
+            </span>
+          )}
+        </div>
+        {smart.address && (
+          <p className="text-xs sm:text-sm text-stone-600 break-words [overflow-wrap:anywhere]">
+            住所：{smart.address}
+          </p>
+        )}
+        {smart.access.length > 0 && (
+          <ul className="text-xs sm:text-sm text-stone-700 space-y-1 pt-1">
+            {smart.access.map((line, i) => (
+              <li key={i} className="flex items-start gap-1.5 break-words [overflow-wrap:anywhere]">
+                <span className="shrink-0">🚃</span>
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {smart.parking && (
+          <p className="text-xs text-stone-500 flex items-start gap-1.5 break-words [overflow-wrap:anywhere]">
+            <span className="shrink-0">🅿️</span>
+            <span>駐車場：{smart.parking}</span>
+          </p>
+        )}
+      </div>
 
-      {!mapLoaded && (
-        <p className="text-xs text-stone-400 text-center">© OpenStreetMap contributors</p>
+      {/* One-Tap Campus Access Guide (Linimo Geidaidori / Meitetsu Bus) */}
+      {smart.isCampus && (
+        <div className="rounded-xl border border-primary-300/60 bg-primary-50/60 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowCampusGuide(!showCampusGuide)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left text-xs sm:text-sm font-bold text-primary-900 hover:bg-primary-100/50 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <span>🚋</span>
+              <span>リニモ「芸大通駅」／名鉄バス「愛知県立芸術大学」からのアクセス案内</span>
+            </span>
+            <span className="text-primary-700 text-xs whitespace-nowrap shrink-0 ml-2">
+              {showCampusGuide ? '▲ 閉じる' : '▼ 案内を開く'}
+            </span>
+          </button>
+          {showCampusGuide && (
+            <div className="px-4 pb-4 pt-1 text-xs sm:text-sm text-stone-700 space-y-2.5 border-t border-primary-200/50">
+              <div className="bg-white/90 rounded-lg p-3 border border-primary-200/50 space-y-1">
+                <div className="font-bold text-stone-900">① リニモ（愛知高速交通東部丘陵線）をご利用の場合</div>
+                <p className="text-stone-600 leading-relaxed">
+                  地下鉄東山線「藤が丘駅」または愛知環状鉄道「八草駅」よりリニモに乗車し、
+                  <strong>「芸大通駅（知の拠点あいち前）」</strong>下車、徒歩約10〜15分。正門より坂道を上がり各ホールへお進みください。
+                </p>
+              </div>
+              <div className="bg-white/90 rounded-lg p-3 border border-primary-200/50 space-y-1">
+                <div className="font-bold text-stone-900">② 名鉄バスをご利用の場合（正門近くまで直通）</div>
+                <p className="text-stone-600 leading-relaxed">
+                  藤が丘駅または長久手古戦場駅より名鉄バスに乗車し、
+                  <strong>「愛知県立芸術大学」</strong>バス停下車すぐ（奏楽堂まで徒歩約3分、室内楽ホールまで徒歩約5分）。
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Primary CTA: Open in Google Maps */}
-      <a
-        href={googleMapsUrl}
-        target="_blank" rel="noopener noreferrer"
-        className="flex items-center justify-center gap-2 w-full py-3 bg-blue-600 text-white rounded-lg font-medium text-sm active:bg-blue-700 transition-colors"
-      >
-        📍 Google Mapsで開く
-      </a>
+      {/* Interactive Map */}
+      {smart.lat && smart.lng && (
+        <div
+          ref={mapRef}
+          className="h-52 sm:h-64 rounded-xl overflow-hidden border border-stone-200 shadow-inner"
+        />
+      )}
+      {!mapLoaded && smart.lat && smart.lng && (
+        <p className="text-xs text-stone-400 text-center">&copy; OpenStreetMap contributors</p>
+      )}
 
-      {/* Route buttons — horizontal scroll */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-        <a href={routes.fromUni} target="_blank" rel="noopener noreferrer"
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-stone-100 rounded-lg text-xs font-medium text-stone-700 active:bg-stone-200">
-          🚃 県芸から
-        </a>
-        <button
-          onClick={() => {
-            navigator.geolocation.getCurrentPosition(
-              (pos) => window.open(routes.fromCurrent(pos.coords.latitude, pos.coords.longitude), '_blank'),
-              () => alert('位置情報を取得できません'),
-            );
-          }}
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-stone-100 rounded-lg text-xs font-medium text-stone-700 active:bg-stone-200"
-        >
-          📍 現在地から
-        </button>
-        <button
-          onClick={() => {
-            navigator.geolocation.getCurrentPosition(
-              (pos) => window.open(routes.byCar(pos.coords.latitude, pos.coords.longitude), '_blank'),
-              () => alert('位置情報を取得できません'),
-            );
-          }}
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-stone-100 rounded-lg text-xs font-medium text-stone-700 active:bg-stone-200"
-        >
-          🚗 車で行く
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ========================= Desktop Map ========================= */
-function DesktopMap({ venue, uniVenue, lat, lng }: MapInnerProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const routes = routeUrls(venue);
-
-  const googleMapsUrl = uniVenue?.googleMapsUrl
-    || `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-
-  useEffect(() => {
-    if (!mapRef.current) return;
-    let map: any;
-
-    Promise.all([
-      import('leaflet'),
-      loadCSS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'),
-    ]).then(([L]) => {
-      if (!mapRef.current) return;
-      map = L.default.map(mapRef.current).setView([lat, lng], 16);
-      L.default.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      }).addTo(map);
-      L.default.marker([lat, lng]).addTo(map)
-        .bindPopup(venue.name || '').openPopup();
-      setMapLoaded(true);
-    }).catch(() => setMapLoaded(false));
-
-    return () => { if (map) map.remove(); };
-  }, [lat, lng, venue.name]);
-
-  return (
-    <div className="space-y-4">
-      <div ref={mapRef} className="h-64 rounded-lg overflow-hidden border" />
-
-      <div className="flex items-center justify-between">
+      {/* Smart Route Navigation Buttons (Unified Single JSX Tree) */}
+      <div className="flex flex-wrap items-center gap-2">
         <a
-          href={googleMapsUrl}
-          target="_blank" rel="noopener noreferrer"
-          className="text-primary-600 hover:underline inline-flex items-center gap-1 text-sm font-medium"
+          href={smart.googleMapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-navy-900 text-primary-300 hover:bg-navy-800 text-xs sm:text-sm font-semibold transition-colors shadow-sm"
         >
-          📍 Google Mapsで開く →
+          📍 Google マップで会場を開く
         </a>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <a href={routes.fromUni} target="_blank" rel="noopener noreferrer" className="btn-secondary text-sm">
-          🚃 県芸からのルート
+        {smart.isCampus ? (
+          <a
+            href={routes.fromLinimo}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 hover:border-primary-400 text-stone-700 text-xs sm:text-sm font-medium transition-colors shadow-sm"
+          >
+            🚶 芸大通駅からの徒歩ルート
+          </a>
+        ) : (
+          <a
+            href={routes.fromUni}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 hover:border-primary-400 text-stone-700 text-xs sm:text-sm font-medium transition-colors shadow-sm"
+          >
+            🚃 愛知県芸からのルート
+          </a>
+        )}
+        <a
+          href={routes.fromNagoya}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 hover:border-primary-400 text-stone-700 text-xs sm:text-sm font-medium transition-colors shadow-sm"
+        >
+          🚉 名古屋駅からのルート
         </a>
         <button
+          type="button"
           onClick={() => {
             navigator.geolocation.getCurrentPosition(
               (pos) => window.open(routes.fromCurrent(pos.coords.latitude, pos.coords.longitude), '_blank'),
-              () => alert('位置情報を取得できません'),
+              () => window.open(smart.googleMapsUrl, '_blank'),
             );
           }}
-          className="btn-secondary text-sm"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 hover:border-primary-400 text-stone-700 text-xs sm:text-sm font-medium transition-colors shadow-sm"
         >
-          📍 現在地からのルート
+          📍 現在地から公共交通機関で
         </button>
         <button
+          type="button"
           onClick={() => {
             navigator.geolocation.getCurrentPosition(
               (pos) => window.open(routes.byCar(pos.coords.latitude, pos.coords.longitude), '_blank'),
-              () => alert('位置情報を取得できません'),
+              () => window.open(smart.googleMapsUrl, '_blank'),
             );
           }}
-          className="btn-secondary text-sm"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 hover:border-primary-400 text-stone-700 text-xs sm:text-sm font-medium transition-colors shadow-sm"
         >
-          🚗 車で行く
+          🚗 車でのルート検索
         </button>
       </div>
     </div>
   );
 }
 
-/* ========================= Helpers ========================= */
 function loadCSS(url: string): Promise<void> {
   return new Promise((resolve) => {
     if (document.querySelector(`link[href="${url}"]`)) {

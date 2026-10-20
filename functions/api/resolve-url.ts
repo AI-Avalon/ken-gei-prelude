@@ -1,10 +1,22 @@
 // Cloudflare Pages Functions — Short URL Resolver
 // Route: POST /api/resolve-url
-// Resolves maps.app.goo.gl short URLs to full Google Maps URLs
+// Resolves maps.app.goo.gl short URLs to full Google Maps URLs with strict SSRF protection
 
 interface Env {
   DB: D1Database;
 }
+
+const ALLOWED_REDIRECT_HOSTS = new Set([
+  'maps.app.goo.gl',
+  'goo.gl',
+  'g.co',
+  'www.google.com',
+  'www.google.co.jp',
+  'google.com',
+  'google.co.jp',
+  'maps.google.com',
+  'maps.google.co.jp',
+]);
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -24,7 +36,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return jsonResponse({ ok: false, error: 'URL is required' }, 400);
     }
 
-    // Only allow Google Maps short URLs
+    // Only allow Google Maps short URLs (HTTPS only)
     let parsed: URL;
     try {
       parsed = new URL(url);
@@ -32,14 +44,19 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return jsonResponse({ ok: false, error: 'Invalid URL' }, 400);
     }
 
-    const allowedHosts = ['maps.app.goo.gl', 'goo.gl', 'g.co'];
-    if (!allowedHosts.includes(parsed.hostname)) {
-      return jsonResponse({ ok: false, error: 'Only Google Maps short URLs are supported' }, 400);
+    const allowedInitialHosts = ['maps.app.goo.gl', 'goo.gl', 'g.co'];
+    if (parsed.protocol !== 'https:' || !allowedInitialHosts.includes(parsed.hostname)) {
+      return jsonResponse({ ok: false, error: 'Only HTTPS Google Maps short URLs are supported' }, 400);
     }
 
-    // Follow the redirect chain (max 5 hops)
+    // Follow the redirect chain (max 5 hops) with SSRF allowlist on every hop
     let currentUrl = url;
     for (let i = 0; i < 5; i++) {
+      const hopParsed = new URL(currentUrl);
+      if (hopParsed.protocol !== 'https:' || !ALLOWED_REDIRECT_HOSTS.has(hopParsed.hostname)) {
+        break;
+      }
+
       const resp = await fetch(currentUrl, { redirect: 'manual' });
       const location = resp.headers.get('Location');
 
@@ -53,11 +70,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           currentUrl = metaMatch[1];
           break;
         }
-        // Return whatever we have
         break;
       }
 
-      currentUrl = location;
+      currentUrl = new URL(location, currentUrl).href;
 
       // If we've reached a full Google Maps URL, stop
       if (currentUrl.includes('google.com/maps') || currentUrl.includes('google.co.jp/maps')) {

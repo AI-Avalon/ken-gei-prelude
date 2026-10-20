@@ -54,7 +54,7 @@ export default function PasswordGate({ concertSlug, title, onVerified, children 
           <Logo compact showSubtitle={false} />
         </div>
         <h2 className="text-xl font-bold mb-2 text-stone-900">編集認証</h2>
-        {title && <p className="text-sm font-medium text-stone-700 line-clamp-2 mb-2">{title}</p>}
+        {title && <p className="text-sm font-medium text-stone-700 break-words [overflow-wrap:anywhere] mb-2">{title}</p>}
         <p className="text-stone-500 mb-5 text-sm leading-relaxed">
           この操作には、演奏会登録時に設定したパスワード、または管理者パスワードが必要です。
         </p>

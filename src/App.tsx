@@ -4,7 +4,6 @@ import NavBar from './components/NavBar';
 import MobileTabBar from './components/MobileTabBar';
 import Footer from './components/Footer';
 import ToastContainer from './components/Toast';
-import Logo from './components/Logo';
 import { useIsMobile } from './hooks/useDevice';
 import LoadingMetronome from './components/LoadingMetronome';
 
@@ -30,7 +29,7 @@ function NotFoundPage() {
       <p className="text-5xl font-display text-primary-300 mb-4">♪</p>
       <h1 className="text-3xl font-serif font-bold mb-4 text-stone-900">404 — ページが見つかりません</h1>
       <p className="text-stone-500 mb-8">お探しのページは存在しないか、移動された可能性があります。</p>
-      <div className="flex gap-4 justify-center">
+      <div className="flex flex-wrap gap-4 justify-center">
         <Link to="/" className="btn-primary">トップページへ</Link>
         <Link to="/concerts" className="btn-secondary">演奏会一覧へ</Link>
       </div>
@@ -121,13 +120,11 @@ function ScrollToTop() {
   navTypeRef.current = navigationType;
 
   useEffect(() => {
-    // Skip scroll-to-top on back/forward navigation — page will restore its own scroll
     if (navTypeRef.current !== 'POP') {
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     }
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
-  // Disable browser native scroll restoration (we handle it manually)
   useEffect(() => {
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
@@ -138,23 +135,53 @@ function ScrollToTop() {
   return null;
 }
 
-// Page transition wrapper — animates on route change
+/**
+ * Page transition wrapper with View Transitions API (`same-document-transitions` guide)
+ * and mandatory programmatic focus routing for accessibility.
+ */
 function PageTransition({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [displayKey, setDisplayKey] = useState(location.key);
   const [animClass, setAnimClass] = useState('animate-page-enter');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
-    setAnimClass('');
-    const frame = requestAnimationFrame(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    const updateDOM = () => {
       setDisplayKey(location.key);
       setAnimClass('animate-page-enter');
-    });
-    return () => cancelAnimationFrame(frame);
+    };
+
+    const docWithVT = document as Document & {
+      startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+    };
+
+    if (!docWithVT.startViewTransition) {
+      updateDOM();
+      containerRef.current?.focus({ preventScroll: true });
+      return;
+    }
+
+    try {
+      const transition = docWithVT.startViewTransition(() => {
+        updateDOM();
+      });
+      transition.finished.then(() => {
+        containerRef.current?.focus({ preventScroll: true });
+      }).catch(() => {});
+    } catch {
+      updateDOM();
+      containerRef.current?.focus({ preventScroll: true });
+    }
   }, [location.key]);
 
   return (
-    <div key={displayKey} className={animClass}>
+    <div ref={containerRef} key={displayKey} tabIndex={-1} className={`${animClass} outline-none`}>
       {children}
     </div>
   );
@@ -166,29 +193,17 @@ export default function App() {
   const isAdminPage = location.pathname.startsWith('/admin');
 
   return (
-    <div className={`min-h-screen flex flex-col ${isMobile && !isAdminPage ? 'pb-14' : ''}`}>
+    <div className={`min-h-screen flex flex-col ${isMobile && !isAdminPage ? 'pb-16' : ''}`}>
       <ScrollToTop />
       <EasterEggs />
-      {/* Desktop: top navbar, Mobile: simplified top bar + bottom tabs */}
-      {isMobile ? (
-        !isAdminPage && (
-          <header className="bg-navy-900/95 border-b border-primary-800/20 sticky top-0 z-50 backdrop-blur-xl min-h-[48px] flex items-center justify-center px-4">
-            <Logo compact showSubtitle={false} />
-          </header>
-        )
-      ) : (
-        <NavBar />
-      )}
+      <NavBar />
       <main className="flex-1">
-        {isMobile ? (
+        <PageTransition>
           <AppRoutes />
-        ) : (
-          <PageTransition>
-            <AppRoutes />
-          </PageTransition>
-        )}
+        </PageTransition>
       </main>
-      {isMobile ? (!isAdminPage && <MobileTabBar />) : <Footer />}
+      <Footer />
+      {isMobile && !isAdminPage && <MobileTabBar />}
       <ToastContainer />
     </div>
   );

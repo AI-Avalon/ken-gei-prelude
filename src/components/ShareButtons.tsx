@@ -160,7 +160,7 @@ export default function ShareButtons({ concert }: { concert: Concert }) {
             <div className="flex items-start justify-between gap-2 mb-4">
               <div className="text-left flex-1 min-w-0">
                 <p className="text-xs text-stone-400 font-medium">QRコードで共有</p>
-                <p className="text-sm font-bold text-stone-800 line-clamp-2 leading-snug mt-0.5">
+                <p className="text-sm font-bold text-stone-800 break-words [overflow-wrap:anywhere] leading-snug mt-0.5">
                   {concert.title}
                 </p>
               </div>

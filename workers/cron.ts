@@ -2,7 +2,8 @@
 // Standalone Worker for Cloudflare Cron Triggers
 // Deploy separately: npx wrangler deploy workers/cron.ts --name ken-gei-prelude-cron -c workers/wrangler.toml
 //
-// Cron Schedule (Chapter 13):
+// Cron Schedule (Chapter 13 + Zero-Touch Persistence):
+//   0 */6 * * *    Every 6 hours — 大学サイト自動スクレイピング＆同期
 //   0 21 * * *     JST 06:00 — 大学サイトスクレイピング
 //   0 18 1 * *     JST 03:00 — 月次メンテナンス（ログ削除・物理削除・レート制限クリア）
 //   0 19 1 * *     JST 04:00 — バックアップ（将来実装）
@@ -19,7 +20,8 @@ export default {
     const cron = event.cron;
 
     switch (cron) {
-      // 毎朝6:00 JST — スクレイピング
+      // 6時間ごと / 毎朝6:00 JST — スクレイピング
+      case '0 */6 * * *':
       case '0 21 * * *':
         ctx.waitUntil(runScrapeViaApi(env));
         break;

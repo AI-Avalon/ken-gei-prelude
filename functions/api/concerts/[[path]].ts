@@ -2,12 +2,14 @@
 // Route: /api/concerts/[[path]]
 
 import { nanoid } from 'nanoid';
+import { runScrape } from '../cron/scrape';
 
 interface Env {
   DB: D1Database;
   KV: KVNamespace;
   ADMIN_PASSWORD: string;
   CONTACT_ENCRYPTION_KEY: string;
+  CRON_SECRET?: string;
 }
 
 interface SiteSettings {
@@ -189,7 +191,33 @@ async function clearRateLimit(db: D1Database, ip: string, endpoint: string) {
 }
 
 // ──────────── GET /api/concerts ────────────
-async function handleList(request: Request, env: Env): Promise<Response> {
+async function handleList(request: Request, env: Env, waitUntil?: (promise: Promise<unknown>) => void): Promise<Response> {
+  // Piggyback Lazy Cron: if last scrape was >12h ago, trigger non-blocking background sync
+  if (waitUntil) {
+    waitUntil((async () => {
+      try {
+        const lastScrape = await env.KV.get('cron:last_scrape_at');
+        const lastMs = lastScrape ? new Date(lastScrape).getTime() : 0;
+        const twelveHoursMs = 12 * 60 * 60 * 1000;
+        if (!lastMs || Number.isNaN(lastMs) || Date.now() - lastMs > twelveHoursMs) {
+          await env.KV.put('cron:last_scrape_at', new Date().toISOString());
+          const result = await runScrape({
+            DB: env.DB,
+            KV: env.KV,
+            ADMIN_PASSWORD: env.ADMIN_PASSWORD,
+            CRON_SECRET: env.CRON_SECRET || '',
+          }, { mode: 'cron' });
+          const details = `[Piggyback] ${result.found} events found, ${result.added} new added`;
+          await env.DB.prepare(
+            "INSERT INTO maintenance_log (task, result, details) VALUES ('scrape', 'success', ?)"
+          ).bind(details).run();
+        }
+      } catch {
+        // Non-blocking background job; ignore errors
+      }
+    })());
+  }
+
   const url = new URL(request.url);
   const page = parseInt(url.searchParams.get('page') || '1');
   const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100);
@@ -224,9 +252,9 @@ async function handleList(request: Request, env: Env): Promise<Response> {
     }
   }
   if (search) {
-    where += ' AND (title LIKE ? OR subtitle LIKE ? OR description LIKE ?)';
+    where += ' AND (title LIKE ? OR subtitle LIKE ? OR description LIKE ? OR venue_json LIKE ? OR program_json LIKE ? OR performers_json LIKE ? OR instruments_json LIKE ? OR tags_json LIKE ?)';
     const s = `%${search}%`;
-    params.push(s, s, s);
+    params.push(s, s, s, s, s, s, s, s);
   }
   if (dateFrom) {
     where += ' AND date >= ?';
@@ -640,7 +668,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     // GET /api/concerts (list)
     if (method === 'GET' && pathParts.length === 0) {
-      return handleList(request, env);
+      return handleList(request, env, context.waitUntil.bind(context));
     }
 
     // GET /api/concerts/:slug

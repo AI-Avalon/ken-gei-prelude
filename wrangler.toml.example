@@ -8,7 +8,16 @@ binding = "DB"
 database_name = "ken-gei-prelude-db"
 database_id = "<YOUR_D1_DATABASE_ID>"
 
-# KV Namespace (cache + flyer images)
+# KV Namespace (cache + flyer images + cron:last_scrape_at)
 [[kv_namespaces]]
 binding = "KV"
 id = "<YOUR_KV_NAMESPACE_ID>"
+
+# R2 Bucket (flyer PDF & high-res WebP storage)
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "ken-gei-prelude-r2"
+
+# Zero-Touch Persistence Cron Schedule (configured on workers/wrangler.toml; Piggyback Lazy Cron also runs in functions/api/concerts/[[path]].ts):
+# [triggers]
+# crons = ["0 */6 * * *", "0 21 * * *", "0 18 1 * *", "0 19 1 * *"]

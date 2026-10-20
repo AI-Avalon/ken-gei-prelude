@@ -13,10 +13,8 @@ interface Props {
 }
 
 /**
- * Lazily renders a PDF stored in KV as an image.
- * Uses pdfjs-dist (already a dependency) to render each page to canvas → WebP.
- * After rendering, POSTs the converted image to /api/upload for permanent KV storage.
- * Skips upload if images already exist for this concert (prevents duplication on reload).
+ * Lazily renders a PDF stored in KV as an image using pdfjs-dist Canvas rendering.
+ * Never uses native <iframe> / <embed> / <object>.
  */
 export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, startPage = 1, sortIndex = 0 }: Props) {
   const [pages, setPages] = useState<string[]>([]);
@@ -25,7 +23,6 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
 
   const convertPdf = useCallback(async () => {
     try {
-      // Fetch the PDF from KV
       const res = await fetch(`/api/image/${pdfKey}`);
       if (!res.ok) {
         setError('PDFの読み込みに失敗しました');
@@ -40,7 +37,6 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
       const cdnBase = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}`;
       const pdf = await pdfjsLib.getDocument({
         data: arrayBuffer,
-        // CJKを含む未埋め込みフォントPDFの文字欠落対策
         cMapUrl: `${cdnBase}/cmaps/`,
         cMapPacked: true,
         standardFontDataUrl: `${cdnBase}/standard_fonts/`,
@@ -50,7 +46,6 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
       const urls: string[] = [];
       const groupId = crypto.randomUUID();
 
-      // Check if this concert already has WebP images (skip upload if so)
       let alreadyUploaded = false;
       try {
         const checkRes = await fetch(`/api/concerts/${concertSlug}`);
@@ -65,7 +60,6 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
 
       for (let pageNum = startPage; pageNum <= totalPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
-        // Use scale 3.0 for sharper text (especially small back-page text)
         const viewport = page.getViewport({ scale: 3.0 });
 
         const canvas = document.createElement('canvas');
@@ -84,7 +78,6 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
         const url = URL.createObjectURL(blob);
         urls.push(url);
 
-        // Upload converted image to server only if not already uploaded
         if (!alreadyUploaded) {
           await uploadConverted(
             blob,
@@ -108,7 +101,6 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
   useEffect(() => {
     convertPdf();
     return () => {
-      // Cleanup object URLs on unmount
       pages.forEach(url => URL.revokeObjectURL(url));
     };
   }, [convertPdf]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -116,7 +108,7 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
   if (loading) {
     return (
       <div className="space-y-3">
-        <div className="bg-stone-100 rounded-lg p-8 text-center">
+        <div className="aspect-[1/1.414] max-w-md mx-auto bg-stone-100 rounded-xl p-8 flex items-center justify-center">
           <LoadingMetronome label="PDFチラシを端末内で変換中..." />
         </div>
       </div>
@@ -125,8 +117,9 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
 
   if (error || pages.length === 0) {
     return (
-      <div className="bg-stone-50 rounded-lg p-6 text-center">
-        <p className="text-sm text-stone-400">{error || 'PDFを表示できません'}</p>
+      <div className="aspect-[1/1.414] max-w-md mx-auto bg-gradient-to-br from-navy-950 to-navy-900 text-primary-200 rounded-xl p-6 flex flex-col items-center justify-center text-center border border-primary-500/30">
+        <span className="text-3xl font-display mb-2">♪</span>
+        <p className="text-sm font-serif">{alt}</p>
       </div>
     );
   }
@@ -134,11 +127,11 @@ export default function PdfFlyerRenderer({ pdfKey, concertSlug, alt, onClick, st
   return (
     <div className="space-y-3">
       {pages.map((url, i) => (
-        <div key={i} className="relative">
+        <div key={i} className="relative aspect-[1/1.414] max-w-md mx-auto bg-stone-50 rounded-xl overflow-hidden shadow-sm">
           <img
             src={url}
             alt={`${alt} ${i + 1}`}
-            className="rounded-lg w-full cursor-pointer shadow-sm"
+            className="w-full h-full object-contain cursor-pointer"
             onClick={() => onClick?.(url)}
             loading={i === 0 ? 'eager' : 'lazy'}
           />
@@ -185,7 +178,6 @@ async function uploadConverted(
   formData.append('page_total', String(pageTotal));
   formData.append('sort_index', String(sortIndex));
   formData.append('set_thumbnail', pageIndex === 0 ? '1' : '0');
-  // source_pdf_key は送らない（変換後もPDFキーをDBに保持してダウンロードリンクを維持）
 
   await fetch('/api/upload', { method: 'POST', body: formData });
 }

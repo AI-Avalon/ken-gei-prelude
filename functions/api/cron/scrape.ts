@@ -1,6 +1,6 @@
-// Cloudflare Pages Functions — University Site Scraping
+// Cloudflare Pages Functions — University Site Scraping (Self-Healing Engine)
 // Route: POST /api/cron/scrape (admin-only or cron-triggered)
-// Spec: Chapter 8 — 大学公式サイト解析
+// Spec: Chapter 8 — 大学公式サイト解析 + Zero-Touch Persistence
 
 import { classifyCategory, parsePricingFromText } from './shared';
 
@@ -15,6 +15,7 @@ interface ScrapedEvent {
   title: string;
   date: string;       // "YYYY-MM-DD"
   timeStart: string;  // "HH:MM"
+  timeOpen?: string;  // "HH:MM"
   venue: string;
   detailUrl?: string;
   description?: string;
@@ -79,9 +80,52 @@ async function generateFingerprint(date: string, _venue: string, title: string):
 }
 
 // ============================================================
+// Self-Healing Date Parser & Schema Validator
+// ============================================================
+export function parseFlexibleDate(raw: string): string | null {
+  if (!raw) return null;
+  const s = raw.normalize('NFKC').trim();
+
+  // 1. YYYY年M月D日
+  const jpMatch = s.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+  if (jpMatch) {
+    return `${jpMatch[1]}-${jpMatch[2].padStart(2, '0')}-${jpMatch[3].padStart(2, '0')}`;
+  }
+
+  // 2. 令和N年M月D日
+  const reiwaMatch = s.match(/令和\s*(\d{1,2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+  if (reiwaMatch) {
+    const year = 2018 + parseInt(reiwaMatch[1], 10);
+    return `${year}-${reiwaMatch[2].padStart(2, '0')}-${reiwaMatch[3].padStart(2, '0')}`;
+  }
+
+  // 3. YYYY/MM/DD or YYYY.MM.DD or YYYY-MM-DD
+  const isoLike = s.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (isoLike) {
+    return `${isoLike[1]}-${isoLike[2].padStart(2, '0')}-${isoLike[3].padStart(2, '0')}`;
+  }
+
+  return null;
+}
+
+export function validateScrapedEvent(ev: Partial<ScrapedEvent>): ev is ScrapedEvent {
+  if (!ev.title || typeof ev.title !== 'string' || ev.title.trim().length < 2 || ev.title.length > 300) {
+    return false;
+  }
+  if (!ev.date || !/^\d{4}-\d{2}-\d{2}$/.test(ev.date)) {
+    return false;
+  }
+  if (!ev.timeStart || !/^\d{2}:\d{2}$/.test(ev.timeStart)) {
+    return false;
+  }
+  if (!ev.venue || typeof ev.venue !== 'string' || ev.venue.trim().length < 1) {
+    return false;
+  }
+  return true;
+}
+
+// ============================================================
 // 会場名から金額・入場料情報を除去するクリーン関数
-// event_info には "愛知県立芸術大学奏楽堂・入場料1000円" のように
-// 会場名と金額が混在することがある
 // ============================================================
 function cleanVenueName(raw: string): string {
   if (!raw) return '愛知県立芸術大学';
@@ -105,23 +149,26 @@ function cleanVenueName(raw: string): string {
   return v || '愛知県立芸術大学';
 }
 
-// ============================================================
-// HTML Parser for 愛知県立芸術大学 event page
-// Target: https://www.aichi-fam-u.ac.jp/event/music/
-// Actual structure (verified 2026-03):
-//   <a href="/event/002226.html" class="eventList_item event">
-//     <div class="event_imgArea"><img src="..." /></div>
-//     <p class="event_date">2026年6月21日（日）</p>
-//     <p class="event_title">...</p>
-//     <p class="event_info">会場名やサブ情報</p>
-//   </a>
-// ============================================================
+function stripTags(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
+// ============================================================
+// HTML Parser for 愛知県立芸術大学 event page (Self-Healing Multi-Selector)
+// Target: https://www.aichi-fam-u.ac.jp/event/music/
+// ============================================================
 function parseEventList(html: string, baseUrl: string): ScrapedEvent[] {
   const events: ScrapedEvent[] = [];
 
-  // Match <a href="/event/NNNN.html" class="eventList_item event">...</a>
-  const entryPattern = /<a\s+href="(\/event\/\d+\.html)"\s+class="eventList_item event">([\s\S]*?)<\/a>/gi;
+  // Match any <a ... href=".../event/NNNN.html" ...>...</a> regardless of attribute order or class changes
+  const entryPattern = /<a\s+[^>]*href="([^"]*\/event\/\d+\.html)"[^>]*>([\s\S]*?)<\/a>/gi;
 
   let match;
   while ((match = entryPattern.exec(html)) !== null) {
@@ -130,26 +177,32 @@ function parseEventList(html: string, baseUrl: string): ScrapedEvent[] {
 
     const detailUrl = new URL(eventPath, baseUrl).href;
 
-    // <p class="event_date">2026年6月21日（日）</p>
-    const dateMatch = block.match(/<p\s+class="event_date">([^<]*)<\/p>/);
-    if (!dateMatch) continue;
-    const dateRaw = dateMatch[1].trim();
-    const dateParsed = dateRaw.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
-    if (!dateParsed) continue;
-    const date = `${dateParsed[1]}-${dateParsed[2].padStart(2, '0')}-${dateParsed[3].padStart(2, '0')}`;
+    // Multi-selector date extraction:
+    // 1. class="...event_date..." or class="...date..."
+    // 2. <time> tag
+    // 3. Fallback: any text inside block matching date pattern
+    const dateTagMatch =
+      block.match(/<(?:p|span|div|time)[^>]*class="[^"]*(?:event_date|date)[^"]*"[^>]*>([\s\S]*?)<\/(?:p|span|div|time)>/i) ||
+      block.match(/<time[^>]*>([\s\S]*?)<\/time>/i);
+    const dateCandidate = dateTagMatch ? stripTags(dateTagMatch[1]) : stripTags(block);
+    const date = parseFlexibleDate(dateCandidate);
+    if (!date) continue;
 
-    // <p class="event_title">...</p>
-    const titleMatch = block.match(/<p\s+class="event_title">([^<]*)<\/p>/);
-    const title = titleMatch ? titleMatch[1].trim().replace(/\s+/g, ' ') : '';
+    // Multi-selector title extraction:
+    // 1. class="...event_title..." or class="...title..."
+    // 2. <h3> / <h4> / <h2> inside card
+    const titleTagMatch =
+      block.match(/<(?:p|h[2-5]|span|div)[^>]*class="[^"]*(?:event_title|title)[^"]*"[^>]*>([\s\S]*?)<\/(?:p|h[2-5]|span|div)>/i) ||
+      block.match(/<h[2-4][^>]*>([\s\S]*?)<\/h[2-4]>/i);
+    const title = titleTagMatch ? stripTags(titleTagMatch[1]) : '';
     if (!title) continue;
 
-    // <p class="event_info">会場名やサブ情報</p>（金額混在を除去してクリーンな会場名を取得）
-    const infoMatch = block.match(/<p\s+class="event_info">([^<]*)<\/p>/);
-    const rawInfo = infoMatch ? infoMatch[1] : '';
+    // Multi-selector venue/info extraction:
+    const infoTagMatch = block.match(/<(?:p|span|div)[^>]*class="[^"]*(?:event_info|info|venue|place)[^"]*"[^>]*>([\s\S]*?)<\/(?:p|span|div)>/i);
+    const rawInfo = infoTagMatch ? stripTags(infoTagMatch[1]) : '';
     const venue = cleanVenueName(rawInfo);
 
-    // Extract pricing from event_info text (e.g. "奏楽堂・入場料1000円")
-    // cleanVenueName removes this info, so we parse it before cleaning
+    // Extract pricing from event_info text before cleaning
     let pricingJson: string | undefined;
     if (rawInfo) {
       const infoNormalized = rawInfo.normalize('NFKC').trim();
@@ -159,14 +212,14 @@ function parseEventList(html: string, baseUrl: string): ScrapedEvent[] {
       }
     }
 
-    // <img src="/event/item/..." />
-    const imgMatch = block.match(/<img\s+src="([^"]+)"/);
+    // <img src="..." />
+    const imgMatch = block.match(/<img\s+[^>]*src="([^"]+)"/i);
     const imageUrl = imgMatch ? new URL(imgMatch[1], baseUrl).href : undefined;
 
     // Dedup
     if (events.some((e) => e.date === date && e.title === title)) continue;
 
-    events.push({
+    const candidate: Partial<ScrapedEvent> = {
       title,
       date,
       timeStart: '14:00', // default, detail page will override
@@ -174,10 +227,14 @@ function parseEventList(html: string, baseUrl: string): ScrapedEvent[] {
       detailUrl,
       description: '',
       sourceUrl: baseUrl,
-      imageUrl: imageUrl,
+      imageUrl,
       category: classifyCategory(title),
       pricingJson,
-    });
+    };
+
+    if (validateScrapedEvent(candidate)) {
+      events.push(candidate);
+    }
   }
 
   return events;
@@ -187,12 +244,12 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
   const extra: Partial<ScrapedEvent> = {};
 
   // Real structure: <div class="detail"><h2>日時</h2><p>...</p><h2>場所</h2><p>...</p>...</div>
-  const detailMatch = html.match(/<div class="detail">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/);
+  const detailMatch = html.match(/<div\s+class="[^"]*detail[^"]*">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/i);
   const detailHtml = detailMatch ? detailMatch[1] : html;
 
-  // Extract sections by <h2> headings
+  // Extract sections by <h2> or <h3> or <dt> headings
   const sections: Record<string, string> = {};
-  const sectionPattern = /<h2>([^<]+)<\/h2>([\s\S]*?)(?=<h2>|<\/div>\s*<\/div>|$)/gi;
+  const sectionPattern = /<(?:h2|h3|dt)[^>]*>([^<]+)<\/(?:h2|h3|dt)>([\s\S]*?)(?=<(?:h2|h3|dt)|<\/div>\s*<\/div>|$)/gi;
   let sMatch;
   while ((sMatch = sectionPattern.exec(detailHtml)) !== null) {
     const heading = sMatch[1].trim();
@@ -209,15 +266,21 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
   }
 
   // Parse time from 日時 section: "2026年6月21日（日）15:00開演（14:30開場）"
-  const timeSection = sections['日時'] || '';
-  const startMatch = timeSection.match(/(\d{1,2})[：:](\d{2})\s*開演/);
+  const timeSection = sections['日時'] || sections['開催日時'] || '';
+  const startMatch = timeSection.match(/(\d{1,2})[：:](\d{2})\s*開演/) || timeSection.match(/開演\s*(\d{1,2})[：:](\d{2})/);
   if (startMatch) {
     extra.timeStart = `${startMatch[1].padStart(2, '0')}:${startMatch[2]}`;
   }
+  const openMatch = timeSection.match(/(\d{1,2})[：:](\d{2})\s*開場/) || timeSection.match(/開場\s*(\d{1,2})[：:](\d{2})/);
+  if (openMatch) {
+    extra.timeOpen = `${openMatch[1].padStart(2, '0')}:${openMatch[2]}`;
+  }
 
-  // Parse venue from 場所 section（cleanVenueNameで金額情報を除去）
-  if (sections['場所']) {
-    extra.venue = cleanVenueName(sections['場所']);
+  // Parse venue from 場所 / 会場 section（cleanVenueNameで金額情報を除去）
+  const venueSection = sections['場所'] || sections['会場'] || '';
+  if (venueSection) {
+    const cleaned = cleanVenueName(venueSection);
+    if (cleaned) extra.venue = cleaned;
   }
 
   // Build description from 概要 section + other details
@@ -225,7 +288,7 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
   if (sections['概要']) descParts.push(sections['概要']);
 
   // Extract performers from <h4>出演</h4> sub-sections
-  const performerMatch = detailHtml.match(/<h4>出演<\/h4>([\s\S]*?)(?=<h[2-4]>|$)/);
+  const performerMatch = detailHtml.match(/<h[3-5][^>]*>出演[^<]*<\/h[3-5]>([\s\S]*?)(?=<h[2-5]>|$)/i);
   if (performerMatch) {
     const performers = performerMatch[1]
       .replace(/<br\s*\/?>/gi, '\n')
@@ -235,7 +298,7 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
   }
 
   // Extract program
-  const programMatch = detailHtml.match(/<h4>プログラム<\/h4>([\s\S]*?)(?=<h[2-4]>|$)/);
+  const programMatch = detailHtml.match(/<h[3-5][^>]*>(?:プログラム|曲目)[^<]*<\/h[3-5]>([\s\S]*?)(?=<h[2-5]>|$)/i);
   if (programMatch) {
     const program = programMatch[1]
       .replace(/<br\s*\/?>/gi, '\n')
@@ -258,7 +321,7 @@ async function parseDetailPage(html: string): Promise<Partial<ScrapedEvent>> {
   }
 
   // Extract all PDF flyer URLs (front + back pages)
-  const pdfMatches = [...html.matchAll(/href="([^"]*\.pdf)"/g)];
+  const pdfMatches = [...html.matchAll(/href="([^"]*\.pdf)"/gi)];
   const seenPdfs = new Set<string>();
   const pdfUrls: string[] = [];
   for (const pm of pdfMatches) {
@@ -290,206 +353,225 @@ async function runScrape(env: Env, options?: { mode?: 'cron' | 'manual' | 'full'
   let added = 0;
   const mode = options?.mode || 'cron';
 
+  // Record last scrape attempt timestamp in KV for Piggyback Cron & Status Indicator
+  try {
+    await env.KV.put('cron:last_scrape_at', new Date().toISOString());
+  } catch { /* ignore KV write error */ }
+
   // Build list of URLs to scrape based on mode
   const urls: string[] = [];
   const start = options?.startPage || 1;
   if (mode === 'full') {
-    // Full rebuild: university site has ~17 pages (as of 2026-03), check up to 20
     if (start === 1) urls.push(BASE_URL);
     for (let i = Math.max(2, start); i <= 20; i++) {
       urls.push(`${BASE_URL}index_${i}.html`);
     }
   } else if (mode === 'manual') {
-    // Manual: pages 1-3 with detail pages and images
     urls.push(BASE_URL);
     urls.push(`${BASE_URL}index_2.html`);
     urls.push(`${BASE_URL}index_3.html`);
   } else {
-    // Cron: page 1 only — lightweight daily check
     urls.push(BASE_URL);
   }
 
-  // In full rebuild mode, skip detail page fetches and image downloads to stay under subrequest limit
   const skipDetails = mode === 'full';
   const skipImages = mode === 'full';
 
   for (const TARGET_URL of urls) {
-  try {
-    // 1. Fetch university event page
-    const res = await fetch(TARGET_URL, {
-      headers: {
-        'User-Agent': 'Crescendo-Bot/1.0 (concert aggregator)',
-        'Accept': 'text/html',
-      },
-    });
+    try {
+      const res = await fetch(TARGET_URL, {
+        headers: {
+          'User-Agent': 'Crescendo-Bot/1.0 (concert aggregator)',
+          'Accept': 'text/html',
+        },
+      });
 
-    if (!res.ok) {
-      // 404 means we've reached the last page — stop scraping
-      if (res.status === 404) break;
-      errors.push(`HTTP ${res.status} from ${TARGET_URL}`);
-      continue;
-    }
-
-    const html = await res.text();
-
-    // 2. Parse events
-    const events = parseEventList(html, TARGET_URL);
-    found += events.length;
-
-    if (events.length === 0 && urls.length === 1) {
-      // No events found on single-page scrape — could mean site structure changed
-      errors.push('パース結果が0件です。サイト構造が変更された可能性があります。');
-
-      // Check how many consecutive zero-result days
-      const recentLogs = await env.DB.prepare(
-        `SELECT details FROM maintenance_log
-         WHERE task = 'scrape' AND result = 'success'
-         ORDER BY executed_at DESC LIMIT 3`
-      ).all<{ details: string }>();
-
-      const consecutiveZero = recentLogs.results?.filter(
-        (r) => r.details.includes('0 events found')
-      ).length || 0;
-
-      if (consecutiveZero >= 2) {
-        // 3 consecutive failures (including this one) → record alert
-        errors.push('3日連続で取得0件です。パーサーの修正が必要です。');
+      if (!res.ok) {
+        if (res.status === 404) break;
+        errors.push(`HTTP ${res.status} from ${TARGET_URL}`);
+        continue;
       }
-    }
 
-    // 3. Process each event
-    for (const ev of events) {
-      try {
-        // Fetch detail page if available (skip in bulk mode to conserve subrequests)
-        if (ev.detailUrl && !skipDetails) {
-          try {
-            const detailRes = await fetch(ev.detailUrl, {
-              headers: {
-                'User-Agent': 'Crescendo-Bot/1.0',
-                'Accept': 'text/html',
-              },
-            });
-            if (detailRes.ok) {
-              const detailHtml = await detailRes.text();
-              const details = await parseDetailPage(detailHtml);
-              Object.assign(ev, details);
-            }
-          } catch {
-            // Detail page fetch failed — continue with what we have
-          }
+      const html = await res.text();
+      const events = parseEventList(html, TARGET_URL);
+      found += events.length;
+
+      if (events.length === 0 && urls.length === 1) {
+        errors.push('パース結果が0件です。サイト構造が変更された可能性があります。');
+
+        const recentLogs = await env.DB.prepare(
+          `SELECT details FROM maintenance_log
+           WHERE task = 'scrape' AND result = 'success'
+           ORDER BY executed_at DESC LIMIT 3`
+        ).all<{ details: string }>();
+
+        const consecutiveZero = recentLogs.results?.filter(
+          (r) => r.details.includes('0 events found')
+        ).length || 0;
+
+        if (consecutiveZero >= 2) {
+          errors.push('3日連続で取得0件です。パーサーの修正が必要です。');
         }
+      }
 
-        // Generate fingerprint for dedup
-        const fingerprint = await generateFingerprint(ev.date, ev.venue, ev.title);
-
-        // Check if already exists
-        const existing = await env.DB.prepare(
-          'SELECT id, pricing_json FROM concerts WHERE fingerprint = ? AND is_deleted = 0'
-        ).bind(fingerprint).first<{ id: string; pricing_json: string }>();
-
-        if (existing) {
-          // Update pricing if it was default (free) and we now have better data
-          if (ev.pricingJson && existing.pricing_json === '[{"label":"入場料","amount":0}]') {
-            await env.DB.prepare(
-              `UPDATE concerts SET pricing_json = ?, updated_at = datetime('now') WHERE id = ?`
-            ).bind(ev.pricingJson, existing.id).run();
-          }
-          continue;
-        }
-
-        // Generate slug
-        const slug = generateSlug(ev.date, ev.title);
-        const id = generateId(12);
-
-        // Download and store flyer image if available (skip in bulk mode)
-        let flyerR2Keys: string[] = [];
-        let flyerThumbnailKey = '';
-        if (ev.imageUrl && !skipImages) {
-          try {
-            const imgRes = await fetch(ev.imageUrl, {
-              headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'image/*' },
-            });
-            if (imgRes.ok) {
-              const imgBuffer = await imgRes.arrayBuffer();
-              const ext = ev.imageUrl.match(/\.(webp|png|jpg|jpeg|gif)$/i)?.[1]?.toLowerCase() || 'jpg';
-              const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
-              const timestamp = Date.now();
-              const imgKey = `flyers/${slug}/${timestamp}.${ext}`;
-              const thumbKey = `flyers/${slug}/${timestamp}_thumb.${ext}`;
-              await env.KV.put(imgKey, imgBuffer, { metadata: { contentType } });
-              await env.KV.put(thumbKey, imgBuffer, { metadata: { contentType } });
-              flyerR2Keys = [imgKey];
-              flyerThumbnailKey = thumbKey;
-            }
-          } catch { /* image download failed */ }
-        }
-
-        // Download all PDF flyers found on detail page (independent of image download)
-        if (!skipImages) {
-          const pdfUrls = (ev as unknown as Record<string, unknown>).pdfUrls as string[] | undefined;
-          if (pdfUrls && pdfUrls.length > 0 && ev.detailUrl) {
-            for (let pi = 0; pi < pdfUrls.length; pi++) {
-              try {
-                const fullPdfUrl = new URL(pdfUrls[pi], ev.detailUrl).href;
-                const pdfRes = await fetch(fullPdfUrl, {
-                  headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'application/pdf' },
-                });
-                if (pdfRes.ok) {
-                  const pdfBuffer = await pdfRes.arrayBuffer();
-                  const pdfTimestamp = Date.now();
-                  const pdfKey = `flyers/${slug}/${pdfTimestamp}_p${pi + 1}.pdf`;
-                  await env.KV.put(pdfKey, pdfBuffer, { metadata: { contentType: 'application/pdf' } });
-                  flyerR2Keys.push(pdfKey);
-                }
-              } catch { /* PDF download failed */ }
-            }
-          }
-        }
-
-        // Determine pricing JSON
-        const pricingJson = ev.pricingJson || JSON.stringify([{ label: '入場料', amount: 0 }]);
-
-        // Use auto-classified category
-        const category = ev.category || 'daigaku';
-
-        // Insert as published (auto-scraped events are public)
-        await env.DB.prepare(
-          `INSERT INTO concerts (
-            id, slug, fingerprint, title, date, time_start,
-            venue_json, category, description, source, source_url,
-            pricing_json, flyer_r2_keys, flyer_thumbnail_key,
-            is_published, edit_password_hash, created_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'auto_scrape', ?, ?, ?, ?, 1, 'auto_generated', 'scraper')`
-        ).bind(
-          id, slug, fingerprint,
-          ev.title, ev.date, ev.timeStart,
-          JSON.stringify({ name: ev.venue }),
-          category,
-          ev.description || '',
-          ev.detailUrl || ev.sourceUrl,
-          pricingJson,
-          JSON.stringify(flyerR2Keys),
-          flyerThumbnailKey
-        ).run();
-
-        added++;
-
-        // Auto-register venue if not exists
+      for (const ev of events) {
         try {
+          if (ev.detailUrl && !skipDetails) {
+            try {
+              const detailRes = await fetch(ev.detailUrl, {
+                headers: {
+                  'User-Agent': 'Crescendo-Bot/1.0',
+                  'Accept': 'text/html',
+                },
+              });
+              if (detailRes.ok) {
+                const detailHtml = await detailRes.text();
+                const details = await parseDetailPage(detailHtml);
+                // Upsert protection: only override with non-empty values
+                if (details.timeStart) ev.timeStart = details.timeStart;
+                if (details.timeOpen) ev.timeOpen = details.timeOpen;
+                if (details.venue && details.venue.trim().length > 0) ev.venue = details.venue;
+                if (details.description && details.description.trim().length > 0) ev.description = details.description;
+                if (details.pricingJson) ev.pricingJson = details.pricingJson;
+                if ((details as Record<string, unknown>).pdfUrl) {
+                  (ev as unknown as Record<string, unknown>).pdfUrl = (details as Record<string, unknown>).pdfUrl;
+                }
+                if ((details as Record<string, unknown>).pdfUrls) {
+                  (ev as unknown as Record<string, unknown>).pdfUrls = (details as Record<string, unknown>).pdfUrls;
+                }
+                if ((details as Record<string, unknown>).detailImagePaths) {
+                  (ev as unknown as Record<string, unknown>).detailImagePaths = (details as Record<string, unknown>).detailImagePaths;
+                }
+              }
+            } catch {
+              // Detail page fetch failed — continue with what we have
+            }
+          }
+
+          // Validate event schema before writing to D1
+          if (!validateScrapedEvent(ev)) {
+            continue;
+          }
+
+          const fingerprint = await generateFingerprint(ev.date, ev.venue, ev.title);
+
+          // Check if already exists (Upsert protection: never overwrite valid records with empty data)
+          const existing = await env.DB.prepare(
+            'SELECT id, pricing_json, time_open, description FROM concerts WHERE fingerprint = ? AND is_deleted = 0'
+          ).bind(fingerprint).first<{ id: string; pricing_json: string; time_open: string; description: string }>();
+
+          if (existing) {
+            const updates: string[] = [];
+            const updateVals: string[] = [];
+
+            if (ev.pricingJson && existing.pricing_json === '[{"label":"入場料","amount":0}]') {
+              updates.push('pricing_json = ?');
+              updateVals.push(ev.pricingJson);
+            }
+            if (ev.timeOpen && !existing.time_open) {
+              updates.push('time_open = ?');
+              updateVals.push(ev.timeOpen);
+            }
+            if (ev.description && !existing.description) {
+              updates.push('description = ?');
+              updateVals.push(ev.description);
+            }
+
+            if (updates.length > 0) {
+              updates.push("updated_at = datetime('now')");
+              updateVals.push(existing.id);
+              await env.DB.prepare(
+                `UPDATE concerts SET ${updates.join(', ')} WHERE id = ?`
+              ).bind(...updateVals).run();
+            }
+            continue;
+          }
+
+          const slug = generateSlug(ev.date, ev.title);
+          const id = generateId(12);
+
+          let flyerR2Keys: string[] = [];
+          let flyerThumbnailKey = '';
+          if (ev.imageUrl && !skipImages) {
+            try {
+              const imgRes = await fetch(ev.imageUrl, {
+                headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'image/*' },
+              });
+              if (imgRes.ok) {
+                const imgBuffer = await imgRes.arrayBuffer();
+                const ext = ev.imageUrl.match(/\.(webp|png|jpg|jpeg|gif)$/i)?.[1]?.toLowerCase() || 'jpg';
+                const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+                const timestamp = Date.now();
+                const imgKey = `flyers/${slug}/${timestamp}.${ext}`;
+                const thumbKey = `flyers/${slug}/${timestamp}_thumb.${ext}`;
+                await env.KV.put(imgKey, imgBuffer, { metadata: { contentType } });
+                await env.KV.put(thumbKey, imgBuffer, { metadata: { contentType } });
+                flyerR2Keys = [imgKey];
+                flyerThumbnailKey = thumbKey;
+              }
+            } catch { /* image download failed */ }
+          }
+
+          if (!skipImages) {
+            const pdfUrls = (ev as unknown as Record<string, unknown>).pdfUrls as string[] | undefined;
+            if (pdfUrls && pdfUrls.length > 0 && ev.detailUrl) {
+              for (let pi = 0; pi < pdfUrls.length; pi++) {
+                try {
+                  const fullPdfUrl = new URL(pdfUrls[pi], ev.detailUrl).href;
+                  const pdfRes = await fetch(fullPdfUrl, {
+                    headers: { 'User-Agent': 'Crescendo-Bot/1.0', 'Accept': 'application/pdf' },
+                  });
+                  if (pdfRes.ok) {
+                    const pdfBuffer = await pdfRes.arrayBuffer();
+                    const pdfTimestamp = Date.now();
+                    const pdfKey = `flyers/${slug}/${pdfTimestamp}_p${pi + 1}.pdf`;
+                    await env.KV.put(pdfKey, pdfBuffer, { metadata: { contentType: 'application/pdf' } });
+                    flyerR2Keys.push(pdfKey);
+                  }
+                } catch { /* PDF download failed */ }
+              }
+            }
+          }
+
+          const pricingJson = ev.pricingJson || JSON.stringify([{ label: '入場料', amount: 0 }]);
+          const category = ev.category || 'daigaku';
+
           await env.DB.prepare(
-            `INSERT OR IGNORE INTO venues (id, name, data_json) VALUES (?, ?, ?)`
-          ).bind(generateId(8), ev.venue, JSON.stringify({ name: ev.venue })).run();
-        } catch { /* ignore */ }
-      } catch (evErr: unknown) {
-        const msg = evErr instanceof Error ? evErr.message : String(evErr);
-        errors.push(`Event "${ev.title}": ${msg}`);
+            `INSERT INTO concerts (
+              id, slug, fingerprint, title, date, time_open, time_start,
+              venue_json, category, description, source, source_url,
+              pricing_json, flyer_r2_keys, flyer_thumbnail_key,
+              is_published, edit_password_hash, created_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'auto_scrape', ?, ?, ?, ?, 1, 'auto_generated', 'scraper')`
+          ).bind(
+            id, slug, fingerprint,
+            ev.title, ev.date, ev.timeOpen || '', ev.timeStart,
+            JSON.stringify({ name: ev.venue }),
+            category,
+            ev.description || '',
+            ev.detailUrl || ev.sourceUrl,
+            pricingJson,
+            JSON.stringify(flyerR2Keys),
+            flyerThumbnailKey
+          ).run();
+
+          added++;
+
+          try {
+            await env.DB.prepare(
+              `INSERT OR IGNORE INTO venues (id, name, data_json) VALUES (?, ?, ?)`
+            ).bind(generateId(8), ev.venue, JSON.stringify({ name: ev.venue })).run();
+          } catch { /* ignore */ }
+        } catch (evErr: unknown) {
+          const msg = evErr instanceof Error ? evErr.message : String(evErr);
+          errors.push(`Event "${ev.title}": ${msg}`);
+        }
       }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`Page ${TARGET_URL}: ${msg}`);
     }
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    errors.push(`Page ${TARGET_URL}: ${msg}`);
   }
-  } // end for urls loop
 
   return { found, added, errors };
 }
@@ -498,7 +580,6 @@ async function runScrape(env: Env, options?: { mode?: 'cron' | 'manual' | 'full'
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
 
-  // Auth check: require admin token or cron secret
   const token = request.headers.get('X-Admin-Token');
   const cronSecret = request.headers.get('X-Cron-Secret');
 
@@ -519,20 +600,19 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   try {
-    // Determine scrape mode from parameters
     let mode: 'cron' | 'manual' | 'full' = 'cron';
     let startPage = 1;
     try {
       const body = await request.clone().json() as Record<string, unknown>;
       if (body.mode === 'manual' || body.mode === 'full') mode = body.mode;
-      if (body.allPages) mode = 'full'; // backward compat
+      if (body.allPages) mode = 'full';
       if (typeof body.startPage === 'number') startPage = body.startPage;
     } catch { /* no body or not JSON */ }
 
     const url = new URL(request.url);
     if (url.searchParams.get('mode') === 'manual') mode = 'manual';
     if (url.searchParams.get('mode') === 'full') mode = 'full';
-    if (url.searchParams.get('allPages') === 'true') mode = 'full'; // backward compat
+    if (url.searchParams.get('allPages') === 'true') mode = 'full';
     if (url.searchParams.get('startPage')) startPage = parseInt(url.searchParams.get('startPage')!) || 1;
 
     const result = await runScrape(env, { mode, startPage });
@@ -540,7 +620,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const details = `${result.found} events found, ${result.added} new added` +
       (result.errors.length > 0 ? `. Errors: ${result.errors.join('; ')}` : '');
 
-    // Log to maintenance_log
     await env.DB.prepare(
       "INSERT INTO maintenance_log (task, result, details) VALUES ('scrape', 'success', ?)"
     ).bind(details).run();
@@ -564,5 +643,4 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 };
 
-// Also export the scraping function for use by the cron worker
 export { runScrape };

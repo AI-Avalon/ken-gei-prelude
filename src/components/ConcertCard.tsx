@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CATEGORIES } from '../lib/constants';
-import { formatDateShort, daysUntil, formatPricing } from '../lib/utils';
+import { formatDateShort, daysUntil, formatPricing, getConcertStatusBadges } from '../lib/utils';
 import { analyzeConcertFlyers } from '../lib/flyers';
-import { useIsMobile } from '../hooks/useDevice';
 import type { Concert } from '../types';
 
 /** チラシキーから試行すべきサムネイルURLを優先順に返す（失敗時にフォールバック） */
@@ -16,53 +15,55 @@ function getFlyerThumbSrcs(concert: Concert): string[] {
     : null;
 
   const thumbKey = concert.flyer_thumbnail_key;
-  // _g{uuid}_o パターンを含む = 変換済みWebPページから明示的にアップロードされた小サムネ
   const isExplicitThumb = Boolean(thumbKey && !thumbKey.endsWith('.pdf') && /_g[a-z0-9-]+_o\d+/i.test(thumbKey));
 
-  // 1. 明示的アップロード済みサムネ（小サイズで確実に存在）
+  const toUrl = (k: string) => (k.startsWith('http') || k.startsWith('/') || k.startsWith('data:') ? k : `/api/image/${k}`);
+
   if (isExplicitThumb && thumbKey) {
-    add(`/api/image/${thumbKey}`);
+    add(toUrl(thumbKey));
   }
-
-  // 2. 変換済みWebP or 直接画像（JPG等）の先頭（KVに確実に存在）
   if (analysis?.displayKeys.length) {
-    add(`/api/image/${analysis.displayKeys[0]}`);
+    add(toUrl(analysis.displayKeys[0]));
   }
-
-  // 3. 派生サムネイルキー（存在しない可能性あり、フォールバック）
   if (thumbKey && !thumbKey.endsWith('.pdf') && !isExplicitThumb) {
-    add(`/api/image/${thumbKey}`);
+    add(toUrl(thumbKey));
   }
-
-  // 4. _thumb. を含むキー
   const thumb = concert.flyer_r2_keys?.find((k) => k.includes('_thumb.'));
-  if (thumb) add(`/api/image/${thumb}`);
+  if (thumb) add(toUrl(thumb));
 
-  // 5. PDF以外の任意キー
   const fallback = concert.flyer_r2_keys?.find((k) => !k.endsWith('.pdf'));
-  if (fallback) add(`/api/image/${fallback}`);
+  if (fallback) add(toUrl(fallback));
 
   return srcs;
 }
-
 
 interface Props {
   concert: Concert;
   highlight?: boolean;
 }
 
+/**
+ * Single JSX Tree ConcertCard
+ * Skill: `.agent/skills/responsive-and-truncation-auditor/SKILL.md`
+ * - Zero `truncate` or clipping on title, venue, date, time, or pricing.
+ * - Identical information rendered across Mobile (375px) and Desktop (1440px).
+ * - Real-time status badges (`🔴 本日開催`, `🟡 明日開催`, `🟢 今週末`, `🎫 入場無料`, `📦 終演アーカイブ`).
+ */
 export default function ConcertCard({ concert, highlight }: Props) {
   const [thumbSrcIdx, setThumbSrcIdx] = useState(0);
   const [thumbFailed, setThumbFailed] = useState(false);
+
   const cat = CATEGORIES[concert.category] || CATEGORIES.other;
   const status = daysUntil(concert.date);
   const isToday = status === '本日！';
   const isEnded = status === '終了';
-  const isMobile = useIsMobile();
   const pricing = formatPricing(concert.pricing);
   const isFree = pricing === '無料';
+  const statusBadges = getConcertStatusBadges(concert);
+
   const thumbSrcs = getFlyerThumbSrcs(concert);
   const thumbSrc = thumbFailed ? null : (thumbSrcs[thumbSrcIdx] ?? null);
+
   const handleThumbError = () => {
     if (thumbSrcIdx + 1 < thumbSrcs.length) {
       setThumbSrcIdx((i) => i + 1);
@@ -71,71 +72,16 @@ export default function ConcertCard({ concert, highlight }: Props) {
     }
   };
 
-  /* ===== Mobile: horizontal card ===== */
-  if (isMobile) {
-    return (
-      <Link
-        to={`/concerts/${concert.slug}`}
-        className={`flex bg-white rounded-xl shadow-sm border overflow-hidden transition-colors ${
-          highlight ? 'border-primary-400 shadow-md' : 'border-stone-100'
-        } ${isEnded ? 'opacity-75' : ''}`}
-      >
-        {/* Thumbnail — left side */}
-        <div className="w-[72px] self-stretch flex-shrink-0 bg-navy-950 relative overflow-hidden">
-          {thumbSrc ? (
-            <img
-              src={thumbSrc}
-              alt={concert.title}
-              className="absolute inset-0 w-full h-full object-contain"
-              loading="lazy"
-              onError={handleThumbError}
-            />
-          ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
-              <span className="text-primary-400/60 text-xl">♪</span>
-            </div>
-          )}
-          {isToday && (
-            <div className="absolute top-0 left-0 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-br-lg">
-              TODAY
-            </div>
-          )}
-        </div>
-        {/* Info — right side */}
-        <div className="flex-1 p-3 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`text-xs font-bold ${isToday ? 'text-red-600' : isEnded ? 'text-stone-400' : 'text-primary-700'}`}>
-              {formatDateShort(concert.date)}
-            </span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${cat.color}`}>{cat.label}</span>
-          </div>
-          <h3 className="font-medium text-sm text-stone-900 line-clamp-2 leading-snug mb-1">
-            {concert.title}
-          </h3>
-          <p className="text-[11px] text-stone-500 truncate flex items-center gap-1">
-            <span className="text-stone-400">📍</span>{concert.venue?.name || '会場未定'}
-          </p>
-          <div className="flex items-center justify-between mt-1.5 text-[11px]">
-            <span className={isFree ? 'text-emerald-600 font-medium' : 'text-stone-600'}>
-              {isFree ? '🎫 無料' : pricing}
-            </span>
-            <span className={`font-medium ${isToday ? 'text-red-500' : isEnded ? 'text-stone-400' : 'text-primary-600'}`}>
-              {status}
-            </span>
-          </div>
-        </div>
-      </Link>
-    );
-  }
-
-  /* ===== Desktop: vertical card ===== */
   return (
     <Link
       to={`/concerts/${concert.slug}`}
-      className={`card block group ${highlight ? 'ring-2 ring-primary-400 shadow-lg' : ''} ${isEnded ? 'opacity-80' : ''}`}
+      data-testid="concert-card"
+      className={`card flex flex-row sm:flex-col group ${
+        highlight ? 'ring-2 ring-primary-400 shadow-lg' : ''
+      } ${isEnded ? 'opacity-80' : ''}`}
     >
-      {/* Thumbnail */}
-      <div className="aspect-[4/3] bg-navy-950 overflow-hidden relative">
+      {/* Thumbnail Area: Left on mobile, Top on desktop */}
+      <div className="w-28 sm:w-full sm:aspect-[4/3] flex-shrink-0 bg-navy-950 overflow-hidden relative self-stretch">
         {thumbSrc ? (
           <img
             src={thumbSrc}
@@ -145,53 +91,76 @@ export default function ConcertCard({ concert, highlight }: Props) {
             onError={handleThumbError}
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-navy-900 to-navy-800 flex items-center justify-center">
-            <div className="text-center">
-              <span className="text-primary-400/60 text-3xl font-display tracking-widest">♪</span>
-              <p className="text-stone-600 text-xs mt-2">{cat.label}</p>
-            </div>
-          </div>
-        )}
-        {/* Status badge overlay */}
-        {isToday && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-            TODAY
-          </div>
-        )}
-        {isFree && !isEnded && (
-          <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-            無料
+          <div className="w-full h-full min-h-[120px] bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 flex flex-col items-center justify-center p-3 text-center">
+            <span className="text-primary-400/75 text-2xl sm:text-3xl font-display tracking-widest">♪</span>
+            <span className="text-[10px] text-primary-300/70 font-serif mt-1">{cat.label}</span>
           </div>
         )}
       </div>
 
-      <div className="p-4">
-        {/* Date + Category */}
-        <div className="flex items-center justify-between mb-2">
-          <span className={`text-sm font-bold ${isToday ? 'text-red-600' : isEnded ? 'text-stone-400' : 'text-primary-700'}`}>
-            {formatDateShort(concert.date)}
-          </span>
-          <span className={`badge text-[10px] ${cat.color}`}>
-            {cat.label}
-          </span>
+      {/* Content Area: Unified Single JSX Tree */}
+      <div className="flex-1 p-3.5 sm:p-4 min-w-0 flex flex-col justify-between">
+        <div>
+          {/* Date, Time & Category Row */}
+          <div className="flex flex-wrap items-center justify-between gap-1.5 mb-2">
+            <div className="flex flex-wrap items-center gap-1.5 tabular-nums">
+              <span
+                data-testid="concert-card-date"
+                className={`text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 ${
+                  isToday ? 'text-red-600' : isEnded ? 'text-stone-400' : 'text-primary-700'
+                }`}
+              >
+                {formatDateShort(concert.date)}
+              </span>
+              {concert.time_start && (
+                <span className="text-xs text-stone-500 whitespace-nowrap shrink-0">
+                  {concert.time_start}開演
+                </span>
+              )}
+            </div>
+            <span className={`badge text-[10px] whitespace-nowrap shrink-0 ${cat.color}`}>
+              {cat.icon} {cat.label}
+            </span>
+          </div>
+
+          {/* Real-time Status Badges */}
+          {statusBadges.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+              {statusBadges.map((b) => (
+                <span
+                  key={b.key}
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] whitespace-nowrap shrink-0 ${b.className}`}
+                >
+                  {b.label}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Full Title (No truncation) */}
+          <h3
+            data-testid="concert-card-title"
+            className="fluid-card-title font-serif font-bold text-stone-900 mb-1.5 group-hover:text-primary-700 transition-colors break-words [overflow-wrap:anywhere]"
+          >
+            {concert.title}
+          </h3>
+
+          {/* Full Venue (No truncation) */}
+          <p
+            data-testid="concert-card-venue"
+            className="text-xs text-stone-600 mb-2.5 flex items-start gap-1 break-words [overflow-wrap:anywhere]"
+          >
+            <span className="text-stone-400 shrink-0 mt-0.5">📍</span>
+            <span>{concert.venue?.name || '会場未定'}</span>
+          </p>
         </div>
 
-        {/* Title */}
-        <h3 className="font-medium text-stone-900 line-clamp-2 mb-2 group-hover:text-primary-700 transition-colors leading-snug">
-          {concert.title}
-        </h3>
-
-        {/* Venue */}
-        <p className="text-xs text-stone-500 mb-3 truncate flex items-center gap-1">
-          <span className="text-stone-400">📍</span>{concert.venue?.name || '会場未定'}
-        </p>
-
-        {/* Bottom row */}
-        <div className="flex items-center justify-between text-xs border-t border-stone-100 pt-3">
-          <span className={`font-medium ${isFree ? 'text-emerald-600' : 'text-stone-700'}`}>
-            {pricing}
+        {/* Bottom Pricing & Countdown Row */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs border-t border-stone-100 pt-2.5 mt-auto tabular-nums">
+          <span className={`font-semibold whitespace-nowrap shrink-0 ${isFree ? 'text-emerald-700' : 'text-stone-700'}`}>
+            {isFree ? '入場無料' : pricing}
           </span>
-          <span className={`font-medium ${isToday ? 'text-red-500' : isEnded ? 'text-stone-400' : 'text-primary-600'}`}>
+          <span className={`font-medium whitespace-nowrap shrink-0 ${isToday ? 'text-red-600 font-bold' : isEnded ? 'text-stone-400' : 'text-primary-700'}`}>
             {status}
           </span>
         </div>

@@ -1,100 +1,151 @@
-# 🎵 Crescendo（クレッシェンド）
+# 🎵 Crescendo（クレッシェンド）— Ken-Gei Prelude
 
 > 若き音楽家たちの響きを、あなたの手のひらに。
 
 愛知県立芸術大学 音楽学部の演奏会情報ポータルサイト。
-演奏会の掲載・閲覧・検索・共有を誰でも無料で利用できます。
+演奏会の掲載・閲覧・検索・共有・カレンダー連携を誰でも完全無料で利用できます。
 
 🌐 **サイト**: https://ken-gei-prelude.pages.dev
 
 ---
 
-## ✨ 特徴
+## ✨ システム概要 & コア機能
 
-- **完全無料** — Cloudflare無料枠のみで運用（月間費用 ¥0）
-- **誰でも登録** — アカウント不要。パスワードを設定するだけで演奏会登録
-- **Google Maps連携** — URLを貼り付けるだけで会場情報を自動入力
-- **柔軟な料金設定** — 大人/子供/学生などの料金区分をプリセットから簡単設定
-- **スマホ対応** — Apple風のプレミアムデザイン、レスポンシブ対応
-- **ページアニメーション** — 滑らかなトランジションと高級感のある演出
-- **カレンダー連携** — Google / Apple / Outlook / TimeTree / Webcal購読
-- **SNS共有** — X, LINE, Facebook, QRコード
-- **地図・ルート案内** — Leaflet + OpenStreetMap（無料）
-- **宣伝キット** — Instagram / X / LINE / OGP / A4 / QR付き説明画像を同梱
-- **自動スクレイピング** — 大学公式サイトから演奏会情報を自動取得
-- **過去歴演奏会アーカイブ** — 2022年から現在までの全公演を収録
-
----
-
-## 🏗️ システムアーキテクチャ
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   Client (Browser)                   │
-│  React 18 + TypeScript + Tailwind CSS + React Router │
-│  ┌──────────┐ ┌───────────┐ ┌──────────────────────┐ │
-│  │ HomePage │ │ ConcertLst│ │ ConcertForm          │ │
-│  │ (Hero +  │ │ (検索+ﾌｨﾙﾀ)│ │ (GoogleMaps URL自動)  │ │
-│  │ Upcoming)│ │           │ │ (料金プリセット)        │ │
-│  └──────────┘ └───────────┘ └──────────────────────┘ │
-└────────────────────┬────────────────────────────────┘
-                     │ HTTPS (REST API)
-┌────────────────────▼────────────────────────────────┐
-│          Cloudflare Pages Functions (Edge)          │
-│  ┌────────────────┐  ┌────────────────────────────┐ │
-│  │ /api/concerts/*│  │ /api/cron/scrape          │ │
-│  │ CRUD + 検索     │  │ 大学サイト自動取得         │  │
-│  │ バリデーション   │  │ ページネーション対応       │  │
-│  │ フィンガープリント│  │ 詳細ページパース          │  │
-│  └────────┬───────┘  └────────┬───────────────────┘  │
-│           │                   │                      │
-│  ┌────────▼───────────────────▼───────────────────┐  │
-│  │                 Cloudflare D1                   │  │
-│  │  concerts / venues / analytics / maintenance    │  │
-│  └────────────────────────────────────────────────┘  │
-│  ┌────────────────────────────────────────────────┐  │
-│  │                 Cloudflare KV                   │  │
-│  │  レート制限 / キャッシュ / セッション            │  │
-│  └────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────┐
-│           GitHub Actions (Automation)                 │
-│  ┌──────────────────┐  ┌───────────────────────────┐ │
-│  │ deploy.yml       │  │ cron.yml                  │ │
-│  │ push → build →   │  │ 毎日21:00 UTC → scrape   │ │
-│  │ Cloudflare Pages │  │ → maintenance              │ │
-│  └──────────────────┘  └───────────────────────────┘ │
-└──────────────────────────────────────────────────────┘
-```
+- **完全無料・ゼロメンテナンス運用** — Cloudflare 無料枠（Pages / Functions / D1 / R2 / KV）と GitHub Actions 自己延命機構のみで永久自律稼働（月間費用 ¥0・管理者作業ゼロ）
+- **文字見切れゼロ（Zero-Truncation）& Single JSX Tree レスポンシブ設計** — PC（1440px〜2560px）とスマートフォン（320px〜375px）で同一の JSX ツリー・100% 同一の情報量を表示。タイトル・日時・会場・出演者・曲目・料金の省略（`...`）を撤廃し、`clamp()` 流体タイポグラフィと `overflow-wrap: anywhere` で美しい日本語組版を実現
+- **3モード・カレンダー & ビュースイッチャー (`?view=grid|calendar|timeline`)** — カードグリッド・月間カレンダー・時系列タイムラインを URL クエリパラメータ連動でシームレスに切り替え。スマホでもドット省略せず公演タイトルチップを直接描画し、タップでインライン詳細ドロワーを展開
+- **3段階ハイブリッド PDF / フライヤー描画 (`FlyerPreview`)** — ネイティブ `<iframe>` / `<embed>` / `<object>` 直読みによるモバイルの「空枠バグ」を根治：
+  1. **第1優先（WebP高速表示）**: アスペクト比 `1 / 1.414`（A4比率）コンテナ + Skeleton プレースホルダー（CLS ゼロ）+ `fetchPriority="high"` で表裏を高速描画
+  2. **第2優先（PDF.js Canvas レンダリング）**: `pdfjs-dist` によりブラウザ `<canvas>` へ1ページ目（表面）・2ページ目（裏面）を高精細描画
+  3. **第3優先（クラシック音楽風タイポグラフィ・ポスターカード）**: フライヤー未登録時も公演タイトル・日時・会場をあしらったポスターカードを自動生成
+  - 表面/裏面ワンタップ切替、ネイティブ `<dialog closedby="any">` 拡大ライトボックス、「📄 公式PDFを別タブで開く」「📥 PDFを保存」アクションバーを PC・スマホ共通で搭載
+- **ワンタップ Google カレンダー & 標準 `.ics` 登録** — `Asia/Tokyo` (`+0900`) `VTIMEZONE` 明記の RFC 5545 準拠 `.ics` 生成と Google カレンダー URL に、開場時刻・会場住所・プログラム・出演者・公式リンク・元ページ URL を自動格納
+- **リアルタイム開催ステータスバッジ & スマート会場ナビ** — JST（日本標準時）基準で `🔴 本日開催` / `🟡 明日開催` / `🟢 今週末` / `🎫 入場無料` / `📦 終演アーカイブ` を自動付与。学内ホール（奏楽堂・室内楽ホール・講堂）や主要ホール（芸文・しらかわ・宗次・電気文化会館・長久手文化の家）の住所・Google マップ経路・リニモ「芸大通駅」/ 名鉄バス案内をワンタップ表示
+- **インクリメンタル・スマート検索** — 作曲家名・楽器名・会場名・出演者・曲目・タイトルを横断してリアルタイムに絞り込み、ヒット件数を即座に表示
 
 ---
 
-## 🎨 デザインシステム
+## 🏗️ システムアーキテクチャ (Mermaid)
 
-### カラーパレット
+```mermaid
+flowchart TB
+    subgraph Client["Client (PC / Mobile Browser — Single JSX Tree)"]
+        UI["React 18 + TypeScript + Tailwind CSS"]
+        Views["3-Mode Switcher (Grid / Calendar / Timeline)"]
+        Flyer["FlyerPreview (WebP -> PDF.js Canvas -> Classical Poster)"]
+        Cal["Calendar Export (Google Calendar & RFC5545 .ics Asia/Tokyo)"]
+        UI --> Views
+        UI --> Flyer
+        UI --> Cal
+    end
 
-| 用途 | カラー | 例 |
+    subgraph Edge["Cloudflare Edge (Pages Functions & Workers)"]
+        API["/api/concerts/* (CRUD + Cross-Field Search)"]
+        ScrapeAPI["/api/cron/scrape (Self-Healing Scraper)"]
+        FeedAPI["/api/feed/ics & /api/settings"]
+        LazyCron["Piggyback Lazy Cron (ctx.waitUntil > 12h)"]
+        CronWorker["Cloudflare Cron Trigger (0 */6 * * *)"]
+    end
+
+    subgraph Storage["Cloudflare Storage (Free Tier)"]
+        D1[("Cloudflare D1 (SQLite)\nconcerts / venues / analytics")]
+        KV[("Cloudflare KV\ncron:last_scrape_at / Rate Limit")]
+        R2[("Cloudflare R2\nFlyer WebP & PDF Storage")]
+    end
+
+    subgraph GitHub["GitHub Actions (Zero-Touch Self-Keepalive)"]
+        GHCron["cron.yml (06:00 JST)\n1. PUT /workflows/cron.yml/enable\n2. Trigger /api/cron/scrape\n3. Update .keepalive & git push [skip ci]"]
+        GHDeploy["deploy.yml\nPush to main -> Build -> Cloudflare Pages"]
+    end
+
+    Univ["愛知県立芸術大学 公式サイト\nhttps://www.aichi-fam-u.ac.jp/event/music/"]
+
+    Client -->|HTTPS REST API| API
+    Client -->|HTTPS| FeedAPI
+    Client -->|WebP / PDF Streaming| R2
+    API -->|Prepared Statements| D1
+    API -->|Check & Update Timestamp| KV
+    API -.->|Stale > 12h: Non-blocking| LazyCron
+    LazyCron --> ScrapeAPI
+    CronWorker -->|Every 6 Hours| ScrapeAPI
+    GHCron -->|Daily Trigger + Auth| ScrapeAPI
+    ScrapeAPI -->|Multi-Selector + Date Parser| Univ
+    ScrapeAPI -->|Upsert Protected| D1
+    ScrapeAPI -->|Update cron:last_scrape_at| KV
+```
+
+---
+
+## 🛡️ Zero-Touch Persistence（管理者作業ゼロの3重自律永続化機構）
+
+管理者が手動でワークフローを再有効化したり、Secrets を再設定したりする必要を完全に排除するため、以下の **3層の自律延命・自己修復アーキテクチャ** を実装しています。
+
+1. **第1層：GitHub Actions 自己延命 (`Self-Keepalive`)**
+   - [`.github/workflows/cron.yml`](.github/workflows/cron.yml) に `permissions: { contents: write, actions: write }` を付与。
+   - 毎回の実行冒頭で標準 `GITHUB_TOKEN` を用いて `gh api --method PUT /repos/${{ github.repository }}/actions/workflows/cron.yml/enable` を叩き、ワークフロー自身を恒久的に有効状態に保ちます。
+   - スクレイピング完了後、[`.keepalive`](.keepalive) に最新 UTC 時刻とヘルスステータスを書き込み、`github-actions[bot]` として自動 `git commit & push`（`[skip ci]` 付き）を実行。GitHub の「60日間コミットがないリポジトリの Cron 自動停止」タイマーを毎日 0 日にリセットします。
+2. **第2層：Cloudflare Workers Cron + Piggyback Lazy Cron（エッジ側自律更新）**
+   - [`workers/wrangler.toml`](workers/wrangler.toml) の `crons = ["0 */6 * * *", ...]` により 6 時間ごとにスクレイピングを実行。
+   - さらに [`functions/api/concerts/[[path]].ts`](functions/api/concerts/[[path]].ts) の `GET /api/concerts` エンドポイントにて、KV 上の `cron:last_scrape_at` が **12 時間以上前** の場合、ユーザーへのレスポンスは即座に返却しつつ `context.waitUntil(runScrape(context.env, 3))` でバックグラウンド自動更新を起動します。万一 GitHub Actions がメンテナンス中でも、サイトへのアクセスだけで最新データが保たれます。
+3. **第3層：Self-Healing Scraper（構造変化耐性 & Upsert 保護）**
+   - [`functions/api/cron/scrape.ts`](functions/api/cron/scrape.ts) は、大学公式サイトの HTML クラス変更や全角数字・和暦/スラッシュ混在表記（`2026年11月3日（火・祝）` / `2026/11/03` 等）を正規表現と複数セレクタ候補で吸収。
+   - 抽出データを厳格に検証し、万が一大学サイトの一時障害等で不正な空データが返った場合は既存の正常な D1 レコードを絶対に上書きしない Upsert 保護を備えています。
+   - フッターの **Autonomous Sync インジケータ** で最終同期時刻と稼働ステータスを常時確認できます。
+
+---
+
+## 🔐 セキュリティ & パフォーマンス設計
+
+- **SQL インジェクション完全防止**: D1 クエリはすべて `.prepare(...).bind(...)` によるプリペアドステートメントで実行。
+- **SSRF 防御ホワイトリスト**: [`functions/api/resolve-url.ts`](functions/api/resolve-url.ts) では Google Maps 短縮 URL 展開時に `ALLOWED_REDIRECT_HOSTS`（`maps.app.goo.gl`, `goo.gl`, `www.google.com`, `maps.google.com`, `google.com`, `www.google.co.jp`, `maps.google.co.jp`）を全リダイレクトホップで検証し、内部 IP や未許可ホストへのリクエストを遮断。
+- **セキュリティ & 高速キャッシュヘッダー ([`public/_headers`](public/_headers))**:
+  - `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `Strict-Transport-Security` を全ルートに付与。
+  - `/assets/*` には `Cache-Control: public, max-age=31536000, immutable` を設定しリピート表示を高速化。
+- **CLS ゼロ & 優先度制御**: フライヤー画像は `aspect-[1/1.414]` 固定比率コンテナ + `fetchPriority="high"` で LCP を最適化し、裏面等の初期非表示スライドには `fetchPriority="low"` + `loading="lazy"` を適用。
+- **パスワード保護 & 暗号化**: 編集用パスワードは SHA-256 ハッシュ保存、管理者トークンは HMAC-SHA256 検証、お問い合わせ内容は AES-GCM 暗号化保存。
+
+---
+
+## 🤖 リポジトリ内エージェントスキル (`.agent/skills/`)
+
+今後の AI エージェントおよび開発者による自律メンテナンスの品質基準として、以下の 4 つのスキル定義をリポジトリ内に同梱しています。
+
+| スキル名 | パス | 役割・保証内容 |
 |---|---|---|
-| Primary (Gold) | `#c4ab6e` ~ `#876339` | ボタン、アクセント、タイトル |
-| Accent (Burgundy) | `#c92e62` ~ `#a82150` | 強調、アラート |
-| Navy (Background) | `#0f1225` ~ `#1a1f36` | ヒーロー、ナビ、フッター |
-| Stone (Text) | `stone-100` ~ `stone-900` | 本文テキスト |
+| `responsive-and-truncation-auditor` | [`.agent/skills/responsive-and-truncation-auditor/SKILL.md`](.agent/skills/responsive-and-truncation-auditor/SKILL.md) | Single JSX Tree 原則の遵守、PC/スマホ間の情報量 100% 一致、文字見切れ（Truncation / Clipping）と横スクロールはみ出しの完全禁止を監査 |
+| `flyer-pdf-renderer` | [`.agent/skills/flyer-pdf-renderer/SKILL.md`](.agent/skills/flyer-pdf-renderer/SKILL.md) | ネイティブ `<iframe>`/`<embed>`/`<object>` 直読みの禁止、WebP → `pdfjs-dist` Canvas → タイポグラフィポスターの 3 段階ハイブリッド描画を保証 |
+| `zero-touch-persistence` | [`.agent/skills/zero-touch-persistence/SKILL.md`](.agent/skills/zero-touch-persistence/SKILL.md) | GitHub Actions 自己延命（Self-Keepalive + `.keepalive` 自動コミット）、Piggyback Lazy Cron、Self-Healing Scraper による無停止自律運用を保証 |
+| `pre-commit-verification-gate` | [`.agent/skills/pre-commit-verification-gate/SKILL.md`](.agent/skills/pre-commit-verification-gate/SKILL.md) | コミット前の全自動テストスイート（`npm run verify:all`）によるビルド・型・セキュリティ・実ブラウザ E2E 検証の 100% パスを強制 |
 
-### タイポグラフィ
+---
 
-| フォント | 用途 |
-|---|---|
-| Cormorant Garamond | 見出し、ブランド名 |
-| Noto Serif JP | 日本語見出し |
-| Noto Sans JP | 本文テキスト |
+## 🧪 開発・ローカル検証コマンド (`npm run verify:all`)
 
-### アニメーション
+コードを変更した際は、コミット前に必ず **`npm run verify:all`** を実行してください。以下の全自動検証ゲートが単一コマンドで実行されます。
 
-- **page-enter** — ルート遷移時のフェードイン+スライドアップ
-- **blur-in** — ヒーローテキストのブラー解除エフェクト
-- **scale-in** — カード出現時のスケールアニメーション
-- **slide-up** — セクション出現時のスライドアップ
+```bash
+# 開発サーバー起動
+npm run dev
+
+# コミット前・全自動検証スイート（ビルド・型・セキュリティ監査・Playwright PC/スマホ E2E検証）
+npm run verify:all
+
+# Chromium スモークテスト単体実行
+npm run smoke:chromium
+
+# 本番ビルド
+npm run build
+```
+
+### `npm run verify:all` ([`scripts/verify-all.mjs`](scripts/verify-all.mjs)) の検証項目
+1. **Static & Build Gate**: `pdfjs-dist` ワーカー検証、`tsc --noEmit` 型チェック、`vite build` 本番バンドル生成、`dist/_redirects`（SPA フォールバック）および `dist/_headers` の出力確認。
+2. **Security Static Audit**: D1 プリペアドステートメント使用確認、SSRF ホワイトリスト確認、未サニタイズの `dangerouslySetInnerHTML` が存在しないことを確認。
+3. **Headless Chromium E2E & Visual Sanity Gate** (`375x812` Mobile & `1440x900` Desktop):
+   - 全主要ルート（`/`, `/concerts`, `/calendar`, `/archive`, `/upload`, `/about`, `/docs`）で `console.error` / `pageerror` が **0 件** であること。
+   - 横スクロールはみ出し（`document.documentElement.scrollWidth > window.innerWidth`）が **0 件** であること。
+   - 重要テキスト要素の文字見切れ（`truncate` / `text-overflow: ellipsis` による `scrollWidth > clientWidth`）が **0 件** であること。
+   - Mobile (`375x812`) と Desktop (`1440x900`) の公演カードテキスト情報量が **100% 一致** すること。
+   - カレンダー/タイムライン/グリッドの 3 モード切替、インクリメンタル検索、公演詳細ページの `FlyerPreview`（`iframe`/`embed`/`object` ゼロ・実コンテンツ描画）、Google カレンダー & `.ics` リンク、ブラウザバック遷移がすべて正常動作すること。
 
 ---
 
@@ -102,241 +153,37 @@
 
 | パス | ページ | 説明 |
 |---|---|---|
-| `/` | ホーム | ヒーロー、本日の公演、Upcoming、カテゴリ |
-| `/concerts` | 演奏会一覧 | 検索・フィルタ・ソート対応の一覧表示 |
-| `/concerts/:slug` | 演奏会詳細 | 地図・共有・カレンダー追加・QRコード |
+| `/` | ホーム | ヒーロー、本日の公演、Upcoming、カテゴリ、スマート会場バッジ |
+| `/concerts` | 演奏会一覧 | インクリメンタル検索・フィルタ・3モード表示切替（Grid / Calendar / Timeline） |
+| `/concerts/:slug` | 演奏会詳細 | 3段階フライヤープレビュー・地図・スマート会場ナビ・共有・Google/iCal カレンダー追加 |
 | `/concerts/:slug/edit` | 編集 | パスワード認証付き編集 |
-| `/calendar` | カレンダー | 月間ビューでの演奏会表示 |
-| `/archive` | アーカイブ | 過去の演奏会を年度別に閲覧 |
-| `/upload` | 演奏会登録 | かんたん/詳細モード切替対応 |
-| `/admin` | 管理画面 | CRUD操作・スクレイピング実行・統計 |
-| `/contact` | お問い合わせ | 暗号化されたメッセージ送信 |
+| `/calendar` | カレンダー | 月間カレンダー / タイムライン / グリッド切替・ワンタップ詳細ドロワー |
+| `/archive` | アーカイブ | 過去の演奏会を年度・月別に全文表示で閲覧 |
+| `/upload` | 演奏会登録 | かんたん/詳細モード切替・Google Maps URL 自動解析・会場プリセット |
+| `/admin` | 管理画面 | CRUD 操作・スクレイピング実行・統計 |
+| `/contact` | お問い合わせ | AES-GCM 暗号化メッセージ送信 |
 | `/docs` | 使い方 | ユーザーガイド |
-| `/docs/api` | API仕様 | 開発者向けAPIドキュメント |
+| `/docs/api` | API仕様 | 開発者向け API ドキュメント |
 | `/student-tools` | 音大生ツール | メトロノーム、チューナー、移調メモ |
 | `/about` | サイト情報 | コンセプト・制作者・技術スタック |
-| `/solfege/after-hours/86b7` | 隠しギャラリー | GitHub向け文書でのみ解説 |
+| `/solfege/after-hours/86b7` | 隠しギャラリー | GitHub 向け文書でのみ解説 |
 
 ---
 
-## 🔧 主要機能の実装
-
-### 📍 Google Maps URL自動入力
-
-演奏会登録フォームで Google Maps の URL を貼り付けると、会場名と座標を自動抽出。対応フォーマット:
-- `https://www.google.com/maps/place/会場名/@lat,lng,...`
-- `https://maps.google.com/?q=lat,lng`
-- `https://maps.app.goo.gl/...`（リダイレクト後解析）
-
-### 💰 料金区分プリセット
-
-| プリセット | 区分 |
-|---|---|
-| 無料 | 入場料: ¥0 |
-| 一般/学生 | 一般: ¥1,000 / 学生: ¥500 |
-| 大人/子供 | 大人: ¥1,000 / 子供: ¥500 |
-| 一般/学生/子供 | 一般: ¥2,000 / 学生: ¥1,000 / 子供（中学生以下）: 無料 |
-
-### 🔍 大学サイト自動スクレイピング
-
-```
-愛知県立芸術大学 イベントページ
-  https://www.aichi-fam-u.ac.jp/event/music/
-  ├── ページ1（最新） → 10件
-  ├── ページ2 (/index_2.html) → 10件
-  ├── ...
-  └── ページ16 (/index_16.html) → 10件 (2022年7月まで)
-  合計: 約160件のイベント
-
-パース処理:
-  1. <a class="eventList_item event"> を抽出
-  2. event_date → YYYY-MM-DD に変換
-  3. event_title → タイトル
-  4. 詳細ページ → 日時/場所/出演者/プログラムを追加取得
-  5. SHA-256フィンガープリントで重複排除
-  6. D1に INSERT (is_published=1)
-```
-
-### 🔐 セキュリティ
-
-- **パスワードハッシュ** — SHA-256 でハッシュ保存（平文保存なし）
-- **レート制限** — KV ベースの IP レート制御
-- **HMAC認証** — 管理者トークンは HMAC-SHA256 で検証
-- **入力サニタイズ** — DOMPurify でXSS防止
-- **暗号化お問い合わせ** — AES-GCM で問い合わせ内容を暗号化保存
-
-### 📣 宣伝キット
-
-サイト宣伝用の高画質素材を `public/promo/crescendo/` に保存しています。
-
-| 用途 | ファイル |
-|---|---|
-| Instagram 正方形 | `instagram-square.png` |
-| Instagram ストーリー | `instagram-story.png` |
-| X 横長 | `x-card.png` |
-| LINE配信 | `line-share.png` |
-| OGP | `ogp.png` |
-| A4説明チラシ | `a4-guide.jpg` |
-| QR付き案内 | `qr-guide.png` |
-| 登録手順 | `registration-flow.png` |
-| カレンダー連携 | `calendar-flow.png` |
-
-投稿文面と使い分けは [docs/PROMOTION_KIT.md](docs/PROMOTION_KIT.md) を参照してください。
-
----
-
-## 🛠️ 技術スタック
-
-| 層 | 技術 | 詳細 |
-|---|---|---|
-| フロントエンド | React 18 + TypeScript | SPA、コンポーネントベース |
-| ビルド | Vite 5 | HMR、高速ビルド |
-| スタイリング | Tailwind CSS 3 | カスタムカラーパレット、@layer |
-| ルーティング | React Router v6 | 12ルート、ページトランジション |
-| ホスティング | Cloudflare Pages | エッジデプロイ、無料SSL |
-| API | Pages Functions | RESTful、Workers Runtime |
-| データベース | Cloudflare D1 | SQLite互換、エッジDB |
-| KV | Cloudflare KV | キャッシュ・レート制限 |
-| 地図 | Leaflet + OpenStreetMap | 無料、OSS |
-| 検索 | fuse.js | ファジー検索 |
-| QRコード | qrcode.react | 演奏会共有用 |
-| CI/CD | GitHub Actions | 自動ビルド・デプロイ・cron |
-
----
-
-## 🚀 セットアップ
+## 🚀 セットアップ & デプロイ
 
 > 📖 **詳細なデプロイ手順は [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) を参照してください**
 
-### 全自動セットアップ
-
 ```bash
-git clone https://github.com/AI-Avalon/ken-gei-prelude.git
-cd ken-gei-prelude
-bash setup.sh
+# 1. 依存関係のインストール
+npm ci
+
+# 2. 全自動検証 & ビルド
+npm run verify:all
+
+# 3. Cloudflare Pages デプロイ（main ブランチへの push でも自動デプロイされます）
+npx wrangler pages deploy dist --project-name=ken-gei-prelude
 ```
-
-### 手動セットアップ
-
-1. **依存関係のインストール**
-   ```bash
-   npm ci
-   ```
-
-2. **Cloudflare リソースの作成**
-   ```bash
-   npx wrangler d1 create ken-gei-prelude-db
-   npx wrangler kv namespace create ken-gei-prelude-cache
-   ```
-
-3. **データベースの初期化**
-   ```bash
-   npx wrangler d1 execute ken-gei-prelude-db --remote --file=./migrations/0001_init.sql
-   npx wrangler d1 execute ken-gei-prelude-db --remote --file=./migrations/0002_seed.sql
-   ```
-
-4. **Secrets の設定**
-   ```bash
-   npx wrangler secret put ADMIN_PASSWORD
-   npx wrangler secret put CONTACT_ENCRYPTION_KEY
-   npx wrangler secret put CRON_SECRET
-   ```
-
-5. **ビルド & デプロイ**
-   ```bash
-   npm run build
-   npx wrangler pages deploy dist --project-name=ken-gei-prelude
-   ```
-
-6. **過去の演奏会を一括取得（オプション）**
-   ```bash
-   bash scripts/scrape-historical.sh
-   ```
-
----
-
-## 💻 開発
-
-```bash
-# 開発サーバー起動
-npm run dev
-
-# ビルド
-npm run build
-
-# プレビュー
-npm run preview
-
-# 宣伝素材を再生成
-npm run promo:assets
-
-# Chromiumで主要ページを検証
-npm run smoke:chromium
-```
-
----
-
-## 📁 ディレクトリ構成
-
-```
-ken-gei-prelude/
-├── .github/workflows/
-│   ├── deploy.yml           # push → Cloudflare Pages デプロイ
-│   └── cron.yml             # 毎日スクレイピング＋メンテナンス
-├── functions/api/
-│   ├── concerts/[[path]].ts # 演奏会 CRUD API (850行)
-│   ├── cron/
-│   │   ├── scrape.ts        # 大学サイトスクレイパー (380行)
-│   │   └── maintenance.ts   # 自動メンテナンス
-│   ├── feed/                # iCal / RSS フィード
-│   └── contact/             # 暗号化お問い合わせ
-├── migrations/
-│   ├── 0001_init.sql        # テーブル定義
-│   └── 0002_seed.sql        # 初期データ
-├── scripts/
-│   ├── generate-promo-assets.mjs # 宣伝素材生成
-│   └── scrape-historical.sh      # 過去イベント一括取得スクリプト
-├── public/
-│   └── promo/                # サイト宣伝画像・掲載例画像
-├── docs/
-│   ├── USER_GUIDE.md
-│   ├── PROMOTION_KIT.md
-│   └── EASTER_EGGS.md
-├── src/
-│   ├── components/          # React コンポーネント
-│   │   ├── NavBar.tsx       # グラスモーフィズムナビ
-│   │   ├── Footer.tsx       # サイトフッター（管理者リンク含む）
-│   │   ├── ConcertForm.tsx  # 演奏会登録（GoogleMaps連携）
-│   │   ├── PricingEditor.tsx# 料金区分エディタ（プリセット付き）
-│   │   ├── ConcertCard.tsx  # 演奏会カード
-│   │   └── ...
-│   ├── pages/               # 公開ページ + 隠しページ
-│   │   ├── HomePage.tsx     # ヒーロー + Upcoming
-│   │   ├── AdminPage.tsx    # 管理画面
-│   │   └── ...
-│   ├── lib/
-│   │   ├── constants.ts     # サイト設定・カテゴリ・専攻
-│   │   ├── api.ts           # API クライアント
-│   │   └── utils.ts         # ユーティリティ関数
-│   └── types/               # TypeScript 型定義
-├── package.json
-├── tailwind.config.js       # カスタムデザインシステム
-└── KenGeiPrelude_完全仕様書_v4.0_FINAL.md  # 完全仕様書
-```
-
----
-
-## ⏰ 自動化スケジュール
-
-| スケジュール | ワークフロー | タスク |
-|---|---|---|
-| push to main | deploy.yml | ビルド → Cloudflare Pages デプロイ |
-| 毎日 06:00 JST | cron.yml | スクレイピング → メンテナンス |
-
-### スクレイピング対象
-
-- **通常実行**: 最新ページのみ（新規イベント取得）
-- **一括実行**: 全16ページ（2022年〜現在の約160件）
 
 ---
 

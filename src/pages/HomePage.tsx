@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchConcerts } from '../lib/api';
-import { daysUntil, formatDateShort } from '../lib/utils';
 import { SITE_NAME, SITE_TAGLINE, CATEGORIES } from '../lib/constants';
 import ConcertCard from '../components/ConcertCard';
-import { useIsMobile } from '../hooks/useDevice';
 import type { Concert } from '../types';
 
+/**
+ * Single JSX Tree HomePage
+ * Skill: `.agent/skills/responsive-and-truncation-auditor/SKILL.md`
+ * - Identical data and JSX structure across Mobile (375px) and Desktop (1440px).
+ * - Responsive CSS Grid / Flexbox layout with fluid typography and zero text clipping.
+ */
 export default function HomePage() {
   const [todayConcerts, setTodayConcerts] = useState<Concert[]>([]);
   const [thisWeek, setThisWeek] = useState<Concert[]>([]);
   const [upcoming, setUpcoming] = useState<Concert[]>([]);
   const [loading, setLoading] = useState(true);
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     const d = new Date();
@@ -20,6 +23,7 @@ export default function HomePage() {
     const weekLater = new Date(d);
     weekLater.setDate(weekLater.getDate() + 7);
     const weekEnd = `${weekLater.getFullYear()}-${String(weekLater.getMonth() + 1).padStart(2, '0')}-${String(weekLater.getDate()).padStart(2, '0')}`;
+
     Promise.all([
       fetchConcerts({ dateFrom: today, dateTo: today, limit: 10 }),
       fetchConcerts({ dateFrom: today, dateTo: weekEnd, sort: 'date_asc', limit: 20 }),
@@ -33,146 +37,55 @@ export default function HomePage() {
         setUpcoming(upcomingRes.data.filter((c) => c.date !== today));
       }
       setLoading(false);
-    }).catch(() => { setLoading(false); });
+    }).catch(() => {
+      setLoading(false);
+    });
   }, []);
 
-  /* ===== Mobile Layout ===== */
-  if (isMobile) {
-    return (
-      <div>
-        {/* Compact mobile hero */}
-        <section className="bg-hero-gradient text-white py-16 px-4 relative overflow-hidden">
-          <div className="text-center relative z-10">
-            <p className="text-primary-400/70 text-[10px] tracking-[0.3em] uppercase mb-3">
-              愛知県立芸術大学
-            </p>
-            <h1 className="text-3xl font-display font-bold mb-2 tracking-wider">
-              <span className="text-gold">{SITE_NAME}</span>
-            </h1>
-            <p className="text-sm text-stone-400 mb-6 font-serif">{SITE_TAGLINE}</p>
-            <div className="flex justify-center gap-3">
-              <Link to="/concerts" className="bg-primary-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
-                演奏会を見る
-              </Link>
-              <Link to="/upload" className="border border-primary-500/30 text-primary-300 px-6 py-2.5 rounded-lg text-sm font-medium">
-                登録する
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* Today — prominent on mobile */}
-        {todayConcerts.length > 0 && (
-          <section className="px-4 py-6">
-            <h2 className="text-lg font-bold text-stone-900 mb-3">🎵 本日の演奏会</h2>
-            <div className="space-y-3">
-              {todayConcerts.map((c) => (
-                <ConcertCard key={c.id} concert={c} highlight />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* This Week — horizontal scroll */}
-        {thisWeek.length > 0 && (
-          <section className="py-6">
-            <h2 className="text-lg font-bold text-stone-900 mb-3 px-4">📅 今週の演奏会</h2>
-            <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-hide">
-              {thisWeek.slice(0, 8).map((c) => (
-                <div key={c.id} className="min-w-[260px] snap-start">
-                  <ConcertCard concert={c} />
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Upcoming — list style for mobile */}
-        <section className="px-4 py-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-stone-900">今後の演奏会</h2>
-            <Link to="/concerts" className="text-primary-700 text-sm">すべて →</Link>
-          </div>
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="flex bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
-                  <div className="skeleton w-24 min-h-[96px]" style={{ borderRadius: 0 }} />
-                  <div className="flex-1 p-3 space-y-2">
-                    <div className="skeleton h-3 w-20" />
-                    <div className="skeleton h-4 w-full" />
-                    <div className="skeleton h-3 w-2/3" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : upcoming.length === 0 ? (
-            <div className="text-center py-8 text-stone-400">
-              <p className="mb-2">予定されている演奏会はありません</p>
-              <Link to="/upload" className="text-primary-700 text-sm">演奏会を登録する →</Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {upcoming.slice(0, 6).map((c) => (
-                <ConcertCard key={c.id} concert={c} />
-              ))}
-            </div>
-          )}
-          {upcoming.length > 6 && (
-            <div className="text-center mt-4">
-              <Link to="/concerts" className="btn-secondary text-sm w-full block">
-                もっと見る（残り{upcoming.length - 6}件）
-              </Link>
-            </div>
-          )}
-        </section>
-
-        {/* Categories — compact horizontal scroll */}
-        <section className="bg-stone-50 py-6">
-          <h2 className="text-lg font-bold text-stone-900 mb-3 px-4">カテゴリ</h2>
-          <div className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-hide">
-            {Object.entries(CATEGORIES).map(([key, cat]) => (
-              <Link
-                key={key}
-                to={`/concerts?category=${key}`}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${cat.color}`}
-              >
-                {cat.icon} {cat.label}
-              </Link>
-            ))}
-          </div>
-        </section>
-      </div>
-    );
-  }
-
-  /* ===== Desktop Layout ===== */
   return (
     <div>
-      {/* Hero — Dark elegant concert hall aesthetic */}
-      <section className="bg-hero-gradient text-white py-32 md:py-40 px-4 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.02]" style={{backgroundImage: 'radial-gradient(circle at 25% 25%, #c4ab6e 1px, transparent 1px), radial-gradient(circle at 75% 75%, #c4ab6e 1px, transparent 1px)', backgroundSize: '80px 80px'}} />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-navy-950/50" />
+      {/* Hero — Concert Hall Elegance (Unified Responsive Tree) */}
+      <section className="bg-hero-gradient text-white py-16 sm:py-24 md:py-36 px-4 relative overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 25% 25%, #c4ab6e 1px, transparent 1px), radial-gradient(circle at 75% 75%, #c4ab6e 1px, transparent 1px)',
+            backgroundSize: '80px 80px',
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-navy-950/60" />
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          <p className="text-primary-400/80 text-xs tracking-[0.4em] uppercase mb-6 font-sans animate-fade-in">
+          <p className="text-primary-400/80 text-xs tracking-[0.35em] uppercase mb-4 sm:mb-6 font-sans animate-fade-in">
             愛知県立芸術大学
           </p>
-          <h1 className="text-6xl md:text-8xl font-display font-bold mb-4 tracking-wider animate-blur-in">
+          <h1 className="fluid-hero-title font-display font-bold mb-3 sm:mb-4 tracking-wider animate-blur-in">
             <span className="text-gold">{SITE_NAME}</span>
           </h1>
-          <div className="flex items-center justify-center gap-8 my-8 animate-fade-in">
-            <span className="w-20 h-px bg-gradient-to-r from-transparent to-primary-500/60" />
-            <span className="text-primary-500/60 text-xs">♪</span>
-            <span className="w-20 h-px bg-gradient-to-l from-transparent to-primary-500/60" />
+          <div className="flex items-center justify-center gap-6 sm:gap-8 my-5 sm:my-7 animate-fade-in">
+            <span className="w-14 sm:w-20 h-px bg-gradient-to-r from-transparent to-primary-500/60" />
+            <span className="text-primary-400/70 text-xs">♪</span>
+            <span className="w-14 sm:w-20 h-px bg-gradient-to-l from-transparent to-primary-500/60" />
           </div>
-          <p className="text-lg md:text-2xl text-stone-300/90 mb-12 font-serif tracking-wide leading-relaxed animate-fade-in">
+          <p className="text-base sm:text-xl md:text-2xl text-stone-300/95 mb-8 sm:mb-10 font-serif tracking-wide leading-relaxed animate-fade-in">
             {SITE_TAGLINE}
           </p>
-          <div className="flex flex-wrap justify-center gap-5 animate-slide-up">
-            <Link to="/concerts" className="bg-primary-600 text-white px-10 py-3.5 rounded-lg font-medium hover:bg-primary-500 transition-all shadow-lg shadow-primary-900/40 tracking-wide hover:shadow-xl hover:-translate-y-0.5">
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 animate-slide-up">
+            <Link
+              to="/concerts"
+              className="bg-primary-600 text-white px-7 sm:px-9 py-3 rounded-lg font-medium hover:bg-primary-500 transition-all shadow-lg shadow-primary-900/40 tracking-wide text-sm sm:text-base"
+            >
               演奏会を見る
             </Link>
-            <Link to="/upload" className="border border-primary-500/30 text-primary-300 px-10 py-3.5 rounded-lg font-medium hover:bg-primary-900/30 hover:border-primary-400/50 transition-all tracking-wide hover:-translate-y-0.5">
+            <Link
+              to="/calendar"
+              className="bg-white/10 backdrop-blur-sm border border-primary-400/40 text-primary-200 px-7 sm:px-9 py-3 rounded-lg font-medium hover:bg-white/15 transition-all tracking-wide text-sm sm:text-base"
+            >
+              📅 カレンダー・日程表
+            </Link>
+            <Link
+              to="/upload"
+              className="border border-primary-500/30 text-primary-300 px-7 sm:px-9 py-3 rounded-lg font-medium hover:bg-primary-900/30 hover:border-primary-400/50 transition-all tracking-wide text-sm sm:text-base"
+            >
               演奏会を登録する
             </Link>
           </div>
@@ -181,12 +94,16 @@ export default function HomePage() {
 
       {/* Today's Stage */}
       {todayConcerts.length > 0 && (
-        <section className="max-w-6xl mx-auto px-4 py-12">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-serif font-bold text-stone-900">Today&apos;s Stage</h2>
-            <p className="text-sm text-stone-500 mt-1">— 本日の演奏会 —</p>
+        <section className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
+                🔴 本日の演奏会
+              </h2>
+              <p className="text-xs sm:text-sm text-stone-500 mt-0.5">Today&apos;s Stage</p>
+            </div>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {todayConcerts.map((c) => (
               <ConcertCard key={c.id} concert={c} highlight />
             ))}
@@ -196,12 +113,19 @@ export default function HomePage() {
 
       {/* This Week */}
       {thisWeek.length > 0 && (
-        <section className="max-w-6xl mx-auto px-4 py-12">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-serif font-bold text-stone-900">This Week</h2>
-            <p className="text-sm text-stone-500 mt-1">— 今週の演奏会 —</p>
+        <section className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
+                📅 今週の演奏会
+              </h2>
+              <p className="text-xs sm:text-sm text-stone-500 mt-0.5">This Week</p>
+            </div>
+            <Link to="/concerts?filter=week" className="text-primary-700 hover:text-primary-600 text-xs sm:text-sm font-medium">
+              今週すべて →
+            </Link>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {thisWeek.slice(0, 8).map((c) => (
               <ConcertCard key={c.id} concert={c} />
             ))}
@@ -209,23 +133,25 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Upcoming concerts */}
-      <section className="max-w-6xl mx-auto px-4 py-16 md:py-20">
-        <div className="flex items-center justify-between mb-10">
+      {/* Upcoming Concerts */}
+      <section className="max-w-6xl mx-auto px-4 py-10 sm:py-16">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
           <div>
-            <h2 className="text-3xl font-serif font-bold text-stone-900 tracking-tight">Upcoming</h2>
-            <p className="text-sm text-stone-400 mt-1.5 tracking-wide">今後の演奏会</p>
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 tracking-tight">
+              今後の演奏会
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-500 mt-1 tracking-wide">Upcoming Concerts</p>
           </div>
-          <Link to="/concerts" className="text-primary-700 hover:text-primary-600 text-sm font-medium transition-colors">
+          <Link to="/concerts" className="text-primary-700 hover:text-primary-600 text-sm font-medium transition-colors whitespace-nowrap">
             すべて見る →
           </Link>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
-                <div className="skeleton h-40 w-full" />
+                <div className="skeleton h-36 sm:h-40 w-full" />
                 <div className="p-4 space-y-3">
                   <div className="skeleton h-4 w-3/4" />
                   <div className="skeleton h-3 w-1/2" />
@@ -235,14 +161,19 @@ export default function HomePage() {
             ))}
           </div>
         ) : upcoming.length === 0 ? (
-          <div className="text-center py-16 text-stone-400">
-            <p className="text-lg mb-2 font-serif">現在予定されている演奏会はありません</p>
-            <Link to="/upload" className="text-primary-700 hover:underline">
-              演奏会を登録する →
-            </Link>
+          <div className="text-center py-12 text-stone-400">
+            <p className="text-base sm:text-lg mb-2 font-serif">現在予定されている演奏会はありません</p>
+            <div className="flex flex-wrap justify-center gap-4 mt-4">
+              <Link to="/archive" className="btn-secondary text-sm">
+                📦 過去の公演アーカイブを見る
+              </Link>
+              <Link to="/upload" className="btn-primary text-sm">
+                演奏会を登録する →
+              </Link>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {upcoming.slice(0, 8).map((c) => (
               <ConcertCard key={c.id} concert={c} />
             ))}
@@ -250,8 +181,8 @@ export default function HomePage() {
         )}
 
         {upcoming.length > 8 && (
-          <div className="text-center mt-10">
-            <Link to="/concerts" className="btn-secondary">
+          <div className="text-center mt-8 sm:mt-10">
+            <Link to="/concerts" className="btn-secondary inline-block">
               もっと見る（残り{upcoming.length - 8}件）
             </Link>
           </div>
@@ -259,18 +190,18 @@ export default function HomePage() {
       </section>
 
       {/* Categories */}
-      <section className="bg-stone-100/50 py-12">
+      <section className="bg-stone-100/70 py-10 sm:py-12 border-y border-stone-200/60">
         <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-serif font-bold text-stone-900">Categories</h2>
-            <p className="text-sm text-stone-500 mt-1">カテゴリから探す</p>
+          <div className="text-center mb-6 sm:mb-8">
+            <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">カテゴリから探す</h2>
+            <p className="text-xs sm:text-sm text-stone-500 mt-1">Categories</p>
           </div>
-          <div className="flex flex-wrap justify-center gap-3">
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
             {Object.entries(CATEGORIES).map(([key, cat]) => (
               <Link
                 key={key}
                 to={`/concerts?category=${key}`}
-                className={`px-5 py-2 rounded-full text-sm font-medium ${cat.color} hover:shadow-md transition-all duration-200`}
+                className={`px-4 py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap shrink-0 ${cat.color} hover:shadow-md transition-all duration-200`}
               >
                 {cat.icon} {cat.label}
               </Link>
@@ -280,28 +211,34 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="max-w-6xl mx-auto px-4 py-24">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-primary-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+      <section className="max-w-6xl mx-auto px-4 py-14 sm:py-20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12">
+          <div className="text-center bg-white rounded-2xl p-6 border border-stone-100 shadow-sm">
+            <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
+              <span className="text-xl">📱</span>
             </div>
-            <h3 className="font-serif font-bold text-lg mb-2 text-stone-900">スマートフォン対応</h3>
-            <p className="text-stone-500 text-sm leading-relaxed">いつでもどこでも演奏会情報をチェック。カレンダーにもワンタップで追加できます。</p>
+            <h3 className="font-serif font-bold text-base sm:text-lg mb-2 text-stone-900">PC・スマートフォン完全対応</h3>
+            <p className="text-stone-500 text-xs sm:text-sm leading-relaxed">
+              高精細チラシ表裏プレビュー・月間カレンダー・タイムライン表示に対応。GoogleカレンダーやiCalにもワンタップで追加できます。
+            </p>
           </div>
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-primary-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+          <div className="text-center bg-white rounded-2xl p-6 border border-stone-100 shadow-sm">
+            <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
+              <span className="text-xl">✏️</span>
             </div>
-            <h3 className="font-serif font-bold text-lg mb-2 text-stone-900">誰でも登録</h3>
-            <p className="text-stone-500 text-sm leading-relaxed">アカウント登録不要。パスワードを設定するだけで、すぐに演奏会を掲載できます。</p>
+            <h3 className="font-serif font-bold text-base sm:text-lg mb-2 text-stone-900">誰でもすぐ登録・自動同期</h3>
+            <p className="text-stone-500 text-xs sm:text-sm leading-relaxed">
+              大学公式イベント情報の毎日自動収集に加え、学生の自主企画リサイタルや室内楽もアカウント不要で即座に掲載できます。
+            </p>
           </div>
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-primary-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+          <div className="text-center bg-white rounded-2xl p-6 border border-stone-100 shadow-sm">
+            <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
+              <span className="text-xl">🗺️</span>
             </div>
-            <h3 className="font-serif font-bold text-lg mb-2 text-stone-900">かんたん共有</h3>
-            <p className="text-stone-500 text-sm leading-relaxed">LINE、X、QRコードで簡単シェア。友達や先生に演奏会を広めましょう。</p>
+            <h3 className="font-serif font-bold text-base sm:text-lg mb-2 text-stone-900">スマート会場ナビ＆共有</h3>
+            <p className="text-stone-500 text-xs sm:text-sm leading-relaxed">
+              奏楽堂・室内楽ホールへのリニモ／名鉄バス案内や県外ホールの経路検索、LINE・X・QRコード共有もワンタップ。
+            </p>
           </div>
         </div>
       </section>

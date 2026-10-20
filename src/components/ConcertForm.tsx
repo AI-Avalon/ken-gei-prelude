@@ -761,7 +761,7 @@ export default function ConcertForm({ initialData, onSubmit, isEdit, concertSlug
             )}
 
             {description && (
-              <p className="text-sm text-stone-600 border-t pt-2 mt-2 line-clamp-3">{description}</p>
+              <p className="text-sm text-stone-600 border-t pt-2 mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{description}</p>
             )}
           </div>
         </div>

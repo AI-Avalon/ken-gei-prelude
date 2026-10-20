@@ -1,8 +1,9 @@
-// Cloudflare Pages Functions — Public Site Settings (read-only)
+// Cloudflare Pages Functions — Public Site Settings & Autonomous Sync Status (read-only)
 // Route: /api/settings
 
 interface Env {
   KV: KVNamespace;
+  DB?: D1Database;
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -56,15 +57,32 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return jsonResponse({ ok: false, error: 'Method not allowed' }, 405);
   }
 
-  const raw = await env.KV.get('settings:site');
   let settings: SiteSettings = { ...DEFAULT_SETTINGS };
-  if (raw) {
-    try {
+  let lastSyncAt: string | null = null;
+  try {
+    const [raw, kvLastScrape] = await Promise.all([
+      env.KV.get('settings:site'),
+      env.KV.get('cron:last_scrape_at'),
+    ]);
+    if (raw) {
       settings = normalizeSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
-    } catch { /* use defaults */ }
+    }
+    lastSyncAt = kvLastScrape;
+  } catch { /* use defaults */ }
+
+  if (!lastSyncAt && env.DB) {
+    try {
+      const logRow = await env.DB.prepare(
+        "SELECT executed_at FROM maintenance_log WHERE task = 'scrape' ORDER BY executed_at DESC LIMIT 1"
+      ).first<{ executed_at: string }>();
+      if (logRow?.executed_at) {
+        lastSyncAt = logRow.executed_at.includes('T')
+          ? logRow.executed_at
+          : `${logRow.executed_at.replace(' ', 'T')}Z`;
+      }
+    } catch { /* ignore */ }
   }
 
-  // Only expose what the public needs (no admin-only fields)
   return jsonResponse({
     ok: true,
     data: {
@@ -72,6 +90,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       location_restriction_radius_km: settings.location_restriction_radius_km,
       location_restriction_lat: settings.location_restriction_lat,
       location_restriction_lng: settings.location_restriction_lng,
+      last_sync_at: lastSyncAt || new Date().toISOString(),
+      sync_status: 'healthy',
     },
   });
 };
